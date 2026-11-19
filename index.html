@@ -1481,7 +1481,7 @@ const API={
 function nav(){
   $('#nav').innerHTML=S.user
    ?`<button class="av" id="avb" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de ${esc(S.user.name)}" onclick="toggleUM(event)">${esc((S.user.name||'?').trim().charAt(0).toUpperCase())}</button>`
-   :`<button class="header-login" onclick="playStarSound();authM('login')">Iniciar sesión</button>`;
+   :`<button class="header-login" onclick="playStarSound();authM()">Iniciar sesión</button>`;
   renderUM();
 }
 /* --- Menú de perfil (cliente con sesión) --- */
@@ -1632,38 +1632,10 @@ function guideForm(buttonId,rules){
 }
 
 /* --- Inicio de sesión y registro --- */
-function authM(tab,warn){
+function authM(warn=false){
   modal(`${warn?`<div class="warn">⚠️ <b>Inicia sesión para continuar con tu compra</b><br>Para procesar tu pedido y enviarte tus accesos de forma segura, inicia sesión en un paso.</div>`:''}
   <h2>Bienvenido a Ken Store</h2>
-  <button class="g w" type="button" onclick="doGoogle()" style="margin-bottom:8px"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.4-4.8 7.1l7.6 5.9c4.4-4.1 7-10.1 7-17.5z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuar con Google</span></button>
-  <button class="w" type="button" onclick="authEmailM()" style="margin-top:0">✉ Continuar con correo</button>`);
-}
-function authEmailM(warn){
-  modal(`${warn?`<div class="warn">⚠️ <b>Inicia sesión para continuar con tu compra</b><br>Para procesar tu pedido y enviarte tus accesos de forma segura, inicia sesión en un paso.</div>`:''}
-  <h2>Ingresa tu correo</h2>
-  <p class="mu">Si no tienes cuenta, se creará automáticamente.</p>
-  <label for="ae">Correo electrónico</label>
-  <input id="ae" type="email" inputmode="email" placeholder="tucorreo@gmail.com" autocomplete="email">
-  <button class="pri w" id="ab" onclick="doSendOTP()" style="margin-top:12px">Enviar enlace →</button>
-  <button class="w" onclick="authM()" style="margin-top:6px">← Volver</button>`);
-  const go=e=>{if(e.key=='Enter')$('#ab').click()};
-  const el=$('#ae');if(el){el.onkeydown=go;setTimeout(()=>el.focus(),100)}
-  $('#ab').addEventListener('click',play1UpSound,{once:false});
-  guideForm('ab',[['ae','correo electrónico',emailError]]);
-}
-function otpM(email){
-  modal(`<h2>Revisa tu correo 📬</h2>
-  <p>Enviamos un enlace de acceso a:</p>
-  <p style="font-weight:700;color:var(--ac);font-size:1rem;margin:8px 0">${esc(email)}</p>
-  <div style="background:var(--soft);border:2px solid var(--ln);padding:12px;margin:12px 0">
-    <p style="font-weight:700;margin-bottom:4px">¿Qué debes hacer?</p>
-    <p class="mu">1. Abre tu correo electrónico</p>
-    <p class="mu">2. Busca el mensaje de <b>Ken Store</b></p>
-    <p class="mu">3. Haz clic en el enlace para ingresar</p>
-    <p class="mu" style="margin-top:6px;font-size:.8rem">⏱ Usa el enlace más reciente que recibas</p>
-  </div>
-  <p class="mu" style="font-size:.8rem">¿No llegó? Revisa tu carpeta de spam.</p>
-  <button class="w" onclick="authEmailM()" style="margin-top:8px">← Volver al formulario</button>`);
+  <button class="g w" type="button" onclick="doGoogle()" style="margin-bottom:8px"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.4-4.8 7.1l7.6 5.9c4.4-4.1 7-10.1 7-17.5z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuar con Google</span></button>`);
 }
 function storeLoginReturnUrl(){
   const url=new URL('/',location.origin);
@@ -1678,25 +1650,6 @@ async function doGoogle(){
     }));
   }catch(e){toast('No se pudo abrir el acceso con Google. Intenta de nuevo.')}
 }
-async function doSendOTP(){
-  const button=$('#ab');
-  if(S.busy||!button.checkFields())return;
-  const email=v('ae').trim().toLowerCase();
-  S.busy=true;button.setSubmitting(true);
-  try{
-    if(S.pend!=null)sessionStorage.setItem('ks_pending_product',String(S.pend));
-    await kenResult(storeClient.auth.signInWithOtp({email,options:{emailRedirectTo:storeLoginReturnUrl()}}));
-    otpM(email);
-  }catch(e){
-    button.setSubmitting(false);
-    const limited=e?.status===429;
-    const message=limited
-      ? 'El envío de enlaces está limitado en este momento. Usa Google o inténtalo más tarde.'
-      : 'No se pudo enviar el enlace. Revisa tu correo o continúa con Google.';
-    button.showFormError(message);
-  }finally{S.busy=false}
-}
-
 /* --- Flujo de compra --- */
 /* ===== Sonidos Mario Bros ===== */
 let _AC=null;
@@ -1804,7 +1757,7 @@ function buy(id){
   const p=prod(id);
   if(!p||p.st===0)return toast('Este producto está agotado.');
   playJumpSound();
-  if(!S.user){S.pend=id;authM('login',true)}else proceed(id);
+  if(!S.user){S.pend=id;authM(true)}else proceed(id);
 }
 async function proceed(id){
   if(!await publishedCatalog)return toast('El catálogo aún no está disponible para pedidos. Intenta de nuevo.');

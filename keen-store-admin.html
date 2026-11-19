@@ -259,38 +259,21 @@ async function admSave(){
   if(S.sub&&!(SUBS[S.cat]||[]).includes(S.sub))S.sub='';
   return true;
 }
+const ADMIN_EMAIL='av139660@gmail.com';
 function admLock(){
-  modal('<h2>⚙️ Panel de administración</h2><p class="mu">Ingresa con el correo autorizado.</p>'+
-    '<label for="admin-email">Correo</label><input id="admin-email" type="email" autocomplete="email">'+
-    '<button class="pri w" id="apb" onclick="admEnter()">Enviar enlace de acceso</button>'+
-    '<button class="w" onclick="admGoogle()">Entrar con Google</button>');
-  $('#admin-email').onkeydown=e=>{if(e.key==='Enter')admEnter()};
+  modal('<h2>⚙️ Panel de administración</h2><p class="mu">Entra con la cuenta de Google autorizada.</p>'+
+    '<button class="pri w" type="button" onclick="admGoogle()">Entrar con Google</button>');
 }
 function adminRedirectUrl(){
   const destination=new URL(location.pathname,location.origin);
   if(destination.hostname==='www.kenstore.shop')destination.hostname='kenstore.shop';
   return destination.href;
 }
-async function admEnter(){
-  const field=$('#admin-email'),button=$('#apb');
-  if(!field.value.trim()||!field.reportValidity()||button.disabled)return;
-  button.disabled=true;
-  try{
-    await kenResult(adminClient.auth.signInWithOtp({
-      email:field.value.trim().toLowerCase(),
-      options:{shouldCreateUser:false,emailRedirectTo:adminRedirectUrl()}
-    }));
-    toast('Si el correo tiene acceso, recibirás un enlace.');
-  }catch(e){
-    const message=e?.status===429?'Supabase limitó los envíos de correo. Puedes entrar con Google.':'No se pudo enviar el enlace. Puedes entrar con Google.';
-    toast(message);
-  }finally{button.disabled=false}
-}
 async function admGoogle(){
   try{
     await kenResult(adminClient.auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:adminRedirectUrl()}
+      options:{redirectTo:adminRedirectUrl(),queryParams:{prompt:'select_account',login_hint:ADMIN_EMAIL}}
     }));
   }catch(e){toast('No se pudo abrir el acceso con Google.')}
 }
@@ -299,7 +282,7 @@ async function admStart(){
     const {session}=await kenResult(adminClient.auth.getSession());
     if(!session)return;
     const {user}=await kenResult(adminClient.auth.getUser());
-    if(user.app_metadata?.kenstore_admin!==true){
+    if(user.email?.toLowerCase()!==ADMIN_EMAIL||!user.email_confirmed_at||user.app_metadata?.kenstore_admin!==true){
       await kenResult(adminClient.auth.signOut({scope:'local'}));
       return toast('Este correo no tiene permisos de administrador.');
     }
