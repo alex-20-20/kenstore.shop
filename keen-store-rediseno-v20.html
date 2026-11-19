@@ -1448,31 +1448,31 @@ const DB={
   set(k,x){try{localStorage.setItem('ks_'+k,JSON.stringify(x))}catch(e){mem[k]=x}}
 };
 const S={cat:'all',sub:'',user:DB.get('session',null),pend:null,busy:false};
-// Manejar callback de Google OAuth
-(function(){
+// Manejar callback de Google OAuth - después de que cargue la página
+function handleGoogleCallback(){
   const hash=location.hash;
-  if(hash&&hash.includes('access_token')){
-    const params=new URLSearchParams(hash.slice(1));
-    const token=params.get('access_token');
-    if(token){
-      fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}})
-        .then(r=>r.json()).then(user=>{
-          if(user?.email){
-            window._sb.token=token;
-            const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
-            fetch(SUPA_URL+'/rest/v1/users',{
-              method:'POST',
-              headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-              body:JSON.stringify({id:user.id,name,email:user.email})
-            }).catch(()=>{});
-            DB.set('session',{name,email:user.email});
-            S.user={name,email:user.email};
-            history.replaceState(null,'',location.pathname);
-          }
+  if(!hash||!hash.includes('access_token'))return;
+  const params=new URLSearchParams(hash.slice(1));
+  const token=params.get('access_token');
+  if(!token)return;
+  history.replaceState(null,'',location.pathname);
+  fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}})
+    .then(r=>r.json()).then(user=>{
+      if(user?.email){
+        window._sb.token=token;
+        const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
+        fetch(SUPA_URL+'/rest/v1/users',{
+          method:'POST',
+          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+          body:JSON.stringify({id:user.id,name,email:user.email})
         }).catch(()=>{});
-    }
-  }
-})();
+        DB.set('session',{name,email:user.email});
+        S.user={name,email:user.email};
+        nav();
+        toastCF();
+      }
+    }).catch(()=>{});
+}
 const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
 const sb=window._sb={};
@@ -2183,6 +2183,10 @@ window.addEventListener('storage',event=>{
   if(event.key==='ks_site'||event.key===null)showMaintenance(DB.get('site',{})?.maint);
 });
 (function loadStore(){
+  // Si viene de Google OAuth, limpiar el hash para que la carga no se bloquee
+  if(location.hash&&location.hash.includes('access_token')){
+    history.replaceState(null,'',location.pathname+location.search);
+  }
   const loader=$('#ld'),track=loader.querySelector('.bw'),percent=$('#pc');
   const assets=[$('#inicio .dragon .dr'),...Array.from(document.querySelectorAll('#grid .card .im img')).slice(0,4)];
   let finished=0,ready=false,shown=0,lastFrame;
@@ -2269,7 +2273,7 @@ window.addEventListener('storage',event=>{
       loader.classList.add('is-finishing');
       setTimeout(()=>{
         loader.classList.add('is-leaving');
-        setTimeout(()=>loader.remove(),220);
+        setTimeout(()=>{loader.remove();handleGoogleCallback();},220);
       },120);
     },100);
   }
