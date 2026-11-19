@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="icon" href="/ken-admin-192.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="kenstore-data.js"></script>
 <script>
@@ -1082,6 +1083,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
  #grid .card .inf{width:22px;margin-right:3px}
  #grid .card .inf svg{width:17px;height:17px}
 }
+#gp[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -1223,7 +1225,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 /* ===== CONFIGURACIÓN (cambia estos datos) ===== */
 const CFG={
   WA:'51900000000',                       // WhatsApp del administrador (con código de país, sin +)
-  GROUP:'https://chat.whatsapp.com/TU_ENLACE', // Grupo de WhatsApp
+  GROUP:'', // Grupo de WhatsApp
   TITULAR:'Nombre del titular de la cuenta',
   YAPE:'900 000 000',                     // Opcional: deja '' para ocultarlo
   QR:'',                                  // URL o base64 de tu QR de pago (vacío = marcador)
@@ -1444,15 +1446,18 @@ const storeClient=kenClient();
 const storeSession=storeClient?.auth.getSession();
 function setStoreUser(user){
   const email=user?.email;
-  S.user=email?{name:user.user_metadata?.full_name||user.user_metadata?.name||email.split('@')[0],email}:null;
+  S.user=email?{id:user.id,name:user.user_metadata?.full_name||user.user_metadata?.name||email.split('@')[0],email}:null;
   nav();
 }
 storeClient?.auth.onAuthStateChange((_event,session)=>setStoreUser(session?.user));
 const API={
-  mine:()=>kenResult(storeClient.from('orders').select('*').order('date',{ascending:false})),
+  mine(){
+    if(!S.user?.id)throw new Error('Inicia sesión de nuevo.');
+    return kenResult(storeClient.from('orders').select('*').eq('customer_id',S.user.id).order('date',{ascending:false}));
+  },
   async hasOrder(pid){
-    if(!S.user)return false;
-    const rows=await kenResult(storeClient.from('orders').select('id').eq('pid',pid).limit(1));
+    if(!S.user?.id)return false;
+    const rows=await kenResult(storeClient.from('orders').select('id').eq('customer_id',S.user.id).eq('pid',pid).limit(1));
     return rows.length>0;
   },
   async createOrder(d){
@@ -1639,7 +1644,7 @@ function authEmailM(warn){
   <p class="mu">Si no tienes cuenta, se creará automáticamente.</p>
   <label for="ae">Correo electrónico</label>
   <input id="ae" type="email" inputmode="email" placeholder="tucorreo@gmail.com" autocomplete="email">
-  <button class="pri w" id="ab" onclick="doSendOTP()" style="margin-top:12px">Enviar código →</button>
+  <button class="pri w" id="ab" onclick="doSendOTP()" style="margin-top:12px">Enviar enlace →</button>
   <button class="w" onclick="authM()" style="margin-top:6px">← Volver</button>`);
   const go=e=>{if(e.key=='Enter')$('#ab').click()};
   const el=$('#ae');if(el){el.onkeydown=go;setTimeout(()=>el.focus(),100)}
@@ -1658,13 +1663,18 @@ function otpM(email){
     <p class="mu" style="margin-top:6px;font-size:.8rem">⏱ Usa el enlace más reciente que recibas</p>
   </div>
   <p class="mu" style="font-size:.8rem">¿No llegó? Revisa tu carpeta de spam.</p>
-  <button class="w" onclick="authEmailM()" style="margin-top:8px">← Reenviar enlace</button>`);
+  <button class="w" onclick="authEmailM()" style="margin-top:8px">← Volver al formulario</button>`);
+}
+function storeLoginReturnUrl(){
+  const url=new URL('/',location.origin);
+  if(url.hostname==='www.kenstore.shop')url.hostname='kenstore.shop';
+  return url.href;
 }
 async function doGoogle(){
   try{
     if(S.pend!=null)sessionStorage.setItem('ks_pending_product',String(S.pend));
     await kenResult(storeClient.auth.signInWithOAuth({
-      provider:'google',options:{redirectTo:location.origin+'/'}
+      provider:'google',options:{redirectTo:storeLoginReturnUrl()}
     }));
   }catch(e){toast('No se pudo abrir el acceso con Google. Intenta de nuevo.')}
 }
@@ -1675,11 +1685,15 @@ async function doSendOTP(){
   S.busy=true;button.setSubmitting(true);
   try{
     if(S.pend!=null)sessionStorage.setItem('ks_pending_product',String(S.pend));
-    await kenResult(storeClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+'/'}}));
+    await kenResult(storeClient.auth.signInWithOtp({email,options:{emailRedirectTo:storeLoginReturnUrl()}}));
     otpM(email);
   }catch(e){
     button.setSubmitting(false);
-    button.showFormError('No se pudo enviar el enlace. Intenta de nuevo.');
+    const limited=e?.status===429;
+    const message=limited
+      ? 'El envío de enlaces está limitado en este momento. Usa Google o inténtalo más tarde.'
+      : 'No se pudo enviar el enlace. Revisa tu correo o continúa con Google.';
+    button.showFormError(message);
   }finally{S.busy=false}
 }
 
@@ -2000,7 +2014,16 @@ function infoM(id){
   <h3>Para tu pedido</h3><ul>${p.t?`<li>Tipo: ${esc(p.t)}</li>`:''}<li>${av}</li>${orderField(p)?`<li>Te pediremos: ${esc(orderField(p).l)}</li>`:''}<li>${p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago'}</li></ul></div>`);
 }
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
-$('#gp').href=CFG.GROUP; // botón del grupo de WhatsApp junto a "Ver catálogo"
+function updateWhatsAppGroup(){
+  const link=$('#gp');
+  let url;
+  try{url=new URL(CFG.GROUP)}catch{}
+  const enabled=url?.origin==='https://chat.whatsapp.com'&&/^\/[A-Za-z0-9]{10,}$/.test(url.pathname);
+  link.hidden=!enabled;
+  if(enabled)link.href=url.href;
+  else link.removeAttribute('href');
+}
+updateWhatsAppGroup();
 
 const pl=p=>[...(p.t?[p.t]:[]),...(p.pills||[])];
 async function loadPublishedCatalog(){
@@ -2013,7 +2036,7 @@ async function loadPublishedCatalog(){
   Object.assign(SUBS,data.subcategories);
   SITE=data.site;
   Object.assign(CFG,SITE.cfg||{});
-  $('#gp').href=CFG.GROUP;
+  updateWhatsAppGroup();
   applyStoreAppearance();
   tabs();grid();showMaintenance(SITE.maint);
   return true;
