@@ -1448,6 +1448,31 @@ const DB={
   set(k,x){try{localStorage.setItem('ks_'+k,JSON.stringify(x))}catch(e){mem[k]=x}}
 };
 const S={cat:'all',sub:'',user:DB.get('session',null),pend:null,busy:false};
+// Manejar callback de Google OAuth
+(function(){
+  const hash=location.hash;
+  if(hash&&hash.includes('access_token')){
+    const params=new URLSearchParams(hash.slice(1));
+    const token=params.get('access_token');
+    if(token){
+      fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}})
+        .then(r=>r.json()).then(user=>{
+          if(user?.email){
+            window._sb.token=token;
+            const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
+            fetch(SUPA_URL+'/rest/v1/users',{
+              method:'POST',
+              headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+              body:JSON.stringify({id:user.id,name,email:user.email})
+            }).catch(()=>{});
+            DB.set('session',{name,email:user.email});
+            S.user={name,email:user.email};
+            history.replaceState(null,'',location.pathname);
+          }
+        }).catch(()=>{});
+    }
+  }
+})();
 const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
 const sb=window._sb={};
@@ -1675,42 +1700,95 @@ function guideForm(buttonId,rules){
 
 /* --- Inicio de sesión y registro --- */
 function authM(tab,warn){
-  const reg=tab=='register';
-  modal(`${warn?`<div class="warn">⚠️ <b>Inicia sesión para continuar con tu compra</b><br>Para procesar tu pedido y enviarte tus accesos de forma segura, regístrate o inicia sesión en un paso.</div>`:''}
-  <div class="tb"><button class="${reg?'':'on'}" onclick="play1UpSound();authM('login',${!!warn})">Iniciar sesión</button><button class="${reg?'on':''}" onclick="play1UpSound();authM('register',${!!warn})">Registrarse</button></div>
-  <button class="g" type="button" onclick="doGoogle()"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.4-4.8 7.1l7.6 5.9c4.4-4.1 7-10.1 7-17.5z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>${reg?'Registrarse con Google':'Inicio rápido con Google'}</span></button><div class="or">o con tu correo</div>
-  ${reg?'<label for="au">Nombre de usuario</label><input id="au" placeholder="Tu nombre o apodo" autocomplete="username">':''}
-  <label for="ae">Correo electrónico</label><input id="ae" type="email" inputmode="email" placeholder="tucorreo@gmail.com" autocomplete="email">
-  <label for="ap">Contraseña</label><input id="ap" type="password" placeholder="••••••" autocomplete="${reg?'new-password':'current-password'}"${reg?' aria-describedby="password-rule"':''}>
-  ${reg?'<p class="form-rule" id="password-rule">Usa al menos 6 caracteres.</p>':''}
-  <button class="pri w" id="ab" onclick="${reg?'doReg()':'doLogin()'}">${reg?'Registrarse':'Ingresar'}</button>`);
-  const go=e=>{if(e.key=='Enter')$('#ab').click()};['ae','ap','au'].forEach(i=>{const el=$('#'+i);if(el)el.onkeydown=go});
+  modal(`${warn?`<div class="warn">⚠️ <b>Inicia sesión para continuar con tu compra</b><br>Para procesar tu pedido y enviarte tus accesos de forma segura, inicia sesión en un paso.</div>`:''}
+  <h2>Iniciar sesión</h2>
+  <button class="g w" type="button" onclick="doGoogle()"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.4-4.8 7.1l7.6 5.9c4.4-4.1 7-10.1 7-17.5z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>Continuar con Google</span></button>
+  <div class="or">o con tu correo</div>
+  <label for="ae">Correo electrónico</label>
+  <input id="ae" type="email" inputmode="email" placeholder="tucorreo@gmail.com" autocomplete="email">
+  <button class="pri w" id="ab" onclick="doSendOTP()">Enviar código →</button>`);
+  const go=e=>{if(e.key=='Enter')$('#ab').click()};
+  const el=$('#ae');if(el)el.onkeydown=go;
   $('#ab').addEventListener('click',play1UpSound,{once:false});
-  if(reg)$('#ap').addEventListener('input',()=>{$('#password-rule').dataset.met=String(v('ap').length>=6)});
-  guideForm('ab',[
-    ...(reg?[['au','nombre de usuario',value=>value.trim()?'':'Escribe tu nombre o apodo.']]:[]),
-    ['ae','correo electrónico',emailError],
-    ['ap','contraseña',value=>reg?(value.length>=6?'':'Escribe al menos 6 caracteres.'):(value?'':'Escribe tu contraseña.')]
-  ]);
+  guideForm('ab',[['ae','correo electrónico',emailError]]);
+}
+function otpM(email){
+  modal(`<h2>Código enviado 📬</h2>
+  <p class="mu">Revisa tu correo <b>${esc(email)}</b> e ingresa el código de 6 dígitos.</p>
+  <label for="otp">Código de verificación</label>
+  <input id="otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" autocomplete="one-time-code">
+  <button class="pri w" id="otp-btn" onclick="doVerifyOTP('${esc(email)}')">Verificar código →</button>
+  <button class="w" onclick="authM()" style="margin-top:6px">← Cambiar correo</button>`);
+  $('#otp-btn').addEventListener('click',play1UpSound,{once:false});
+  const go=e=>{if(e.key=='Enter')$('#otp-btn').click()};
+  const el=$('#otp');if(el){el.onkeydown=go;setTimeout(()=>el.focus(),100)}
+  guideForm('otp-btn',[['otp','código',value=>value.trim().length===6&&/^\d+$/.test(value.trim())?'':'Ingresa el código de 6 dígitos.']]);
 }
 function afterAuth(){closeM();nav();toastCF();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}}
-function doGoogle(){try{API.google();afterAuth()}catch(x){$('#ab').showFormError('El acceso con Google aún no está disponible. Puedes continuar con tu correo.')}}
-async function doLogin(){const button=$('#ab');if(S.busy||!button.checkFields())return;
+async function doGoogle(){
+  try{
+    const res=await fetch(SUPA_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.href),{headers:{'apikey':SUPA_KEY}});
+    // Redirigir a Google
+    const data=await res.json().catch(()=>({}));
+    if(data.url)location.href=data.url;
+    else{
+      // Método directo
+      location.href=SUPA_URL+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(location.origin);
+    }
+  }catch(x){
+    if($('#ab'))$('#ab').showFormError('No se pudo conectar con Google. Intenta con tu correo.');
+  }
+}
+async function doSendOTP(){
+  const button=$('#ab');
+  if(S.busy||!button.checkFields())return;
+  const email=v('ae').trim().toLowerCase();
   S.busy=true;button.setSubmitting(true);
-  try{await API.login(v('ae').trim().toLowerCase(),v('ap'));S.busy=false;afterAuth()}
-  catch(x){
+  try{
+    const res=await fetch(SUPA_URL+'/auth/v1/otp',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,create_user:true})
+    });
+    if(!res.ok){const d=await res.json().catch(()=>({}));throw d.error_description||d.msg||'Error';}
+    S.busy=false;
+    otpM(email);
+  }catch(x){
     S.busy=false;button.setSubmitting(false);
-    if(x==='Correo o contraseña incorrectos.')button.showFormError('Correo o contraseña incorrectos. Revisa los datos o elige Registrarse si aún no tienes una cuenta.',['ae','ap']);
-    else button.showFormError('No se pudo iniciar sesión. Inténtalo de nuevo.');
-  }}
-async function doReg(){const button=$('#ab');if(S.busy||!button.checkFields())return;
+    button.showFormError('No se pudo enviar el código. Intenta de nuevo.');
+  }
+}
+async function doVerifyOTP(email){
+  const button=$('#otp-btn');
+  if(S.busy||!button.checkFields())return;
+  const token=v('otp').trim();
   S.busy=true;button.setSubmitting(true);
-  try{await API.register(v('au').trim(),v('ae').trim().toLowerCase(),v('ap'));S.busy=false;afterAuth()}
-  catch(x){
+  try{
+    const res=await fetch(SUPA_URL+'/auth/v1/verify',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,token,type:'email'})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw data.error_description||data.msg||'Código incorrecto';
+    sb.token=data.access_token;
+    const name=data.user?.user_metadata?.name||email.split('@')[0];
+    // Guardar en tabla users
+    if(data.access_token){
+      fetch(SUPA_URL+'/rest/v1/users',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+data.access_token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+        body:JSON.stringify({id:data.user?.id,name,email})
+      }).catch(()=>{});
+    }
+    API.start({name,email});
+    S.busy=false;
+    afterAuth();
+  }catch(x){
     S.busy=false;button.setSubmitting(false);
-    if(x==='Ese correo ya está registrado. Inicia sesión.')button.showFormError(x,['ae']);
-    else button.showFormError('No se pudo crear la cuenta. Inténtalo de nuevo.');
-  }}
+    button.showFormError(typeof x==='string'?x:'Código incorrecto. Intenta de nuevo.');
+  }
+}
 
 /* --- Flujo de compra --- */
 /* ===== Sonidos Mario Bros ===== */
