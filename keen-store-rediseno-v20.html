@@ -1430,7 +1430,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>Number(n)===0?'Gratis':'S/ '+Number(n).toFixed(2), prod=id=>P.find(p=>p.id==id);
 const fdate=d=>new Date(d).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'});
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2800)}
-let ttcf;function toastCF(){const t=$('#toast-cf');t.style.display='flex';clearTimeout(ttcf);ttcf=setTimeout(()=>t.style.display='none',3500)}
+let ttcf;function toastCF(){const t=$('#toast-cf');t.style.display='flex';t.style.opacity='1';clearTimeout(ttcf);ttcf=setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.style.display='none',400)},3500)}
 const qrPh='data:image/svg+xml;utf8,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' fill='#fff'/><rect x='14' y='14' width='46' height='46' fill='#111'/><rect x='120' y='14' width='46' height='46' fill='#111'/><rect x='14' y='120' width='46' height='46' fill='#111'/><rect x='76' y='76' width='28' height='28' fill='#111'/><text x='90' y='98' font-size='13' fill='#fff' text-anchor='middle'>QR</text></svg>");
 /* Teléfono peruano: acepta 9XXXXXXXX o 519XXXXXXXX. Devuelve '519XXXXXXXX' o '' si no es válido */
 function normPhone(raw){let d=String(raw).replace(/\D/g,'');if(d.length==11&&d.startsWith('51'))d=d.slice(2);return /^9\d{8}$/.test(d)?'51'+d:''}
@@ -1638,7 +1638,7 @@ function authM(tab,warn){
     ['ap','contraseña',value=>reg?(value.length>=6?'':'Escribe al menos 6 caracteres.'):(value?'':'Escribe tu contraseña.')]
   ]);
 }
-function afterAuth(){closeM();nav();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}else{toastCF()}}
+function afterAuth(){closeM();nav();toastCF();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}}
 function doGoogle(){try{API.google();afterAuth()}catch(x){$('#ab').showFormError('El acceso con Google aún no está disponible. Puedes continuar con tu correo.')}}
 async function doLogin(){const button=$('#ab');if(S.busy||!button.checkFields())return;
   S.busy=true;button.setSubmitting(true);
