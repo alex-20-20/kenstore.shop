@@ -217,7 +217,12 @@ let tt;function toast(m){const t=$('#toast');t.textContent=m;t.style.display='bl
 const S={cat:'all',sub:''},tabs=()=>{},grid=()=>{};
 const P=[],CATS=[],SUBS=Object.create(null);
 DEF.P.forEach(x=>P.push(x));DEF.CATS.forEach(x=>CATS.push(x));Object.assign(SUBS,DEF.SUBS);
-function modal(h){$('#app').innerHTML=(ADM.ok?'<div class="lay"><button type="button" class="admin-menu-trigger" aria-expanded="false" aria-controls="admin-navigation" onclick="toggleAdminMenu(this)">Secciones del panel <span aria-hidden="true">☰</span></button>'+NAV()+'<div class="card adm">'+h+'</div></div>':'<div class="card adm">'+h+'</div>');window.scrollTo(0,0)}
+let adminImagePreview;
+function clearImagePreview(){
+  if(adminImagePreview)URL.revokeObjectURL(adminImagePreview);
+  adminImagePreview=null;
+}
+function modal(h){clearImagePreview();$('#app').innerHTML=(ADM.ok?'<div class="lay"><button type="button" class="admin-menu-trigger" aria-expanded="false" aria-controls="admin-navigation" onclick="toggleAdminMenu(this)">Secciones del panel <span aria-hidden="true">☰</span></button>'+NAV()+'<div class="card adm">'+h+'</div></div>':'<div class="card adm">'+h+'</div>');window.scrollTo(0,0)}
 function closeM(){admLock()}
 /* ===== PANEL ===== */
 const TIPOS=['Invitación','Cuenta completa','Perfil','Acceso','Dominio'];        // edita esta lista para agregar/quitar tipos
@@ -353,55 +358,95 @@ async function admToggleStock(id){if(publishing)return;
   ($('#stock-'+id)||$('#product-stock')).focus({preventScroll:true});
   toast(available?'Producto con stock':'Producto sin stock');
 }
-function admImg(file,fit,cb,limit=Infinity,fail=toast){
-  const r=new FileReader();r.onerror=()=>fail('No se pudo leer el archivo.');
-  r.onload=()=>{const im=new Image();im.onerror=()=>fail('El archivo no es una imagen válida.');
-    im.onload=()=>{
-      const cv=document.createElement('canvas'),c=cv.getContext('2d');
-      try{
-        for(const width of [560,448,336,224,112]){
-          const height=width*3/4;
-          cv.width=width;cv.height=height;
-          c.fillStyle='#fff';c.fillRect(0,0,width,height);
-          const scale=(fit==='contain'?Math.min:Math.max)(width/im.naturalWidth,height/im.naturalHeight);
-          const w=im.naturalWidth*scale,h=im.naturalHeight*scale;
-          c.drawImage(im,(width-w)/2,(height-h)/2,w,h);
-          for(const quality of [.85,.75,.65,.55,.45,.35]){
-            const image=cv.toDataURL('image/jpeg',quality);
-            if(image.startsWith('data:image/jpeg;base64,')&&image.length<limit){cb(image);return}
-          }
-        }
-      }catch(e){return fail('No se pudo procesar la imagen.')}
-      fail('No se pudo comprimir la imagen a menos de 150 KB.');
-    };
-    im.src=r.result};r.readAsDataURL(file);
+const MAX_STORE_IMAGE_BYTES=149999;
+async function compressStoreImage(file,fit,kind){
+  if(!file.type.startsWith('image/'))throw new Error('Elige un archivo de imagen.');
+  const source=URL.createObjectURL(file);
+  const image=new Image();
+  try{
+    image.src=source;
+    await image.decode();
+    const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
+    const qr=kind==='QR', product=kind==='product';
+    for(const edge of qr?[768,640,512,384,288]:[960,768,576,448,320,224]){
+      const ratio=product?edge/image.naturalWidth:Math.min(1,edge/Math.max(image.naturalWidth,image.naturalHeight));
+      canvas.width=product?edge:Math.max(1,Math.round(image.naturalWidth*ratio));
+      canvas.height=product?Math.round(edge*.75):Math.max(1,Math.round(image.naturalHeight*ratio));
+      context.imageSmoothingEnabled=!qr;
+      if(product||qr){
+        context.fillStyle='#fff';
+        context.fillRect(0,0,canvas.width,canvas.height);
+      }
+      const scale=(fit==='cover'?Math.max:Math.min)(canvas.width/image.naturalWidth,canvas.height/image.naturalHeight);
+      const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+      context.drawImage(image,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
+      const mime=qr?'image/png':'image/webp';
+      for(const quality of qr?[undefined]:[.88,.77,.66,.55,.44]){
+        const blob=await new Promise(resolve=>canvas.toBlob(resolve,mime,quality));
+        if(blob&&blob.size>0&&blob.size<=MAX_STORE_IMAGE_BYTES)return blob;
+      }
+    }
+    throw new Error('No se pudo comprimir la imagen a menos de 150 KB.');
+  }finally{URL.revokeObjectURL(source)}
 }
-function admPick(){
-  const input=$('#pfile'),file=input.files[0];
+async function prepareStoreImage(input,preview,fit,kind,onReady){
+  const file=input.files[0];
+  if(!file||input.disabled)return;
   const request=Symbol();
   input.imageRequest=request;
-  input.removeAttribute('aria-busy');
-  if(!file)return;
-  if(!/^image\//.test(file.type))return toast('Elige un archivo de imagen.');
   input.setAttribute('aria-busy','true');
-  const isCurrent=()=>$('#pfile')===input&&input.imageRequest===request;
-  // Cuenta también la codificación Base64 que se guarda en el catálogo.
-  admImg(file,v('pfit'),image=>{
-    if(!isCurrent())return;
-    input.removeAttribute('aria-busy');
-    ADM.img=image;$('#pv').src=image;$('#pfurl').value='';
-  },150000,message=>{
-    if(!isCurrent())return;
-    input.removeAttribute('aria-busy');
-    input.value='';
-    toast(message);
-  });
+  const stillCurrent=()=>input.isConnected&&input.imageRequest===request;
+  try{
+    const image=await compressStoreImage(file,fit,kind);
+    if(!stillCurrent())return;
+    clearImagePreview();
+    adminImagePreview=URL.createObjectURL(image);
+    preview.src=adminImagePreview;
+    input.storageDraft=image;
+    onReady?.();
+    toast('Imagen optimizada. Guarda los cambios para subirla.');
+  }catch(error){
+    if(stillCurrent()){input.value='';toast(error.message||'No se pudo preparar la imagen.')}
+  }finally{
+    if(stillCurrent())input.removeAttribute('aria-busy');
+  }
 }
-function admUrl(){const u=v('pfurl').trim();if(u){
-  const input=$('#pfile');
-  input.imageRequest=null;input.removeAttribute('aria-busy');input.value='';
-  ADM.img=u;$('#pv').src=u;
-}}
+async function uploadStoreImage(input,kind){
+  const image=input?.storageDraft;
+  if(!image)return null;
+  const extensions={'image/webp':'webp','image/png':'png','image/jpeg':'jpg'};
+  const ext=extensions[image.type];
+  if(!ext||image.size>MAX_STORE_IMAGE_BYTES)throw new Error('Imagen inválida.');
+  const bucket=adminClient.storage.from('kenstore-media');
+  const path=kind+'/'+crypto.randomUUID()+'.'+ext;
+  input.disabled=true;
+  input.setAttribute('aria-busy','true');
+  try{
+    await kenResult(bucket.upload(path,image,{contentType:image.type,cacheControl:'31536000',upsert:false}));
+    input.storageDraft=null;
+    return bucket.getPublicUrl(path).data.publicUrl;
+  }finally{
+    input.disabled=false;
+    input.removeAttribute('aria-busy');
+  }
+}
+function admPick(){
+  prepareStoreImage($('#pfile'),$('#pv'),v('pfit'),'product',()=>{$('#pfurl').value=''});
+}
+function admUrl(){
+  const value=v('pfurl').trim(),input=$('#pfile');
+  if(!value||input.disabled)return;
+  let url;
+  try{url=new URL(value)}catch{return toast('Ingresa una URL de imagen válida.')}
+  if(url.protocol!=='https:')return toast('Usa una URL de imagen HTTPS.');
+  input.imageRequest=null;
+  input.storageDraft=null;
+  input.removeAttribute('aria-busy');
+  input.value='';
+  clearImagePreview();
+  ADM.img=url.href;
+  $('#pv').src=ADM.img;
+}
 function admSubs(c){
   return [...new Set([...(SUBS[c]||[]),...P.filter(p=>p.c===c&&p.s).map(p=>p.s)])];
 }
@@ -457,7 +502,7 @@ function admForm(id){
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
   <div class="g2"><div><label for="pfit">Ajuste</label><select id="pfit"><option value="cover">Rellenar (recorta)</option><option value="contain">Mostrar completa</option></select></div>
   <div><label for="pfurl">O pega una URL</label><input id="pfurl" placeholder="https://" onchange="admUrl()"></div></div>
-  <p class="mu" style="font-size:.78rem">Las imágenes subidas se ajustan a 4:3 y se comprimen a menos de 150 KB.</p>
+  <p class="mu" style="font-size:.78rem">La foto se ajusta a 4:3 y se comprime a menos de 150 KB. Al guardar se sube a Supabase Storage.</p>
   </fieldset><fieldset><legend>Tipo de producto y datos del pedido</legend>
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
   <p id="type-order-help" class="mu" hidden></p>
@@ -473,7 +518,8 @@ function admForm(id){
   admTypeFields();
 }
 async function admGuardar(){if(publishing)return;
-  if($('#pfile').hasAttribute('aria-busy'))return toast('Espera a que termine la compresión de la imagen.');
+  const imageInput=$('#pfile');
+  if(imageInput.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
   const n=v('pn').trim(),d=v('pd').trim();let c=v('pc');
   if(!n)return toast('Escribe el nombre del producto.');
   if(!d)return toast('Escribe la descripción corta.');
@@ -491,6 +537,12 @@ async function admGuardar(){if(publishing)return;
   if(newSub)s=admSubs(c).find(name=>name.toLowerCase()===s.toLowerCase())||s;
   const old=ADM.id?prod(ADM.id):null,inf=v('pi').trim(),t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
+  try{
+    const imageUrl=await uploadStoreImage(imageInput,'product');
+    if(!imageInput.isConnected)return;
+    if(imageUrl){ADM.img=imageUrl;clearImagePreview();$('#pv').src=imageUrl}
+  }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
+  if(publishing)return;
   const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
@@ -912,15 +964,27 @@ function admSec(){const h=SITE.hide||[],a=SITE.ann||{};
 function admSecSave(){if(publishing)return;SITE.hide=SEC.map(s=>s[0]).filter(k=>!$('#h_'+k).checked);SITE.ann={t:v('a_t').trim(),c:v('a_c')};SITE.maintMessage=v('m_t').trim()||'Volvemos pronto.';if(SITE.maint)SITE.maint=SITE.maintMessage;siteSave()}
 const CF={pay:['💳 Pagos y contacto',[['WA','WhatsApp de pedidos (con código de país, sin +)'],['GROUP','Enlace del grupo de WhatsApp'],['TITULAR','Titular de la cuenta de pago'],['YAPE','Yape / Plin']],'QR','QR de pago',0],
   look:['🎨 Apariencia',[['@title','Título de la pestaña del navegador']],'LOGO','Logo',1],emp:['🏢 Empresa',[['RAZON','Razón social'],['RUC','RUC']],0,0,0]};
-function admUp(n,el){const f=el.files[0];if(f)admImg(f,'contain',d=>{ADM.up[n]=d;$('#pv_'+n).src=d})}
+function admUp(n,el){prepareStoreImage(el,$('#pv_'+n),'contain',n)}
 function admCfg(g){const [t,fl,up,ul,col]=CF[g],c=SITE.cfg,k=SITE.col;ADM.up={};
   modal(`<h2>${t}</h2><p class="mu" style="font-size:.78rem">Vacío = usa el valor original del catálogo.</p>${fl.map(([x,l])=>`<label for="c_${x}">${l}</label><input id="c_${x}" value="${esc(x=='@title'?SITE.title:c[x])||''}">`).join('')}
-  ${up?`<label>${ul}</label><input type="file" accept="image/*" onchange="admUp('${up}',this)"><img id="pv_${up}" class="pv" style="max-width:110px"${c[up]?` src="${esc(c[up])}"`:''}>`:''}
+  ${up?`<label for="site-image"> ${ul}</label><input id="site-image" type="file" accept="image/*" onchange="admUp('${up}',this)"><img id="pv_${up}" class="pv" style="max-width:110px"${c[up]?` src="${esc(c[up])}"`:''}>`:''}
   ${col?`<div class="g2"><div><label for="k_ac">Color principal</label><input id="k_ac" type="color" value="${k.ac||'#b3261e'}"></div><div><label for="k_ac2">Color secundario (hover)</label><input id="k_ac2" type="color" value="${k.ac2||'#8f1e18'}"></div></div>`:''}
   <div class="bar2"><button class="ok" style="flex:1" onclick="admCfgSave('${g}')">Guardar</button><button style="flex:1" onclick="admCfgReset('${g}')">Restablecer</button></div>`)}
-function admCfgSave(g){if(publishing)return;const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{const s=v('c_'+x).trim();if(x=='@title')SITE.title=s;else if(s)SITE.cfg[x]=s;else delete SITE.cfg[x]});
+async function admCfgSave(g){
+  if(publishing)return;
+  const [t,fl,up,ul,col]=CF[g],input=$('#site-image');
+  if(input?.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
+  if(input){
+    try{
+      const url=await uploadStoreImage(input,up==='QR'?'qr':'logo');
+      if(!input.isConnected)return;
+      if(url){ADM.up[up]=url;clearImagePreview();$('#pv_'+up).src=url}
+    }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
+  }
+  if(publishing)return;
+  fl.forEach(([x])=>{const s=v('c_'+x).trim();if(x=='@title')SITE.title=s;else if(s)SITE.cfg[x]=s;else delete SITE.cfg[x]});
   if(up&&ADM.up[up])SITE.cfg[up]=ADM.up[up];if(col)[['ac','#b3261e'],['ac2','#8f1e18']].forEach(([x,d])=>{const s=v('k_'+x);if(s&&s!=d)SITE.col[x]=s;else delete SITE.col[x]});siteSave()}
-async function admCfgReset(g){if(publishing)return;const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{if(x=='@title')SITE.title='';else delete SITE.cfg[x]});if(up)delete SITE.cfg[up];if(col)SITE.col={};if(await siteSave())admCfg(g)}
+async function admCfgReset(g){if(publishing||$('#site-image')?.hasAttribute('aria-busy'))return;const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{if(x=='@title')SITE.title='';else delete SITE.cfg[x]});if(up)delete SITE.cfg[up];if(col)SITE.col={};if(await siteSave())admCfg(g)}
 async function admSeg(){
   modal('<h2>🔐 Seguridad</h2><p id="admin-account" class="mu">Consultando cuenta…</p>');
   const account=$('#admin-account');
