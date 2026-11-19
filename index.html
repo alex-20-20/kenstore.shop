@@ -1008,7 +1008,7 @@ header button:not(.pri):not(.av):not(.site-menu-toggle),header .btn:not(.pri){ba
 .brand-wordmark .brand-accent{color:var(--ac)}
 .service-flight{max-width:1320px;margin:14px auto 0;padding:0 14px}
 .service-runway{container-type:inline-size;overflow:hidden;background:var(--surface);border:1px solid var(--stroke);border-radius:14px;box-shadow:var(--lift)}
-.service-train{display:flex;align-items:center;gap:7px;width:max-content;min-height:90px;padding:18px 10px 5px;animation:service-fly 20s linear infinite;will-change:transform;backface-visibility:hidden}
+.service-train{display:flex;align-items:center;gap:7px;width:max-content;min-height:90px;padding:18px 10px 5px;animation:service-fly 20s linear infinite;animation-delay:0s;will-change:transform;backface-visibility:hidden}
 .service-tile{display:grid;place-items:center;flex:none;width:54px;height:54px;background:var(--surface);color:var(--ln);border:1px solid var(--stroke);border-radius:14px;box-shadow:2px 3px 0 #1c1c1c12;font:800 13px/1 var(--tb);letter-spacing:-.04em}
 .service-tile{animation:service-sway 1.8s ease-in-out infinite alternate}
 .service-tile:nth-child(3n+2){animation-delay:-.6s}
@@ -1029,7 +1029,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 #ld #bi{width:calc(var(--load-progress) * 100%)}
 #ld #pc{font-variant-numeric:tabular-nums;font-weight:700}
 @keyframes service-fly{from{transform:translateX(-100%)}to{transform:translateX(100cqw)}}
-@media(max-width:740px){.service-train{animation-duration:12s;animation-delay:-2.5s}}
+@media(max-width:740px){.service-train{animation-duration:12s;animation-delay:0s}}
 @media(prefers-reduced-motion:reduce){
  .service-runway{overflow-x:auto}
  .service-train,.service-tile,.service-train .service-dragon .dbob,.service-train .service-dragon .dw,.service-train .service-dragon .dt,.service-train .service-dragon .df,.service-train .service-dragon .deye{animation-duration:.01ms!important}
