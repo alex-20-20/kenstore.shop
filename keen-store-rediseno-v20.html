@@ -1703,16 +1703,11 @@ function authEmailM(warn){
   guideForm('ab',[['ae','correo electrónico',emailError]]);
 }
 function otpM(email){
-  modal(`<h2>Código enviado 📬</h2>
-  <p class="mu">Revisa tu correo <b>${esc(email)}</b> e ingresa el código de 6 dígitos.</p>
-  <label for="otp">Código de verificación</label>
-  <input id="otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="123456" autocomplete="one-time-code">
-  <button class="pri w" id="otp-btn" onclick="doVerifyOTP('${esc(email)}')">Verificar código →</button>
-  <button class="w" onclick="authM()" style="margin-top:6px">← Cambiar correo</button>`);
-  $('#otp-btn').addEventListener('click',play1UpSound,{once:false});
-  const go=e=>{if(e.key=='Enter')$('#otp-btn').click()};
-  const el=$('#otp');if(el){el.onkeydown=go;setTimeout(()=>el.focus(),100)}
-  guideForm('otp-btn',[['otp','código',value=>value.trim().length>=6&&/^\d+$/.test(value.trim())?'':'Ingresa el código de verificación.']]);
+  modal(`<h2>Revisa tu correo 📬</h2>
+  <p class="mu">Enviamos un enlace de acceso a <b>${esc(email)}</b>.</p>
+  <p class="mu" style="margin-top:8px">Abre tu correo y haz clic en el enlace para ingresar. El enlace expira en 10 minutos.</p>
+  <p class="mu" style="margin-top:8px;font-size:.8rem">¿No llegó? Revisa tu carpeta de spam o</p>
+  <button class="w" onclick="authEmailM()" style="margin-top:6px">← Reenviar código</button>`);
 }
 function afterAuth(){closeM();nav();toastCF();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}}
 async function doGoogle(){
