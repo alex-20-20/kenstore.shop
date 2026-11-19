@@ -1448,31 +1448,15 @@ const DB={
   set(k,x){try{localStorage.setItem('ks_'+k,JSON.stringify(x))}catch(e){mem[k]=x}}
 };
 const S={cat:'all',sub:'',user:DB.get('session',null),pend:null,busy:false};
-// Manejar callback de Google OAuth - después de que cargue la página
-function handleGoogleCallback(){
-  const hash=location.hash;
-  if(!hash||!hash.includes('access_token'))return;
-  const params=new URLSearchParams(hash.slice(1));
-  const token=params.get('access_token');
-  if(!token)return;
-  history.replaceState(null,'',location.pathname);
-  fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token}})
-    .then(r=>r.json()).then(user=>{
-      if(user?.email){
-        window._sb.token=token;
-        const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
-        fetch(SUPA_URL+'/rest/v1/users',{
-          method:'POST',
-          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-          body:JSON.stringify({id:user.id,name,email:user.email})
-        }).catch(()=>{});
-        DB.set('session',{name,email:user.email});
-        S.user={name,email:user.email};
-        nav();
-        toastCF();
-      }
-    }).catch(()=>{});
-}
+// Guardar token de Google antes de que loadStore limpie el hash
+const _googleHash=(()=>{
+  if(location.hash&&location.hash.includes('access_token')){
+    const p=new URLSearchParams(location.hash.slice(1));
+    const token=p.get('access_token');
+    if(token)return token;
+  }
+  return null;
+})();
 const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
 const sb=window._sb={};
@@ -1711,6 +1695,15 @@ function authM(tab,warn){
   const go=e=>{if(e.key=='Enter')$('#ab').click()};
   const el=$('#ae');if(el){el.onkeydown=go;setTimeout(()=>el.focus(),100)}
   $('#ab').addEventListener('click',play1UpSound,{once:false});
+  // Validar solo al hacer click, no antes
+  $('#ab').addEventListener('click',()=>{
+    const email=v('ae').trim();
+    if(!okEmail(email)){
+      $('#ae').style.borderColor='var(--ac2)';
+      return;
+    }
+    $('#ae').style.borderColor='';
+  },{once:false});
   guideForm('ab',[['ae','correo electrónico',emailError]]);
 }
 function otpM(email){
@@ -2283,7 +2276,28 @@ window.addEventListener('storage',event=>{
       loader.classList.add('is-finishing');
       setTimeout(()=>{
         loader.classList.add('is-leaving');
-        setTimeout(()=>{loader.remove();handleGoogleCallback();},220);
+        setTimeout(()=>{
+          loader.remove();
+          // Procesar callback de Google si hay token guardado
+          if(_googleHash){
+            fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash}})
+              .then(r=>r.json()).then(user=>{
+                if(user?.email){
+                  window._sb.token=_googleHash;
+                  const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
+                  fetch(SUPA_URL+'/rest/v1/users',{
+                    method:'POST',
+                    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+                    body:JSON.stringify({id:user.id,name,email:user.email})
+                  }).catch(()=>{});
+                  DB.set('session',{name,email:user.email});
+                  S.user={name,email:user.email};
+                  nav();
+                  toastCF();
+                }
+              }).catch(()=>{});
+          }
+        },220);
       },120);
     },100);
   }
