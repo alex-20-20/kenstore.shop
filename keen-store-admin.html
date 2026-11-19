@@ -108,6 +108,43 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
  .admin-filters label:first-child{grid-column:1/-1}
  .product-editor fieldset{padding-inline:10px}
 }
+#adm-orders .orders-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+#adm-orders .orders-title h2{margin:0}
+#adm-orders .orders-controls{display:grid;gap:12px;padding:14px;background:#f8f5f0;border:1px solid var(--stroke);border-radius:14px;margin-bottom:16px}
+#adm-orders .orders-search{margin:0;display:grid;gap:5px}
+#adm-orders .orders-search input{margin:0;background:#fff}
+#adm-orders .order-filters{display:flex;flex-wrap:wrap;gap:7px}
+#adm-orders .order-filters button{min-height:36px;padding:5px 9px;border-radius:8px;font-size:.75rem}
+#adm-orders .order-filters button[aria-pressed=true]{background:#232220;color:#fff;border-color:#232220}
+#adm-orders .order-filters span{margin-left:3px;font-variant-numeric:tabular-nums}
+#adm-orders .orders-count{font-size:.78rem;color:#635c54;margin:0}
+#adm-orders .order-list{display:grid;gap:12px}
+#adm-orders .order-admin{margin:0;padding:15px;border-left:4px solid #ded6ca!important}
+#adm-orders .order-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+#adm-orders .order-head h3{font-size:1rem;line-height:1.3;margin:4px 0}
+#adm-orders .order-head small,#adm-orders .order-date{color:#635c54;font-size:.75rem}
+#adm-orders .order-head small{font-family:ui-monospace,monospace;overflow-wrap:anywhere}
+#adm-orders .order-date{margin:0}
+#adm-orders .order-total{text-align:right;display:grid;gap:6px;justify-items:end}
+#adm-orders .order-total strong{white-space:nowrap;font-size:1rem;font-variant-numeric:tabular-nums}
+#adm-orders .order-status{padding:4px 8px;border-radius:100px;background:#f0ede7;color:#413b34;font-weight:700;font-size:.7rem;text-align:center}
+#adm-orders .order-status.pendiente{background:#fff1cd;color:#754607}
+#adm-orders .order-status.aceptado{background:#e4edff;color:#214983}
+#adm-orders .order-status.en_proceso{background:#eee6fc;color:#583981}
+#adm-orders .order-status.entregado{background:#e1f4e7;color:#225a39}
+#adm-orders .order-status.rechazado{background:#fde7e6;color:#8d2824}
+#adm-orders .order-contact{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:.82rem}
+#adm-orders .order-contact a{color:#24583e;text-decoration:underline;text-underline-offset:3px}
+#adm-orders .order-extra{margin:4px 0;font-size:.8rem}
+#adm-orders details{margin-top:8px;color:#62594f;font-size:.78rem}
+#adm-orders summary{width:fit-content;cursor:pointer;font-weight:700}
+#adm-orders .order-edit{display:flex;align-items:end;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--stroke)}
+#adm-orders .order-edit label{display:grid;gap:4px;margin:0;font-size:.73rem}
+#adm-orders .order-edit select,#adm-orders .order-edit input{margin:0;font-size:.8rem;min-height:40px}
+#adm-orders .order-edit button{min-height:40px;padding:7px 11px;font-size:.78rem}
+#adm-orders [hidden]{display:none!important}
+#adm-orders .order-empty{padding:20px;border:1px dashed var(--stroke);border-radius:12px;text-align:center;color:#62594f}
+@media(max-width:520px){#adm-orders .order-admin{padding:12px}#adm-orders .order-total{gap:4px}#adm-orders .order-edit label{width:100%}#adm-orders .order-edit button{flex:1 1 auto}}
 </style></head>
 <body>
 <header><div class="brand"><div class="lg">KS</div>Administración</div><a class="btn" id="vc" href="keen-store-rediseno-v19.html">← Ver catálogo</a></header>
@@ -721,23 +758,66 @@ async function admOrders(filter=ADM.orderFilter||''){
   try{
     const orders=await kenResult(adminClient.from('orders').select('*').order('date',{ascending:false}));
     if(!loading.isConnected)return;
-    _renderOrders(orders.filter(o=>!filter||(o.status||'pendiente')===filter),orders,filter);
+    _renderOrders(orders);
   }catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar los pedidos.'}
 }
-function _renderOrders(orders,allOrders,filter){
-  modal(`<div id="adm-orders"><div class="admin-heading"><h2>Pedidos</h2><span class="mu">${orders.length} de ${allOrders.length} pedidos</span></div>
-  <div class="admin-order-filter"><label for="order-filter">Estado del pedido</label><select id="order-filter" onchange="admOrders(this.value)"><option value="">Todos</option>${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${filter===key?' selected':''}>${label}</option>`).join('')}</select></div>
-  ${orders.length?orders.map(o=>`
-    <form class="order-admin" data-order="${esc(o.id)}" onsubmit="admOrderSave(event,this)">
-      <h3>${esc(o.pn)} · ${money(o.price)}</h3>
-      <p class="mu">Orden ${esc(o.id)} · ${esc(new Date(o.date).toLocaleString('es-PE'))}</p>
-      <p>${esc(o.name)} · WhatsApp: ${esc(o.wa)}</p>
-      ${o.extra?`<p>${esc(o.extra_label)}: ${esc(o.extra)}</p>`:''}
-      ${o.voucher?`<p class="mu">Comprobante indicado: ${esc(o.voucher)}. Revisa la imagen en WhatsApp.</p>`:''}
-      <label>Estado <select name="status">${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${key===(o.status||'pendiente')?' selected':''}>${label}</option>`).join('')}</select></label>
-      <label>Motivo de rechazo (opcional) <input name="reason" maxlength="180" value="${esc(o.reason||'')}"></label>
-      <div class="bar2">${!o.status||o.status==='pendiente'?'<button class="pri" type="submit" value="accept">Aceptar pedido</button>':''}<button type="submit">Guardar estado</button></div>
-    </form>`).join(''):'<p class="mu">No hay pedidos para este filtro.</p>'}</div>`);
+function _renderOrders(orders){
+  const counts=Object.fromEntries(Object.keys(orderStates).map(key=>[key,0]));
+  for(const order of orders){
+    const key=Object.hasOwn(orderStates,order.status)?order.status:'pendiente';
+    counts[key]++;
+  }
+  const filters=[['','Todos',orders.length],...Object.entries(orderStates).map(([key,label])=>[key,key==='pendiente'?'Pendientes':label,counts[key]])];
+  modal(`<section id="adm-orders" aria-labelledby="orders-title">
+    <div class="orders-title"><h2 id="orders-title">Pedidos</h2><button type="button" onclick="admOrders()">Actualizar</button></div>
+    <div class="orders-controls">
+      <label class="orders-search" for="order-search">Buscar pedido<input id="order-search" type="search" placeholder="Número, cliente, producto o WhatsApp" value="${esc(ADM.orderQuery||'')}" oninput="admFilterOrders()"></label>
+      <div class="order-filters" role="group" aria-label="Filtrar por estado">${filters.map(([key,label,count])=>`<button type="button" data-order-filter="${key}" aria-pressed="false" onclick="ADM.orderFilter=this.dataset.orderFilter;admFilterOrders()">${label} <span>${count}</span></button>`).join('')}</div>
+      <p class="orders-count" id="order-count" aria-live="polite"></p>
+    </div>
+    <div class="order-list">${orders.map(o=>{
+      const state=Object.hasOwn(orderStates,o.status)?o.status:'pendiente';
+      const phone=String(o.wa||'').replace(/\D/g,'');
+      return `<form class="order-admin" data-order="${esc(o.id)}" data-saved-state="${state}" data-order-search="${esc([o.id,o.name,o.pn,o.email,o.wa,o.extra,phone].join(' '))}" onsubmit="admOrderSave(event,this)">
+        <div class="order-head">
+          <div><small>${esc(o.id)}</small><h3>${esc(o.pn)}</h3><p class="order-date">${esc(new Date(o.date).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'}))}</p></div>
+          <div class="order-total"><strong>${money(o.price)}</strong><span class="order-status ${state}">${orderStates[state]}</span></div>
+        </div>
+        <div class="order-contact"><strong>${esc(o.name)}</strong>${phone.length>=8&&phone.length<=15?`<a href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer">WhatsApp · ${esc(o.wa)}</a>`:`<span>${esc(o.wa)}</span>`}</div>
+        ${o.extra?`<p class="order-extra">${esc(o.extra_label||'Dato del pedido')} · ${esc(o.extra)}</p>`:''}
+        ${o.voucher?`<details><summary>Comprobante en WhatsApp</summary><p>${esc(o.voucher)}</p></details>`:''}
+        <div class="order-edit">
+          <label>Estado<select name="status" onchange="this.form.querySelector('.order-reason').hidden=this.value!=='rechazado'">${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${key===state?' selected':''}>${label}</option>`).join('')}</select></label>
+          <label class="order-reason"${state==='rechazado'?'':' hidden'}>Motivo de rechazo (opcional)<input name="reason" maxlength="180" value="${esc(o.reason||'')}"></label>
+          <button type="submit">Guardar estado</button>
+          ${state==='pendiente'?'<button class="pri" type="submit" value="accept">Aceptar pedido</button>':''}
+        </div>
+      </form>`;
+    }).join('')}</div>
+    <p class="order-empty" id="order-empty" hidden></p>
+  </section>`);
+  admFilterOrders();
+}
+function admFilterOrders(){
+  const section=$('#adm-orders');
+  const normalize=text=>text.toLocaleLowerCase('es').normalize('NFD').replace(/\p{Diacritic}/gu,'');
+  ADM.orderQuery=$('#order-search').value;
+  const words=normalize(ADM.orderQuery.trim()).split(/\s+/).filter(Boolean);
+  const filter=ADM.orderFilter||'';
+  const rows=section.querySelectorAll('[data-order]');
+  let shown=0;
+  for(const row of rows){
+    const haystack=normalize(row.dataset.orderSearch);
+    row.hidden=Boolean(filter&&row.dataset.savedState!==filter)||!words.every(word=>haystack.includes(word));
+    if(!row.hidden)shown++;
+  }
+  for(const button of section.querySelectorAll('[data-order-filter]')){
+    button.setAttribute('aria-pressed',String(button.dataset.orderFilter===filter));
+  }
+  $('#order-count').textContent=`${shown} de ${rows.length} pedidos`;
+  const empty=$('#order-empty');
+  empty.hidden=shown>0;
+  empty.textContent=rows.length?'No hay pedidos que coincidan con la búsqueda o el estado.':'Todavía no hay pedidos registrados.';
 }
 async function admOrderSave(event,form){
   event.preventDefault();
@@ -757,7 +837,11 @@ async function admOrderSave(event,form){
     });
     if(!response.ok)throw new Error('La API rechazó el cambio.');
     toast('Estado actualizado');
-    if(form.isConnected)await admOrders();
+    if(form.isConnected){
+      const scroll=window.scrollY;
+      await admOrders();
+      if(ADM.tab==='orders')window.scrollTo(0,scroll);
+    }
   }catch(e){toast('No se pudo actualizar el estado. Intenta de nuevo.')}
   finally{
     form.removeAttribute('aria-busy');
