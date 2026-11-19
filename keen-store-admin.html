@@ -473,6 +473,16 @@ function admTypeFields(){
   $('#type-order-help').hidden=!help;
   $('#custom-order-field').hidden=Boolean(help);
 }
+function solesToUsdt(value){
+  if(String(value??'').trim()==='')return null;
+  const soles=Number(value),cents=Math.round(soles*100);
+  if(!Number.isSafeInteger(cents)||soles<0||!Number.isSafeInteger(cents*315))return null;
+  return Math.round(cents*315/1000)/100;
+}
+function updateUsdtPrice(){
+  const usdt=solesToUsdt($('#pp').value);
+  $('#pu').value=usdt===null?'':usdt.toFixed(2);
+}
 function admForm(id){
   ADM.tab='prod';
   const p=id?prod(id):{},cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=id||0;
@@ -488,9 +498,9 @@ function admForm(id){
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
   <div id="psnw" hidden><label for="psn">Nombre de la nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej: Spotify"></div>
   </fieldset><fieldset><legend>Precio y disponibilidad</legend>
-  <div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" value="${p.p??''}"></div>
+  <div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
   <div><label for="ppo">Precio anterior S/ (opcional)</label><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" value="${p.po??''}"></div></div>
-  <div class="g2"><div><label for="pu">Precio USDT (opcional)</label><input id="pu" type="number" inputmode="decimal" min="0" step="0.01" value="${p.u??''}"></div>
+  <div class="g2"><div><label for="pu">Precio USDT (automático)</label><input id="pu" type="text" readonly aria-describedby="usdt-rate" value="${solesToUsdt(p.p)?.toFixed(2)??''}"><small id="usdt-rate" class="mu">S/ 10 = 3.15 USDT</small></div>
   <div><label for="pstock">Disponibilidad</label><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
     <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
   </select>
@@ -524,9 +534,11 @@ async function admGuardar(){if(publishing)return;
   if(c=='__new__'){c=v('pcn').trim();if(!c)return toast('Escribe el nombre de la nueva categoría.');
     if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
     const ex=CATS.find(x=>x[0].toLowerCase()==c.toLowerCase());if(ex)c=ex[0]}
-  const price=parseFloat(v('pp'));if(isNaN(price)||price<0)return toast('Ingresa un precio válido (0 = gratis).');
+  const priceField=$('#pp'),u=solesToUsdt(priceField.value);
+  if(u===null||!priceField.checkValidity())return toast('Ingresa un precio válido con hasta dos decimales (0 = gratis).');
+  const price=Number(priceField.value);
   const num=(i)=>{const t=v(i).trim();if(t==='')return null;const x=parseFloat(t);return isNaN(x)||x<0?NaN:x};
-  const po=num('ppo'),u=num('pu');if(Number.isNaN(po)||Number.isNaN(u))return toast('Revisa los precios opcionales.');
+  const po=num('ppo');if(Number.isNaN(po))return toast('Revisa el precio anterior.');
   const outOfStock=v('pstock')==='out',stt=v('pst').trim(),st=outOfStock?0:stt===''?null:Number(stt);
   if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return toast('Ingresa una cantidad entera mayor a cero.');
   const newSub=$('#ps').selectedOptions[0].hasAttribute('data-new');
