@@ -177,6 +177,11 @@ function admLock(){
     '<button class="w" onclick="admGoogle()">Entrar con Google</button>');
   $('#admin-email').onkeydown=e=>{if(e.key==='Enter')admEnter()};
 }
+function adminRedirectUrl(){
+  const destination=new URL(location.pathname,location.origin);
+  if(destination.hostname==='www.kenstore.shop')destination.hostname='kenstore.shop';
+  return destination.href;
+}
 async function admEnter(){
   const field=$('#admin-email'),button=$('#apb');
   if(!field.value.trim()||!field.reportValidity()||button.disabled)return;
@@ -184,7 +189,7 @@ async function admEnter(){
   try{
     await kenResult(adminClient.auth.signInWithOtp({
       email:field.value.trim().toLowerCase(),
-      options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}
+      options:{shouldCreateUser:false,emailRedirectTo:adminRedirectUrl()}
     }));
     toast('Si el correo tiene acceso, recibirás un enlace.');
   }catch(e){
@@ -196,7 +201,7 @@ async function admGoogle(){
   try{
     await kenResult(adminClient.auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:location.origin+location.pathname}
+      options:{redirectTo:adminRedirectUrl()}
     }));
   }catch(e){toast('No se pudo abrir el acceso con Google.')}
 }
