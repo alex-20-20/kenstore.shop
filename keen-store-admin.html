@@ -4,6 +4,28 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Administración · Ken Store</title>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<script>
+const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
+async function sbFetch(path,opts={}){
+  const res=await fetch(SUPA_URL+path,{
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json',...(opts.headers||{})},
+    ...opts
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw data.message||'Error';
+  return data;
+}
+async function sbGetOrders(){
+  try{return await sbFetch('/rest/v1/orders?order=date.desc&select=*')}catch(e){return null}
+}
+async function sbUpdateOrder(id,status,reason=''){
+  try{await sbFetch('/rest/v1/orders?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({status,reason})})}catch(e){}
+}
+async function sbGetClaims(){
+  try{return await sbFetch('/rest/v1/claims?order=date.desc&select=*')}catch(e){return null}
+}
+</script>
 <style>
 :root{--ln:#1c1c1c;--tx:#1c1c1c;--mu:#6a6055;--soft:#e4dccb;--ac:#b3261e;--bl:#f6f1e6;--brand-font:"Pixelify Sans","Trebuchet MS",system-ui,sans-serif;--px:"Trebuchet MS",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0}
@@ -631,8 +653,24 @@ window.addEventListener('storage',event=>{
 function admOrders(filter=ADM.orderFilter||''){
   ADM.tab='orders';
   ADM.orderFilter=filter;
-  const allOrders=DB.get('orders',[]);
-  const orders=allOrders.filter(o=>!filter||(o.status||'pendiente')===filter).reverse();
+  // Intentar cargar de Supabase primero
+  sbGetOrders().then(sbOrders=>{
+    if(sbOrders&&sbOrders.length){
+      // Mergear con local: Supabase tiene prioridad
+      const local=DB.get('orders',[]);
+      const merged=[...sbOrders,...local.filter(o=>!sbOrders.some(s=>s.id===o.id))];
+      localStorage.setItem('ks_orders',JSON.stringify(merged));
+    }
+    const allOrders=DB.get('orders',[]);
+    const orders=allOrders.filter(o=>!filter||(o.status||'pendiente')===filter).reverse();
+    _renderOrders(orders,allOrders,filter);
+  }).catch(()=>{
+    const allOrders=DB.get('orders',[]);
+    const orders=allOrders.filter(o=>!filter||(o.status||'pendiente')===filter).reverse();
+    _renderOrders(orders,allOrders,filter);
+  });
+}
+function _renderOrders(orders,allOrders,filter){
   modal(`<div id="adm-orders"><div class="admin-heading"><h2>Pedidos</h2><span class="mu">${orders.length} de ${allOrders.length} pedidos</span></div>
   <div class="admin-order-filter"><label for="order-filter">Estado del pedido</label><select id="order-filter" onchange="admOrders(this.value);$('#order-filter').focus()"><option value="">Todos</option>${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${filter===key?' selected':''}>${label}</option>`).join('')}</select></div>
   ${orders.length?orders.map(o=>`
@@ -658,6 +696,8 @@ function admOrderSave(event,form){
   order.status=status;
   order.reason=status==='rechazado'?form.elements.reason.value.trim():'';
   try{localStorage.setItem('ks_orders',JSON.stringify(orders))}catch(e){return toast('No se pudo guardar el estado.')}
+  // Actualizar en Supabase
+  sbUpdateOrder(order.id,order.status,order.reason);
   admOrders();
   toast('Estado actualizado');
 }

@@ -1448,19 +1448,69 @@ const DB={
   set(k,x){try{localStorage.setItem('ks_'+k,JSON.stringify(x))}catch(e){mem[k]=x}}
 };
 const S={cat:'all',sub:'',user:DB.get('session',null),pend:null,busy:false};
+const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
+const sb=window._sb={};
+// Supabase fetch helper
+async function sbFetch(path,opts={}){
+  const res=await fetch(SUPA_URL+path,{
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json',...(opts.headers||{})},
+    ...opts
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw data.message||data.error_description||'Error';
+  return data;
+}
+// Auth helper
+async function sbAuth(path,body){
+  const res=await fetch(SUPA_URL+'/auth/v1/'+path,{
+    method:'POST',
+    headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw data.error_description||data.msg||'Error de autenticación';
+  return data;
+}
+
 const API={
-  users:()=>DB.get('users',[]),
   start(n){S.user={name:n.name,email:n.email};DB.set('session',S.user);return S.user},
-  async register(name,email,pass){const u=API.users();if(u.some(x=>x.email==email))throw'Ese correo ya está registrado. Inicia sesión.';const n={name,email,pass:await hp(pass)};DB.set('users',[...u,n]);return API.start(n)},
-  async login(email,pass){const h=await hp(pass);const n=API.users().find(x=>x.email==email&&(x.pass==h||x.pass==pass));if(!n)throw'Correo o contraseña incorrectos.';return API.start(n)},
-  google(){throw'El acceso con Google estará disponible pronto.'}, // se activa con el backend
-  logout(){S.user=null;DB.set('session',null)},
+  async register(name,email,pass){
+    const data=await sbAuth('signup',{email,password:pass,data:{name}});
+    // Guardar en tabla users
+    await sbFetch('/rest/v1/users',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({id:data.user?.id,name,email})}).catch(()=>{});
+    return API.start({name,email});
+  },
+  async login(email,pass){
+    const data=await sbAuth('token?grant_type=password',{email,password:pass});
+    const name=data.user?.user_metadata?.name||email.split('@')[0];
+    sb.token=data.access_token;
+    return API.start({name,email});
+  },
+  google(){throw'El acceso con Google estará disponible pronto.'},
+  logout(){S.user=null;sb.token=null;DB.set('session',null)},
   orders:()=>DB.get('orders',[]),
-  mine:()=>API.orders().filter(o=>o.email==S.user.email).reverse(),
-  hasOrder:(pid)=>API.orders().some(o=>o.email==S.user.email&&o.pid==pid),
-  createOrder(d){const o={...d,id:newOrderId(),date:new Date().toISOString(),status:'pendiente',reason:''};localStorage.setItem('ks_orders',JSON.stringify([...API.orders(),o]));return o},
+  mine:()=>API.orders().filter(o=>o.email==S.user?.email).reverse(),
+  hasOrder:(pid)=>API.orders().some(o=>o.email==S.user?.email&&o.pid==pid),
+  async createOrder(d){
+    const o={...d,id:newOrderId(),date:new Date().toISOString(),status:'pendiente',reason:''};
+    // Guardar en Supabase
+    sbFetch('/rest/v1/orders',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({
+      id:o.id,pid:o.pid,pn:o.pn,cat:o.cat,sub:o.sub,price:o.price,
+      extra:o.extra,extra_label:o.extraLabel,wa:o.wa,voucher:o.voucher,
+      name:o.name,email:o.email,date:o.date,status:o.status,reason:o.reason
+    })}).catch(()=>{});
+    // También guardar local como respaldo
+    localStorage.setItem('ks_orders',JSON.stringify([...API.orders(),o]));
+    return o;
+  },
   claims:()=>DB.get('claims',[]),
-  createClaim(d){const c={...d,id:'LR-'+newOrderId().slice(3),date:new Date().toISOString()};localStorage.setItem('ks_claims',JSON.stringify([...API.claims(),c]));return c}
+  async createClaim(d){
+    const c={...d,id:'LR-'+newOrderId().slice(3),date:new Date().toISOString()};
+    sbFetch('/rest/v1/claims',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(c)}).catch(()=>{});
+    localStorage.setItem('ks_claims',JSON.stringify([...API.claims(),c]));
+    return c;
+  }
 };
 /* Solo para pruebas: pon CFG.DEBUG=true y usa KS.entregar('ID') o KS.rechazar('ID','motivo') en la consola */
 if(CFG.DEBUG)window.KS={
