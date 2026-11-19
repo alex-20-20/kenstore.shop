@@ -1008,7 +1008,7 @@ header button:not(.pri):not(.av):not(.site-menu-toggle),header .btn:not(.pri){ba
 .brand-wordmark .brand-accent{color:var(--ac)}
 .service-flight{max-width:1320px;margin:14px auto 0;padding:0 14px}
 .service-runway{container-type:inline-size;overflow:hidden;background:var(--surface);border:1px solid var(--stroke);border-radius:14px;box-shadow:var(--lift)}
-.service-train{display:flex;align-items:center;gap:7px;width:max-content;min-height:90px;padding:18px 10px 5px;animation:service-fly 22s linear infinite}
+.service-train{display:flex;align-items:center;gap:7px;width:max-content;min-height:90px;padding:18px 10px 5px;animation:service-fly 30s linear infinite}
 .service-tile{display:grid;place-items:center;flex:none;width:54px;height:54px;background:var(--surface);color:var(--ln);border:1px solid var(--stroke);border-radius:14px;box-shadow:2px 3px 0 #1c1c1c12;font:800 13px/1 var(--tb);letter-spacing:-.04em}
 .service-tile{animation:service-sway 1.8s ease-in-out infinite alternate}
 .service-tile:nth-child(3n+2){animation-delay:-.6s}
@@ -1131,19 +1131,6 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
       <span class="service-tile" title="Prime Video"><img src="https://upload.wikimedia.org/wikipedia/commons/9/90/Prime_Video_logo_(2024).svg" alt="Prime Video" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Max"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/HBO_Max_(2025).svg" alt="Max" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Paramount Plus"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg" alt="Paramount Plus" width="29" height="29" decoding="async"></span>
-      <span class="service-tether" aria-hidden="true"></span>
-      <!-- duplicado para loop sin hueco -->
-      <span class="service-tile" aria-hidden="true" title="Netflix"><img src="https://upload.wikimedia.org/wikipedia/commons/1/18/Netflix_2016_N_logo.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Microsoft"><img src="https://upload.wikimedia.org/wikipedia/commons/2/25/Microsoft_icon.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile service-canva" aria-hidden="true" title="Canva"><img src="https://static.canva.com/domain-assets/canva/static/images/android-192x192-2.png" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="CapCut"><img src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Capcut-icon.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="ChatGPT"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Claude"><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Claude_AI_logo.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Spotify"><img src="https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="YouTube"><img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_(2017).svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Prime Video"><img src="https://upload.wikimedia.org/wikipedia/commons/9/90/Prime_Video_logo_(2024).svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Max"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/HBO_Max_(2025).svg" alt="" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" aria-hidden="true" title="Paramount Plus"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg" alt="" width="29" height="29" decoding="async"></span>
       <span class="service-tether" aria-hidden="true"></span>
     </div>
   </div>
@@ -2034,6 +2021,18 @@ const serviceDragon=$('#ldd').cloneNode(true);
 serviceDragon.removeAttribute('id');
 serviceDragon.classList.add('service-dragon');
 $('#service-train').append(serviceDragon);
+// Duplicar todo el contenido del tren para loop seamless sin hueco
+(function(){
+  const train=$('#service-train');
+  const original=[...train.children];
+  original.forEach(el=>{
+    const clone=el.cloneNode(true);
+    clone.setAttribute('aria-hidden','true');
+    // quitar ids del clon para no duplicarlos
+    clone.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
+    train.append(clone);
+  });
+})();
 const maintenanceNotice=$('#maintenance-notice');
 maintenanceNotice.addEventListener('cancel',event=>event.preventDefault());
 function showMaintenance(message){
