@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#b3261e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/ken-admin.webmanifest">
+<link rel="apple-touch-icon" href="/ken-admin-192.png">
+<link rel="icon" href="/ken-admin-192.png" type="image/png">
 <title>Administración · Ken Store</title>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -145,9 +150,51 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 #adm-orders [hidden]{display:none!important}
 #adm-orders .order-empty{padding:20px;border:1px dashed var(--stroke);border-radius:12px;text-align:center;color:#62594f}
 @media(max-width:520px){#adm-orders .order-admin{padding:12px}#adm-orders .order-total{gap:4px}#adm-orders .order-edit label{width:100%}#adm-orders .order-edit button{flex:1 1 auto}}
+.admin-header-actions{display:flex;align-items:center;gap:8px}
+#admin-install[hidden]{display:none}
+.admin-menu-trigger{display:none}
+#admin-install-help{width:min(420px,calc(100% - 32px));margin:auto;max-width:none;padding:20px;color:var(--tx)}
+#admin-install-help::backdrop{background:#1c1c1c66}
+#admin-install-help p{margin:8px 0 15px}
+.adm :is(p,h2,h3,legend,summary,a){overflow-wrap:anywhere}
+@media (min-width:760px) and (max-width:1023px){
+  .lay{grid-template-columns:178px minmax(0,1fr)}
+  .nv button{white-space:normal}
+  .admin-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .admin-filters label:first-child{grid-column:1/-1}
+}
+@media(max-width:759px){
+  header{padding-top:calc(8px + env(safe-area-inset-top));gap:8px}
+  main{padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right));padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .admin-header-actions{gap:4px}
+  .admin-header-actions :is(button,a){font-size:.78rem;padding-inline:8px;min-height:44px;display:inline-grid;place-items:center}
+  .brand{gap:6px;font-size:clamp(.82rem,3.4vw,1.15rem)}
+  .lg{width:29px;height:29px;flex:0 0 29px}
+  .admin-menu-trigger{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;min-height:44px}
+  .lay>.nv{display:none}
+  .lay.nav-open>.nv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;overflow:visible;background:var(--surface);border:1px solid var(--stroke);border-radius:14px}
+  .lay.nav-open>.nv h4{display:block;grid-column:1/-1;font-size:.74rem;color:var(--mu);padding-top:5px}
+  .lay.nav-open>.nv button{white-space:normal;text-align:left}
+  main :is(button,a.btn),#adm-orders :is(.order-edit button,.order-filters button,.order-edit select){min-height:44px}
+  main :is(input:not([type=checkbox]),select,textarea),#adm-orders .order-edit :is(select,input){font-size:16px}
+  .adm .g2>*{min-width:0}
+}
+@media(max-width:360px){.brand .brand-text{font-size:.78rem}.adm .stat{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head>
 <body>
-<header><div class="brand"><div class="lg">KS</div>Administración</div><a class="btn" id="vc" href="keen-store-rediseno-v19.html">← Ver catálogo</a></header>
+<header>
+  <div class="brand"><div class="lg">KS</div><span class="brand-text">Administración</span></div>
+  <div class="admin-header-actions">
+    <button type="button" id="admin-install">Instalar app</button>
+    <a class="btn" id="vc" href="/">Ver catálogo</a>
+  </div>
+</header>
+<dialog class="card" id="admin-install-help" aria-labelledby="install-title">
+  <h2 id="install-title">Instalar el panel</h2>
+  <p>En Android, abre el menú de Chrome y elige <strong>Instalar app</strong> o <strong>Añadir a pantalla de inicio</strong>.</p>
+  <p>En iPhone y iPad, abre el panel en Safari y toca <strong>Compartir → Añadir a pantalla de inicio</strong>. Activa <strong>Abrir como app web</strong> si aparece.</p>
+  <form method="dialog"><button type="submit" class="pri w">Cerrar</button></form>
+</dialog>
 <main><div id="app"></div></main>
 <div id="toast"></div>
 <script>
@@ -170,7 +217,7 @@ let tt;function toast(m){const t=$('#toast');t.textContent=m;t.style.display='bl
 const S={cat:'all',sub:''},tabs=()=>{},grid=()=>{};
 const P=[],CATS=[],SUBS=Object.create(null);
 DEF.P.forEach(x=>P.push(x));DEF.CATS.forEach(x=>CATS.push(x));Object.assign(SUBS,DEF.SUBS);
-function modal(h){$('#app').innerHTML=(ADM.ok?'<div class="lay">'+NAV()+'<div class="card adm">'+h+'</div></div>':'<div class="card adm">'+h+'</div>');window.scrollTo(0,0)}
+function modal(h){$('#app').innerHTML=(ADM.ok?'<div class="lay"><button type="button" class="admin-menu-trigger" aria-expanded="false" aria-controls="admin-navigation" onclick="toggleAdminMenu(this)">Secciones del panel <span aria-hidden="true">☰</span></button>'+NAV()+'<div class="card adm">'+h+'</div></div>':'<div class="card adm">'+h+'</div>');window.scrollTo(0,0)}
 function closeM(){admLock()}
 /* ===== PANEL ===== */
 const TIPOS=['Invitación','Cuenta completa','Perfil','Acceso','Dominio'];        // edita esta lista para agregar/quitar tipos
@@ -716,7 +763,7 @@ const MENU=[
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
-const NAV=()=>`<nav class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}">${ic} ${l}</button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
+const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}">${ic} ${l}</button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
 async function admMaintenance(){if(publishing)return;
   const previous=SITE,active=!SITE.maint;
   const message=SITE.maint||SITE.maintMessage||'Volvemos pronto.';
@@ -887,6 +934,33 @@ function admLegal(){modal(`<h2>📜 Textos legales</h2><p class="mu" style="font
   <label for="lp">Política de privacidad</label><textarea id="lp" rows="9">${esc(SITE.priv||'')}</textarea>
   <div class="bar2"><button class="ok" style="flex:1" onclick="if(!publishing){SITE.terms=v('lt').trim();SITE.priv=v('lp').trim();siteSave()}">Guardar textos</button></div>`)}
 
+function toggleAdminMenu(button){
+  const expanded=button.closest('.lay').classList.toggle('nav-open');
+  button.setAttribute('aria-expanded',String(expanded));
+}
+let adminInstallPrompt;
+const adminInstallButton=$('#admin-install');
+adminInstallButton.hidden=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  adminInstallPrompt=event;
+});
+window.addEventListener('appinstalled',()=>{
+  adminInstallPrompt=null;
+  adminInstallButton.hidden=true;
+});
+adminInstallButton.addEventListener('click',async()=>{
+  if(adminInstallPrompt){
+    const prompt=adminInstallPrompt;
+    adminInstallPrompt=null;
+    await prompt.prompt();
+    return;
+  }
+  $('#admin-install-help').showModal();
+});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/ken-admin-sw.js',{scope:'/keen-store-admin.html'}).catch(error=>console.warn('No se pudo preparar la instalación del panel.',error));
+}
 admLock();
 admStart();
 </script></body></html>

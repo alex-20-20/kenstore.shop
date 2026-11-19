@@ -1,0 +1,25 @@
+{
+  "id": "/keen-store-admin.html",
+  "name": "Ken Store Administración",
+  "short_name": "Ken Store Admin",
+  "lang": "es",
+  "start_url": "/keen-store-admin.html",
+  "scope": "/keen-store-admin.html",
+  "display": "standalone",
+  "background_color": "#faf8f3",
+  "theme_color": "#b3261e",
+  "icons": [
+    {
+      "src": "/ken-admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ken-admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
