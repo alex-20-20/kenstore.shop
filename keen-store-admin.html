@@ -4,34 +4,10 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Administración · Ken Store</title>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="kenstore-data.js"></script>
 <script>
-const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
-async function sbFetch(path,opts={}){
-  const res=await fetch(SUPA_URL+path,{
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json',...(opts.headers||{})},
-    ...opts
-  });
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw data.message||'Error';
-  return data;
-}
-async function sbGetOrders(){
-  try{return await sbFetch('/rest/v1/orders?order=date.desc&select=*')}catch(e){return null}
-}
-async function sbUpdateOrder(id,status,reason=''){
-  try{
-    const r=await fetch('/api/update-order',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({id,status,reason})
-    });
-    if(!r.ok)console.error('Update order error:',await r.json().catch(()=>({})));
-  }catch(e){console.error('Update order error:',e);}
-}
-async function sbGetClaims(){
-  try{return await sbFetch('/rest/v1/claims?order=date.desc&select=*')}catch(e){return null}
-}
+const adminClient=kenClient(true);
 </script>
 <style>
 :root{--ln:#1c1c1c;--tx:#1c1c1c;--mu:#6a6055;--soft:#e4dccb;--ac:#b3261e;--bl:#f6f1e6;--brand-font:"Pixelify Sans","Trebuchet MS",system-ui,sans-serif;--px:"Trebuchet MS",system-ui,sans-serif}
@@ -140,7 +116,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 <script>
 /* ===== CONFIGURACIÓN ===== */
 const CFG={
-  ADMIN_PASS:'cambia-esta-clave',            // Clave de acceso (CÁMBIALA). Ojo: al ser solo frontend no es seguridad real
+
   CATALOGO:'keen-store-rediseno-v20.html'    // Nombre del archivo del catálogo (para el botón "Ver catálogo")
 };
 document.getElementById('vc').href=CFG.CATALOGO;
@@ -169,34 +145,74 @@ const ORIG={P:JSON.parse(JSON.stringify(P)),C:JSON.parse(JSON.stringify(CATS)),S
   if(Array.isArray(sc)&&sc.length){CATS.length=0;sc.forEach(x=>CATS.push(x))}
   if(ss&&typeof ss=='object'){Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,ss)}})();
 const pl=p=>[...(p.t?[p.t]:[]),...(p.pills||[])];   // el tipo aparece como primera etiqueta
-function admSave(){
-  const written=[];
+let publishing=false;
+let publishedSite;
+let catalogVersion;
+async function admSave(){
+  if(!ADM.ok||publishing)return false;
+  publishing=true;
+  const draft=JSON.parse(JSON.stringify({products:P,categories:CATS,subcategories:SUBS,site:SITE}));
   try{
-    for(const [key,value] of [['ks_products',P],['ks_cats',CATS],['ks_subs',SUBS]]){
-      const previous=localStorage.getItem(key),next=JSON.stringify(value);
-      if(previous===next)continue;
-      localStorage.setItem(key,next);
-      written.push([key,previous]);
-    }
+    const table=adminClient.from('store_catalog');
+    const version=new Date().toISOString();
+    const request=catalogVersion
+      ? table.update({...draft,updated_at:version}).eq('id',1).eq('updated_at',catalogVersion)
+      : table.insert({id:1,...draft,updated_at:version});
+    const saved=await kenResult(request.select('updated_at').maybeSingle());
+    if(!saved)throw new Error('Otra sesión actualizó el catálogo.');
+    catalogVersion=saved.updated_at;
+    publishedSite=draft.site;
   }catch(e){
-    for(const [key,previous] of written.reverse()){
-      try{if(previous===null)localStorage.removeItem(key);else localStorage.setItem(key,previous)}catch(restoreError){}
-    }
-    toast('No se pudo guardar: almacenamiento lleno. Usa imágenes más pequeñas o por URL.');
+    toast('No se pudo publicar. Recarga el panel si hay cambios de otra sesión.');
     return false;
-  }
+  }finally{publishing=false}
   if(S.cat!='all'&&!CATS.some(c=>c[0]==S.cat)){S.cat='all';S.sub=''}
   if(S.sub&&!(SUBS[S.cat]||[]).includes(S.sub))S.sub='';
-  tabs();grid();return true
+  return true;
 }
-function adminM(){ADM.ok?admRes():admLock()}
 function admLock(){
-  modal(`<h2>⚙️ Panel de administración</h2><p class="mu">Ingresa la clave de administrador.</p>
-  <label for="apw">Clave</label><input id="apw" type="password" autocomplete="off" placeholder="••••••">
-  <button class="pri w" id="apb" onclick="admEnter()">Entrar</button>`);
-  $('#apw').onkeydown=e=>{if(e.key=='Enter')admEnter()};
+  modal('<h2>⚙️ Panel de administración</h2><p class="mu">Ingresa con el correo autorizado.</p>'+
+    '<label for="admin-email">Correo</label><input id="admin-email" type="email" autocomplete="email">'+
+    '<button class="pri w" id="apb" onclick="admEnter()">Enviar enlace de acceso</button>');
+  $('#admin-email').onkeydown=e=>{if(e.key==='Enter')admEnter()};
 }
-function admEnter(){if(v('apw')===(localStorage.getItem('ks_apw')||CFG.ADMIN_PASS)){ADM.ok=true;ADM.tab='res';admRes()}else toast('Clave incorrecta.')}
+async function admEnter(){
+  const field=$('#admin-email'),button=$('#apb');
+  if(!field.value.trim()||!field.reportValidity()||button.disabled)return;
+  button.disabled=true;
+  try{
+    await kenResult(adminClient.auth.signInWithOtp({
+      email:field.value.trim().toLowerCase(),
+      options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}
+    }));
+    toast('Si el correo tiene acceso, recibirás un enlace.');
+  }catch(e){toast('No se pudo enviar el enlace de acceso.')}
+  finally{button.disabled=false}
+}
+async function admStart(){
+  try{
+    const {session}=await kenResult(adminClient.auth.getSession());
+    if(!session)return;
+    const {user}=await kenResult(adminClient.auth.getUser());
+    if(user.app_metadata?.kenstore_admin!==true){
+      await kenResult(adminClient.auth.signOut({scope:'local'}));
+      return toast('Este correo no tiene permisos de administrador.');
+    }
+    const data=await kenReadCatalog(adminClient);
+    if(data){
+      admApply(data.products,data.categories,data.subcategories);
+      SITE=data.site;
+      catalogVersion=data.updated_at;
+    }
+    SITE.t??={};SITE.cfg??={};SITE.col??={};
+    publishedSite=structuredClone(SITE);
+    ADM.ok=true;admRes();
+  }catch(e){toast('No se pudo verificar el acceso o cargar el catálogo.')}
+}
+async function admExit(){
+  try{await kenResult(adminClient.auth.signOut({scope:'local'}));location.reload()}
+  catch(e){toast('No se pudo cerrar la sesión.')}
+}
 function admList(){
   ADM.tab='prod';
   const filters=ADM.productFilters||{};
@@ -222,7 +238,7 @@ function admFilterProducts(){
     <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
 }
-function admToggleStock(id){
+async function admToggleStock(id){if(publishing)return;
   const product=prod(id);
   if(!product)return;
   const i=P.indexOf(product),available=product.st===0;
@@ -230,7 +246,7 @@ function admToggleStock(id){
   if(available)delete updated.previousStock;
   else updated.previousStock=product.st;
   P[i]=updated;
-  if(!admSave()){P[i]=product;return}
+  if(!await admSave()){P[i]=product;return}
   const top=window.scrollY;
   admList();
   window.scrollTo(0,top);
@@ -356,7 +372,7 @@ function admForm(id){
   admCatSel(p.s||'');
   admTypeFields();
 }
-function admGuardar(){
+async function admGuardar(){if(publishing)return;
   if($('#pfile').hasAttribute('aria-busy'))return toast('Espera a que termine la compresión de la imagen.');
   const n=v('pn').trim(),d=v('pd').trim();let c=v('pc');
   if(!n)return toast('Escribe el nombre del producto.');
@@ -383,14 +399,14 @@ function admGuardar(){
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
   if(s){SUBS[c]=SUBS[c]||[];if(!SUBS[c].includes(s))SUBS[c].push(s)}
   if(old)P[P.indexOf(old)]=o;else P.push(o);
-  if(!admSave()){P.length=0;JSON.parse(snap[0]).forEach(x=>P.push(x));CATS.length=0;JSON.parse(snap[1]).forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,JSON.parse(snap[2]));return}
+  if(!await admSave()){P.length=0;JSON.parse(snap[0]).forEach(x=>P.push(x));CATS.length=0;JSON.parse(snap[1]).forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,JSON.parse(snap[2]));return}
   toast(old?'Producto actualizado':'Producto agregado');admList();
 }
 function admDel(id){const p=prod(id);if(!p)return;
   modal(`<h2>🗑️ Eliminar producto</h2><p>¿Eliminar <b>${esc(p.n)}</b> del catálogo?</p><p class="mu">Las compras ya hechas se conservan en el historial de tus clientes.</p>
   <div class="bar2"><button class="del" style="flex:1" onclick="admDelOk(${id})">Sí, eliminar</button><button style="flex:1" onclick="admList()">Cancelar</button></div>`,'adm');}
-function admDelOk(id){const i=P.findIndex(x=>x.id==id);if(i<0)return admList();const [rm]=P.splice(i,1);
-  if(!admSave()){P.splice(i,0,rm);return}toast('Producto eliminado');admList()}
+async function admDelOk(id){if(publishing)return;const i=P.findIndex(x=>x.id==id);if(i<0)return admList();const [rm]=P.splice(i,1);
+  if(!await admSave()){P.splice(i,0,rm);return}toast('Producto eliminado');admList()}
 // Iconos pixel del catálogo de la tienda.
 const categoryIcons={
   Streaming:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxNiAxNCcgd2lkdGg9JzEyOCcgaGVpZ2h0PScxMTInIHNoYXBlLXJlbmRlcmluZz0nY3Jpc3BFZGdlcyc+PHBhdGggZmlsbD0iIzFiMWYzYiIgZD0iTTAgMGgxNnYxSDB6TTAgMWgxdjFIMHpNMTUgMWgxdjFIMTV6TTAgMmgxdjFIMHpNMTUgMmgxdjFIMTV6TTAgM2gxdjFIMHpNMTUgM2gxdjFIMTV6TTAgNGgxdjFIMHpNMTUgNGgxdjFIMTV6TTAgNWgxdjFIMHpNMTUgNWgxdjFIMTV6TTAgNmgxdjFIMHpNMTUgNmgxdjFIMTV6TTAgN2gxdjFIMHpNMTUgN2gxdjFIMTV6TTAgOGgxdjFIMHpNMTUgOGgxdjFIMTV6TTAgOWgxdjFIMHpNMTUgOWgxdjFIMTV6TTAgMTBoMXYxSDB6TTE1IDEwaDF2MUgxNXpNMCAxMWgxNnYxSDB6TTYgMTJoNnYxSDZ6TTQgMTNoMTB2MUg0eiIvPjxwYXRoIGZpbGw9IiNmZjVhNWYiIGQ9Ik0xIDFoMTR2MUgxek0xIDJoMTR2MUgxek0xIDNoNHYxSDF6TTYgM2g5djFINnpNMSA0aDR2MUgxek03IDRoOHYxSDd6TTEgNWg0djFIMXpNOCA1aDd2MUg4ek0xIDZoNHYxSDF6TTkgNmg2djFIOXpNMSA3aDR2MUgxek04IDdoN3YxSDh6TTEgOGg0djFIMXpNNyA4aDh2MUg3ek0xIDloNHYxSDF6TTYgOWg5djFINnpNMSAxMGgxNHYxSDF6Ii8+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTUgM2gxdjFINXpNNSA0aDJ2MUg1ek01IDVoM3YxSDV6TTUgNmg0djFINXpNNSA3aDN2MUg1ek01IDhoMnYxSDV6TTUgOWgxdjFINXoiLz48L3N2Zz4=",
@@ -495,14 +511,14 @@ function admCats(){
   }).join('')||'<p class="mu">Sin categorías.</p>'}
   <div class="bar2"><button onclick="admList()">Volver a productos</button></div>`,'adm');
 }
-function admCatAdd(){const c=v('nc').trim();if(!c)return toast('Escribe un nombre.');
+async function admCatAdd(){if(publishing)return;const c=v('nc').trim();if(!c)return toast('Escribe un nombre.');
   if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
   if(CATS.some(x=>x[0].toLowerCase()==c.toLowerCase()))return toast('Esa categoría ya existe.');
   CATS.push([c,c,v('ncemoji')]);
-  if(!admSave()){CATS.pop();return}
+  if(!await admSave()){CATS.pop();return}
   admCats();toast('Categoría agregada');
 }
-function admSubAdd(i){
+async function admSubAdd(i){if(publishing)return;
   const entry=CATS[i];
   if(!entry||entry[0]==='all')return;
   const [c]=entry,s=v('ns_'+i).trim();
@@ -510,7 +526,7 @@ function admSubAdd(i){
   if(admSubs(c).some(name=>name.toLowerCase()===s.toLowerCase()))return toast('Esa subcategoría ya existe en esta categoría.');
   const previous=SUBS[c];
   SUBS[c]=[...(previous||[]),s];
-  if(!admSave()){
+  if(!await admSave()){
     if(previous)SUBS[c]=previous;else delete SUBS[c];
     return;
   }
@@ -518,10 +534,10 @@ function admSubAdd(i){
   $('#ns_'+i).focus();
   toast('Subcategoría agregada');
 }
-function admCatalogChange(update,message){
+async function admCatalogChange(update,message){if(publishing)return;
   const snapshot=JSON.parse(JSON.stringify([P,CATS,SUBS]));
   update();
-  if(!admSave()){admApply(...snapshot);return}
+  if(!await admSave()){admApply(...snapshot);return}
   admCats();
   toast(message);
 }
@@ -597,39 +613,62 @@ function admIO(){
 }
 function admDown(){const b=new Blob([v('aio')],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='catalogo-keen-store.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 function admApply(pr,cs,sb){P.length=0;pr.forEach(x=>P.push(x));CATS.length=0;cs.forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,sb)}
-function admImport(){let d;try{d=JSON.parse(v('aio'))}catch(e){return toast('El respaldo no es un JSON válido.')}
-  if(!d||!Array.isArray(d.products)||!d.products.every(p=>p&&p.id!=null&&p.n&&p.c&&typeof p.p=='number'))return toast('El respaldo no tiene el formato correcto.');
-  const cs=Array.isArray(d.cats)&&d.cats.length?d.cats:[['all','🔥 Todo'],...[...new Set(d.products.map(p=>p.c))].map(c=>[c,c])];
-  if(d.site&&typeof d.site=='object'){SITE=d.site;SITE.t=SITE.t||{};SITE.cfg=SITE.cfg||{};SITE.col=SITE.col||{};siteSave()}admApply(d.products,cs,d.subs&&typeof d.subs=='object'?d.subs:{});if(admSave()){toast('Catálogo importado');admList()}}
-function admReset(){admApply(JSON.parse(JSON.stringify(ORIG.P)),JSON.parse(JSON.stringify(ORIG.C)),JSON.parse(JSON.stringify(ORIG.S)));
-  ['products','cats','subs'].forEach(k=>{try{localStorage.removeItem('ks_'+k)}catch(e){}});S.cat='all';S.sub='';tabs();grid();toast('Catálogo original restaurado');admList()}
-
+async function admImport(){
+  if(publishing)return;
+  let d;
+  try{d=JSON.parse(v('aio'))}catch(e){return toast('El respaldo no es un JSON válido.')}
+  if(!Array.isArray(d?.products)||!d.products.every(p=>p&&Number.isSafeInteger(p.id)&&typeof p.n==='string'&&typeof p.c==='string'&&Number.isFinite(p.p)&&p.p>=0))return toast('El respaldo no tiene el formato correcto.');
+  const categories=d.cats??[['all','🔥 Todo'],...[...new Set(d.products.map(p=>p.c))].map(c=>[c,c])];
+  const subcategories=d.subs??{};
+  const site=d.site??SITE;
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  if(!Array.isArray(categories)||!categories.length||!categories.every(c=>Array.isArray(c)&&c.slice(0,2).length===2&&c.every(x=>typeof x==='string'))
+     ||!object(subcategories)||!Object.values(subcategories).every(a=>Array.isArray(a)&&a.every(x=>typeof x==='string'))||!object(site))return toast('Revisa las categorías y los ajustes del respaldo.');
+  const previous=structuredClone([P,CATS,SUBS,SITE]);
+  admApply(d.products,categories,subcategories);
+  SITE={...site,t:site.t||{},cfg:site.cfg||{},col:site.col||{}};
+  if(!await admSave()){admApply(...previous.slice(0,3));SITE=previous[3];return}
+  toast('Catálogo importado');admList();
+}
+async function admReset(){
+  if(publishing)return;
+  const previous=structuredClone([P,CATS,SUBS]);
+  admApply(structuredClone(ORIG.P),structuredClone(ORIG.C),structuredClone(ORIG.S));
+  if(!await admSave()){admApply(...previous);return}
+  S.cat='all';S.sub='';toast('Catálogo original restaurado');admList();
+}
 
 /* ===== EDITOR DE LA WEB: textos, ajustes, colores y textos legales ===== */
 const REG=[["k1", "Cabecera", "Ken Store"], ["k2", "Sellos de confianza", "Compra Segura"], ["k3", "Sellos de confianza", "Entrega por WhatsApp"], ["k4", "Sellos de confianza", "Garantía Total"], ["k5", "Portada", "Tu mundo *digital*\nal instante"], ["k6", "Bloque de confianza", "Compra fácil,\nentrega rápida"], ["k7", "Portada", "digital"], ["k8", "Portada", "Streaming, recargas de juegos, cursos y más. Pagas fácil y recibes tu acceso por WhatsApp."], ["k9", "Portada", "Ver catálogo →"], ["k10", "Portada", "Grupo de WhatsApp"], ["k11", "Catálogo", "Catálogo"], ["k12", "Cómo comprar", "¿Cómo comprar?"], ["k13", "Cómo comprar", "Elige"], ["k14", "Cómo comprar", "Escoge tu producto del catálogo."], ["k15", "Cómo comprar", "Ingresa"], ["k16", "Cómo comprar", "Inicia sesión o regístrate en un paso."], ["k17", "Cómo comprar", "Paga"], ["k18", "Cómo comprar", "Escanea el QR o usa Yape / Plin y sube tu voucher."], ["k19", "Cómo comprar", "Recibe"], ["k20", "Cómo comprar", "Te entregamos tu acceso por WhatsApp."], ["k21", "Bloque de confianza", "En Ken Store reunimos streaming, recargas, cursos y libros en un solo lugar. Pagas con QR, subes tu voucher y recibes tu acceso por WhatsApp."], ["k22", "Bloque de confianza", "Atención por WhatsApp"], ["k23", "Bloque de confianza", "Pago con QR / Yape"], ["k24", "Bloque de confianza", "Soporte con tu N.º de orden"], ["k25", "Preguntas frecuentes", "Preguntas frecuentes"], ["k26", "Preguntas frecuentes", "¿Cómo recibo mi producto?"], ["k27", "Preguntas frecuentes", "Cuando verificamos tu pago, te enviamos tus accesos o tu recarga por WhatsApp al número que indicaste."], ["k28", "Preguntas frecuentes", "¿Qué métodos de pago aceptan?"], ["k29", "Preguntas frecuentes", "Pagas escaneando el QR desde tu app bancaria o billetera, o con Yape / Plin al número que verás al comprar."], ["k30", "Preguntas frecuentes", "¿Qué hago si mi acceso falla?"], ["k31", "Preguntas frecuentes", "Escríbenos por el botón de soporte en Mis Compras con tu N.º de orden y lo revisamos. Consulta también los Términos y garantía."], ["k32", "Preguntas frecuentes", "¿Necesito una cuenta para comprar?"], ["k33", "Preguntas frecuentes", "Sí, para guardar tu historial de compras y enviarte tus accesos de forma segura. Registrarte toma un minuto."], ["k34", "Banner final", "¿Listo para tu próximo acceso?"], ["k35", "Banner final", "Elige tu producto y recíbelo por WhatsApp."], ["k36", "Banner final", "Ver catálogo →"], ["k37", "Pie de página", "Ken Store"], ["k38", "Pie de página", "📖 Libro de Reclamaciones"], ["k39", "Pie de página", "Términos y garantía"], ["k40", "Pie de página", "Política de privacidad"], ["k41", "Pie de página", "© Ken Store · Todos los derechos reservados"]];
 let SITE=DB.get('site',{});SITE.t=SITE.t||{};SITE.cfg=SITE.cfg||{};SITE.col=SITE.col||{};
 const GR=[...new Set(REG.map(r=>r[1]))];
-function siteSave(){try{localStorage.setItem('ks_site',JSON.stringify(SITE))}catch(e){toast('No se pudo guardar: almacenamiento lleno.');return false}toast('Cambios guardados');return true}
+async function siteSave(){
+  if(!await admSave()){
+    if(publishedSite)SITE=structuredClone(publishedSite);
+    return false;
+  }
+  toast('Cambios publicados');return true;
+}
 function admTextos(i){i=+i||0;const L=REG.filter(r=>r[1]==GR[i]);
   modal(`<h2>✏️ Textos de la web</h2><label for="tg">Sección</label><select id="tg" onchange="admTextos(this.selectedIndex)">${GR.map((x,j)=>`<option${j==i?' selected':''}>${esc(x)}</option>`).join('')}</select>
   <p class="mu" style="font-size:.78rem;margin-top:6px">Vacío = texto original. Usa *palabra* para resaltarla y Enter para saltar de línea.</p>
   ${L.map(r=>`<label for="tx_${r[0]}">${esc(r[2].replace(/\n/g,' ').slice(0,60))}</label><textarea id="tx_${r[0]}" rows="${r[2].length>70?3:1}" placeholder="${esc(r[2])}">${esc(SITE.t[r[0]]||'')}</textarea>`).join('')}
   <div class="bar2"><button class="ok" style="flex:1" onclick="admTxtSave(${i})">Guardar sección</button><button style="flex:1" onclick="admTxtReset(${i})">Restablecer</button></div>`);}
-function admTxtSave(i){REG.filter(r=>r[1]==GR[i]).forEach(r=>{const t=v('tx_'+r[0]).trim();if(t&&t!==r[2])SITE.t[r[0]]=t;else delete SITE.t[r[0]]});siteSave()}
-function admTxtReset(i){REG.filter(r=>r[1]==GR[i]).forEach(r=>delete SITE.t[r[0]]);if(siteSave())admTextos(i)}
+function admTxtSave(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r=>{const t=v('tx_'+r[0]).trim();if(t&&t!==r[2])SITE.t[r[0]]=t;else delete SITE.t[r[0]]});siteSave()}
+async function admTxtReset(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r=>delete SITE.t[r[0]]);if(await siteSave())admTextos(i)}
 const MENU=[
   ['General',[['res','📊','Resumen','admRes()']]],
   ['Catálogo',[['prod','📦','Productos','admList()'],['cat','🗂️','Categorías','admCats()']]],
   ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
-  ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','ADM.ok=false;admLock()']]]
+  ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
 const NAV=()=>`<nav class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}">${ic} ${l}</button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
-function admMaintenance(){
+async function admMaintenance(){if(publishing)return;
   const previous=SITE,active=!SITE.maint;
   const message=SITE.maint||SITE.maintMessage||'Volvemos pronto.';
   SITE={...SITE,maint:active?message:'',maintMessage:message};
-  if(!siteSave()){SITE=previous;return}
+  if(!await siteSave()){SITE=previous;return}
   const button=$('#maint-toggle');
   button.setAttribute('aria-pressed',String(active));
   button.classList.toggle('on',active);
@@ -640,9 +679,14 @@ const orderStates={
   pendiente:'Pendiente de verificación',aceptado:'Aceptado',en_proceso:'En preparación',
   entregado:'Entregado',rechazado:'Rechazado'
 };
-function admClaims(){
+async function admClaims(){
   ADM.tab='claims';
-  const claims=DB.get('claims',[]).slice().reverse();
+  modal('<h2>Reclamos</h2><p id="claims-loading">Cargando reclamos…</p>');
+  const loading=$('#claims-loading');
+  let claims;
+  try{claims=await kenResult(adminClient.from('claims').select('*').order('date',{ascending:false}))}
+  catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar los reclamos.';return}
+  if(!loading.isConnected)return;
   modal(`<section id="adm-claims"><div class="admin-heading"><h2>Reclamos</h2><span class="mu">${claims.length} registrados</span></div>
     ${claims.length?claims.map(c=>`<article class="order-admin">
       <h3>${esc(c.type)} · ${esc(c.id)}</h3>
@@ -654,74 +698,71 @@ function admClaims(){
     </article>`).join(''):'<p class="mu">Aún no hay reclamos registrados.</p>'}
   </section>`);
 }
-window.addEventListener('storage',event=>{
-  if((event.key==='ks_claims'||event.key===null)&&ADM.ok&&ADM.tab==='claims')admClaims();
-});
-function admOrders(filter=ADM.orderFilter||''){
-  ADM.tab='orders';
-  ADM.orderFilter=filter;
-  // Intentar cargar de Supabase primero
-  sbGetOrders().then(sbOrders=>{
-    if(sbOrders&&sbOrders.length){
-      // Mergear con local: Supabase tiene prioridad
-      const local=DB.get('orders',[]);
-      const merged=[...sbOrders,...local.filter(o=>!sbOrders.some(s=>s.id===o.id))];
-      localStorage.setItem('ks_orders',JSON.stringify(merged));
-    }
-    const allOrders=DB.get('orders',[]);
-    const orders=allOrders.filter(o=>!filter||(o.status||'pendiente')===filter).reverse();
-    _renderOrders(orders,allOrders,filter);
-  }).catch(()=>{
-    const allOrders=DB.get('orders',[]);
-    const orders=allOrders.filter(o=>!filter||(o.status||'pendiente')===filter).reverse();
-    _renderOrders(orders,allOrders,filter);
-  });
+async function admOrders(filter=ADM.orderFilter||''){
+  ADM.tab='orders';ADM.orderFilter=filter;
+  modal('<h2>Pedidos</h2><p id="orders-loading">Cargando pedidos…</p>');
+  const loading=$('#orders-loading');
+  try{
+    const orders=await kenResult(adminClient.from('orders').select('*').order('date',{ascending:false}));
+    if(!loading.isConnected)return;
+    _renderOrders(orders.filter(o=>!filter||(o.status||'pendiente')===filter),orders,filter);
+  }catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar los pedidos.'}
 }
 function _renderOrders(orders,allOrders,filter){
   modal(`<div id="adm-orders"><div class="admin-heading"><h2>Pedidos</h2><span class="mu">${orders.length} de ${allOrders.length} pedidos</span></div>
-  <div class="admin-order-filter"><label for="order-filter">Estado del pedido</label><select id="order-filter" onchange="admOrders(this.value);$('#order-filter').focus()"><option value="">Todos</option>${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${filter===key?' selected':''}>${label}</option>`).join('')}</select></div>
+  <div class="admin-order-filter"><label for="order-filter">Estado del pedido</label><select id="order-filter" onchange="admOrders(this.value)"><option value="">Todos</option>${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${filter===key?' selected':''}>${label}</option>`).join('')}</select></div>
   ${orders.length?orders.map(o=>`
     <form class="order-admin" data-order="${esc(o.id)}" onsubmit="admOrderSave(event,this)">
       <h3>${esc(o.pn)} · ${money(o.price)}</h3>
       <p class="mu">Orden ${esc(o.id)} · ${esc(new Date(o.date).toLocaleString('es-PE'))}</p>
       <p>${esc(o.name)} · WhatsApp: ${esc(o.wa)}</p>
-      ${o.extra?`<p>${esc(o.extraLabel)}: ${esc(o.extra)}</p>`:''}
+      ${o.extra?`<p>${esc(o.extra_label)}: ${esc(o.extra)}</p>`:''}
       ${o.voucher?`<p class="mu">Comprobante indicado: ${esc(o.voucher)}. Revisa la imagen en WhatsApp.</p>`:''}
       <label>Estado <select name="status">${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${key===(o.status||'pendiente')?' selected':''}>${label}</option>`).join('')}</select></label>
       <label>Motivo de rechazo (opcional) <input name="reason" maxlength="180" value="${esc(o.reason||'')}"></label>
       <div class="bar2">${!o.status||o.status==='pendiente'?'<button class="pri" type="submit" value="accept">Aceptar pedido</button>':''}<button type="submit">Guardar estado</button></div>
     </form>`).join(''):'<p class="mu">No hay pedidos para este filtro.</p>'}</div>`);
 }
-function admOrderSave(event,form){
+async function admOrderSave(event,form){
   event.preventDefault();
-  if(!ADM.ok)return;
+  if(!ADM.ok||form.getAttribute('aria-busy'))return;
   const status=event.submitter?.value==='accept'?'aceptado':form.elements.status.value;
   if(!Object.hasOwn(orderStates,status))return;
-  const orders=DB.get('orders',[]);
-  const order=orders.find(o=>String(o.id)===form.dataset.order);
-  if(!order){admOrders();return toast('El pedido ya no existe.')}
-  order.status=status;
-  order.reason=status==='rechazado'?form.elements.reason.value.trim():'';
-  try{localStorage.setItem('ks_orders',JSON.stringify(orders))}catch(e){return toast('No se pudo guardar el estado.')}
-  // Actualizar en Supabase
-  sbUpdateOrder(order.id,order.status,order.reason);
-  admOrders();
-  toast('Estado actualizado');
+  const reason=status==='rechazado'?form.elements.reason.value.trim():'';
+  form.setAttribute('aria-busy','true');
+  form.querySelectorAll('button').forEach(button=>button.disabled=true);
+  try{
+    const {session}=await kenResult(adminClient.auth.getSession());
+    if(!session)throw new Error('Sesión vencida.');
+    const response=await fetch('/api/update-order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+      body:JSON.stringify({id:form.dataset.order,status,reason})
+    });
+    if(!response.ok)throw new Error('La API rechazó el cambio.');
+    toast('Estado actualizado');
+    if(form.isConnected)await admOrders();
+  }catch(e){toast('No se pudo actualizar el estado. Intenta de nuevo.')}
+  finally{
+    form.removeAttribute('aria-busy');
+    form.querySelectorAll('button').forEach(button=>button.disabled=false);
+  }
 }
-window.addEventListener('storage',event=>{
-  if((event.key==='ks_orders'||event.key===null)&&ADM.ok&&$('#adm-orders'))admOrders();
-});
-function admRes(){ADM.tab='res';const ag=P.filter(p=>p.st===0).length,hid=(SITE.hide||[]).length,seg=localStorage.getItem('ks_apw');
-  const pending=DB.get('orders',[]).filter(o=>!o.status||o.status==='pendiente').length;
-  modal(`<h2>📊 Resumen</h2>${seg?'':'<p style="border:3px solid var(--ac);padding:8px;margin:8px 0">⚠️ Sigues usando la clave por defecto. Cámbiala en <b>🔐 Seguridad</b>.</p>'}
+async function admPublishFirst(){
+  if(catalogVersion||publishing)return;
+  if(await admSave()){admRes();toast('Catálogo publicado')}
+}
+function admRes(){ADM.tab='res';const ag=P.filter(p=>p.st===0).length,hid=(SITE.hide||[]).length;
+  modal(`<h2>📊 Resumen</h2>
+  ${catalogVersion?'':'<p class="mu">Publica el catálogo para que los clientes puedan registrar pedidos.</p><button class="pri" onclick="admPublishFirst()">Publicar catálogo</button>'}
   <div class="stat"><div><b>${P.length}</b><span>Productos</span></div><div><b>${ag}</b><span>Agotados</span></div><div><b>${CATS.length-1}</b><span>Categorías</span></div><div><b>${Object.keys(SITE.t).length}</b><span>Textos editados</span></div><div><b>${hid}</b><span>Secciones ocultas</span></div></div>
-  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes (${pending})</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`)}
+  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`)}
 function admSec(){const h=SITE.hide||[],a=SITE.ann||{};
   modal(`<h2>🧩 Secciones y avisos</h2><label>Secciones visibles</label>${SEC.map(([k,l])=>`<label style="font-weight:400"><input type="checkbox" id="h_${k}"${h.includes(k)?'':' checked'}>${l}</label>`).join('')}
   <label for="a_t">Barra de anuncio superior (vacío = sin barra)</label><input id="a_t" value="${esc(a.t||'')}" placeholder="🔥 Promo de la semana…"><label for="a_c">Color de la barra</label><input id="a_c" type="color" value="${a.c||'#1c1c1c'}">
   <label for="m_t">Mensaje de mantenimiento</label><textarea id="m_t" rows="2" placeholder="Volvemos pronto.">${esc(SITE.maint||SITE.maintMessage||'')}</textarea>
   <div class="bar2"><button class="ok" style="flex:1" onclick="admSecSave()">Guardar</button></div>`)}
-function admSecSave(){SITE.hide=SEC.map(s=>s[0]).filter(k=>!$('#h_'+k).checked);SITE.ann={t:v('a_t').trim(),c:v('a_c')};SITE.maintMessage=v('m_t').trim()||'Volvemos pronto.';if(SITE.maint)SITE.maint=SITE.maintMessage;siteSave()}
+function admSecSave(){if(publishing)return;SITE.hide=SEC.map(s=>s[0]).filter(k=>!$('#h_'+k).checked);SITE.ann={t:v('a_t').trim(),c:v('a_c')};SITE.maintMessage=v('m_t').trim()||'Volvemos pronto.';if(SITE.maint)SITE.maint=SITE.maintMessage;siteSave()}
 const CF={pay:['💳 Pagos y contacto',[['WA','WhatsApp de pedidos (con código de país, sin +)'],['GROUP','Enlace del grupo de WhatsApp'],['TITULAR','Titular de la cuenta de pago'],['YAPE','Yape / Plin']],'QR','QR de pago',0],
   look:['🎨 Apariencia',[['@title','Título de la pestaña del navegador']],'LOGO','Logo',1],emp:['🏢 Empresa',[['RAZON','Razón social'],['RUC','RUC']],0,0,0]};
 function admUp(n,el){const f=el.files[0];if(f)admImg(f,'contain',d=>{ADM.up[n]=d;$('#pv_'+n).src=d})}
@@ -730,17 +771,22 @@ function admCfg(g){const [t,fl,up,ul,col]=CF[g],c=SITE.cfg,k=SITE.col;ADM.up={};
   ${up?`<label>${ul}</label><input type="file" accept="image/*" onchange="admUp('${up}',this)"><img id="pv_${up}" class="pv" style="max-width:110px"${c[up]?` src="${esc(c[up])}"`:''}>`:''}
   ${col?`<div class="g2"><div><label for="k_ac">Color principal</label><input id="k_ac" type="color" value="${k.ac||'#b3261e'}"></div><div><label for="k_ac2">Color secundario (hover)</label><input id="k_ac2" type="color" value="${k.ac2||'#8f1e18'}"></div></div>`:''}
   <div class="bar2"><button class="ok" style="flex:1" onclick="admCfgSave('${g}')">Guardar</button><button style="flex:1" onclick="admCfgReset('${g}')">Restablecer</button></div>`)}
-function admCfgSave(g){const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{const s=v('c_'+x).trim();if(x=='@title')SITE.title=s;else if(s)SITE.cfg[x]=s;else delete SITE.cfg[x]});
+function admCfgSave(g){if(publishing)return;const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{const s=v('c_'+x).trim();if(x=='@title')SITE.title=s;else if(s)SITE.cfg[x]=s;else delete SITE.cfg[x]});
   if(up&&ADM.up[up])SITE.cfg[up]=ADM.up[up];if(col)[['ac','#b3261e'],['ac2','#8f1e18']].forEach(([x,d])=>{const s=v('k_'+x);if(s&&s!=d)SITE.col[x]=s;else delete SITE.col[x]});siteSave()}
-function admCfgReset(g){const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{if(x=='@title')SITE.title='';else delete SITE.cfg[x]});if(up)delete SITE.cfg[up];if(col)SITE.col={};if(siteSave())admCfg(g)}
-function admSeg(){modal(`<h2>🔐 Seguridad</h2><p class="mu" style="font-size:.78rem">Cambia la clave de este panel. Se guarda en este navegador; no es seguridad real porque el panel es solo frontend.</p>
-  <label for="n1">Nueva clave (mín. 6 caracteres)</label><input id="n1" type="password" autocomplete="new-password"><label for="n2">Repite la clave</label><input id="n2" type="password" autocomplete="new-password">
-  <div class="bar2"><button class="ok" style="flex:1" onclick="admSegSave()">Cambiar clave</button><button style="flex:1" onclick="localStorage.removeItem('ks_apw');toast('Clave restablecida a la del código');admSeg()">Restablecer</button></div>`)}
-function admSegSave(){const a=v('n1');if(a.length<6)return toast('Mínimo 6 caracteres.');if(a!==v('n2'))return toast('Las claves no coinciden.');try{localStorage.setItem('ks_apw',a)}catch(e){return toast('No se pudo guardar.')}toast('Clave actualizada');admSeg()}
+async function admCfgReset(g){if(publishing)return;const [t,fl,up,ul,col]=CF[g];fl.forEach(([x])=>{if(x=='@title')SITE.title='';else delete SITE.cfg[x]});if(up)delete SITE.cfg[up];if(col)SITE.col={};if(await siteSave())admCfg(g)}
+async function admSeg(){
+  modal('<h2>🔐 Seguridad</h2><p id="admin-account" class="mu">Consultando cuenta…</p>');
+  const account=$('#admin-account');
+  try{
+    const {user}=await kenResult(adminClient.auth.getUser());
+    account.textContent='Cuenta de administrador · '+user.email;
+  }catch(e){account.textContent='No se pudo verificar la cuenta.'}
+}
 function admLegal(){modal(`<h2>📜 Textos legales</h2><p class="mu" style="font-size:.78rem">Vacío = texto original. Deja una línea en blanco entre párrafos y empieza una línea con <code># </code> para un subtítulo.</p>
   <label for="lt">Términos y garantía</label><textarea id="lt" rows="9">${esc(SITE.terms||'')}</textarea>
   <label for="lp">Política de privacidad</label><textarea id="lp" rows="9">${esc(SITE.priv||'')}</textarea>
-  <div class="bar2"><button class="ok" style="flex:1" onclick="SITE.terms=v('lt').trim();SITE.priv=v('lp').trim();siteSave()">Guardar textos</button></div>`)}
+  <div class="bar2"><button class="ok" style="flex:1" onclick="if(!publishing){SITE.terms=v('lt').trim();SITE.priv=v('lp').trim();siteSave()}">Guardar textos</button></div>`)}
 
-adminM();
+admLock();
+admStart();
 </script></body></html>
