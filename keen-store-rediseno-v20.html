@@ -1,11 +1,13 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="kenstore-data.js"></script>
 <script>
 const returnToStoreStart=performance.getEntriesByType('navigation')[0]?.type==='reload';
 if(returnToStoreStart){
   history.scrollRestoration='manual';
-  if(location.hash){
+  if(location.hash&&!new URLSearchParams(location.hash.slice(1)).has('access_token')){
     try{history.replaceState(history.state,'',location.href.split('#')[0])}catch(error){}
   }
 }
@@ -1158,7 +1160,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
   <div class="steps">
     <div class="step"><span class="n">1</span><b data-ed="k13">Elige</b><p data-ed="k14">Escoge tu producto del catálogo.</p></div>
     <div class="step"><span class="n">2</span><b data-ed="k15">Ingresa</b><p data-ed="k16">Inicia sesión o regístrate en un paso.</p></div>
-    <div class="step"><span class="n">3</span><b data-ed="k17">Paga</b><p data-ed="k18">Escanea el QR o usa Yape / Plin y sube tu voucher.</p></div>
+    <div class="step"><span class="n">3</span><b data-ed="k17">Paga</b><p data-ed="k18">Escanea el QR o usa Yape / Plin y envía tu voucher por WhatsApp.</p></div>
     <div class="step"><span class="n">4</span><b data-ed="k19">Recibe</b><p data-ed="k20">Te entregamos tu acceso por WhatsApp.</p></div>
   </div>
 </section>
@@ -1226,12 +1228,11 @@ const CFG={
   YAPE:'900 000 000',                     // Opcional: deja '' para ocultarlo
   QR:'',                                  // URL o base64 de tu QR de pago (vacío = marcador)
   LOGO:'',                                // URL o base64 de tu logo (vacío = "KS")
-  GOOGLE:false,                           // Reservado: el botón de Google ya se muestra; el acceso real se activa al conectar el backend (API.google)
-  DEBUG:false,                            // true = habilita KS.entregar / KS.rechazar en consola (solo para pruebas)
+
+
   RAZON:'Ken Store',                      // Razón social para el Libro de Reclamaciones
 };
-try{var SITE=JSON.parse(localStorage.getItem('ks_site')||'{}')}catch(e){var SITE={}}
-Object.assign(CFG,SITE.cfg||{});
+let SITE={};
 
 /* ===== ARTE PIXEL (sprites dibujados con texto: cada letra es un color) ===== */
 const PAL={K:'#1b1f3b',W:'#ffffff',R:'#ff4f8b',P:'#ffa8cb',B:'#3b82f6',b:'#8ec9ff',Y:'#ffc933',y:'#d99a0b',G:'#35c46a',g:'#1f8f4a',p:'#8b5cf6',S:'#f2b98f',N:'#5a3a22',O:'#ff8a3d',C:'#38d6e8',L:'#dfe3f0',D:'#3a3f5c'};
@@ -1435,121 +1436,40 @@ const qrPh='data:image/svg+xml;utf8,'+encodeURIComponent("<svg xmlns='http://www
 /* Teléfono peruano: acepta 9XXXXXXXX o 519XXXXXXXX. Devuelve '519XXXXXXXX' o '' si no es válido */
 function normPhone(raw){let d=String(raw).replace(/\D/g,'');if(d.length==11&&d.startsWith('51'))d=d.slice(2);return /^9\d{8}$/.test(d)?'51'+d:''}
 const okEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
-async function hp(p){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ks:'+p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return p}}
-/* N.º de orden: fecha + código aleatorio. Evita choques entre clientes hasta que el servidor genere el definitivo */
-function newOrderId(){const r=Math.random().toString(36).slice(2,8).toUpperCase();return `KEN-${r}`}
+function newOrderId(){return 'KEN-'+crypto.randomUUID().replaceAll('-','').slice(0,12).toUpperCase()}
 
-/* ===== CAPA DE DATOS (aquí conectarás tu backend después) =====
-   Hoy guarda en el navegador (localStorage). Cada función de API
-   se reemplaza luego por una llamada a tu servidor. */
-const mem={};
-const DB={
-  get(k,d){try{const x=localStorage.getItem('ks_'+k);return x?JSON.parse(x):d}catch(e){return k in mem?mem[k]:d}},
-  set(k,x){try{localStorage.setItem('ks_'+k,JSON.stringify(x))}catch(e){mem[k]=x}}
-};
-const S={cat:'all',sub:'',user:DB.get('session',null),pend:null,busy:false};
-// Guardar token de Google antes de que loadStore limpie el hash
-const _googleHash=(()=>{
-  if(location.hash&&location.hash.includes('access_token')){
-    const p=new URLSearchParams(location.hash.slice(1));
-    const token=p.get('access_token');
-    if(token)return token;
-  }
-  return null;
-})();
-const SUPA_URL='https://gnophtajdfjnnuqgengd.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdub3BodGFqZGZqbm51cWdlbmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwOTczODEsImV4cCI6MjExMDY3MzM4MX0.xBfTtENJdK7ck-KRMFl75mm2-DE0YqtaH3BvQmkF9AM';
-const sb=window._sb={};
-// Supabase fetch helper
-async function sbFetch(path,opts={}){
-  const res=await fetch(SUPA_URL+path,{
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json',...(opts.headers||{})},
-    ...opts
-  });
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw data.message||data.error_description||'Error';
-  return data;
+/* ===== DATOS DE SUPABASE ===== */
+const S={cat:'all',sub:'',user:null,pend:null,busy:false};
+const storeClient=kenClient();
+const storeSession=storeClient?.auth.getSession();
+function setStoreUser(user){
+  const email=user?.email;
+  S.user=email?{name:user.user_metadata?.full_name||user.user_metadata?.name||email.split('@')[0],email}:null;
+  nav();
 }
-// Auth helper
-async function sbAuth(path,body){
-  const res=await fetch(SUPA_URL+'/auth/v1/'+path,{
-    method:'POST',
-    headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw data.error_description||data.msg||'Error de autenticación';
-  return data;
-}
-
+storeClient?.auth.onAuthStateChange((_event,session)=>setStoreUser(session?.user));
 const API={
-  start(n){S.user={name:n.name,email:n.email};DB.set('session',S.user);return S.user},
-  async register(name,email,pass){
-    const data=await sbAuth('signup',{email,password:pass,data:{name}});
-    const token=data.access_token;
-    // Guardar en tabla users con token de auth
-    await fetch(SUPA_URL+'/rest/v1/users',{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({id:data.user?.id,name,email})
-    }).catch(()=>{});
-    return API.start({name,email});
+  mine:()=>kenResult(storeClient.from('orders').select('*').order('date',{ascending:false})),
+  async hasOrder(pid){
+    if(!S.user)return false;
+    const rows=await kenResult(storeClient.from('orders').select('id').eq('pid',pid).limit(1));
+    return rows.length>0;
   },
-  async login(email,pass){
-    const data=await sbAuth('token?grant_type=password',{email,password:pass});
-    const name=data.user?.user_metadata?.name||email.split('@')[0];
-    sb.token=data.access_token;
-    return API.start({name,email});
-  },
-  google(){throw'El acceso con Google estará disponible pronto.'},
-  logout(){S.user=null;sb.token=null;DB.set('session',null)},
-  orders:()=>DB.get('orders',[]),
-  mine:()=>API.orders().filter(o=>o.email==S.user?.email).reverse(),
-  hasOrder:(pid)=>API.orders().some(o=>o.email==S.user?.email&&o.pid==pid),
   async createOrder(d){
+    const {session}=await kenResult(storeClient.auth.getSession());
+    if(!session?.user?.email)throw new Error('Inicia sesión de nuevo.');
     const o={...d,id:newOrderId(),date:new Date().toISOString(),status:'pendiente',reason:''};
-    // Guardar en Supabase con await para detectar errores
-    try{
-      const token=window._sb?.token||SUPA_KEY;
-      const res=await fetch(SUPA_URL+'/rest/v1/orders',{
-        method:'POST',
-        headers:{
-          'apikey':SUPA_KEY,
-          'Authorization':'Bearer '+token,
-          'Content-Type':'application/json',
-          'Prefer':'return=minimal'
-        },
-        body:JSON.stringify({
-          id:o.id,pid:o.pid,pn:o.pn,cat:o.cat,sub:o.sub,price:o.price,
-          extra:o.extra,extra_label:o.extraLabel,wa:o.wa,voucher:o.voucher,
-          name:o.name,email:o.email,date:o.date,status:o.status,reason:o.reason
-        })
-      });
-      if(!res.ok){const e=await res.json().catch(()=>({}));console.error('Supabase order error:',e);}
-    }catch(e){console.error('Order fetch error:',e);}
-    // Guardar local como respaldo
-    localStorage.setItem('ks_orders',JSON.stringify([...API.orders(),o]));
+    const {extraLabel,...record}=o;
+    await kenResult(storeClient.from('orders').insert({
+      ...record,extra_label:extraLabel,customer_id:session.user.id,email:session.user.email
+    }));
     return o;
   },
-  claims:()=>DB.get('claims',[]),
   async createClaim(d){
-    const c={...d,id:'LR-'+newOrderId().slice(3),date:new Date().toISOString()};
-    try{
-      const token=window._sb?.token||SUPA_KEY;
-      await fetch(SUPA_URL+'/rest/v1/claims',{
-        method:'POST',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify(c)
-      });
-    }catch(e){}
-    localStorage.setItem('ks_claims',JSON.stringify([...API.claims(),c]));
+    const c={...d,id:'LR-'+newOrderId().slice(4),date:new Date().toISOString()};
+    await kenResult(storeClient.from('claims').insert(c));
     return c;
   }
-};
-/* Solo para pruebas: pon CFG.DEBUG=true y usa KS.entregar('ID') o KS.rechazar('ID','motivo') en la consola */
-if(CFG.DEBUG)window.KS={
-  entregar(id){DB.set('orders',API.orders().map(o=>o.id==id?{...o,status:'entregado'}:o));toast('Orden '+id+' entregada')},
-  rechazar(id,m){DB.set('orders',API.orders().map(o=>o.id==id?{...o,status:'rechazado',reason:m||''}:o));toast('Orden '+id+' rechazada')}
 };
 
 /* ===== PANTALLA PRINCIPAL ===== */
@@ -1568,7 +1488,11 @@ function renderUM(){
 }
 function toggleUM(e){e.stopPropagation();const o=$('#um').classList.toggle('open');$('#avb').setAttribute('aria-expanded',o)}
 function closeUM(){$('#um').classList.remove('open');const b=$('#avb');if(b)b.setAttribute('aria-expanded','false')}
-function signOut(){closeUM();API.logout();nav();toast('Sesión cerrada')}
+async function signOut(){
+  closeUM();
+  try{await kenResult(storeClient.auth.signOut({scope:'local'}));setStoreUser(null);toast('Sesión cerrada')}
+  catch(e){toast('No se pudo cerrar la sesión. Intenta de nuevo.')}
+}
 document.addEventListener('click',e=>{if(!e.target.closest('#um,#avb'))closeUM()});
 document.addEventListener('keydown',e=>{if(e.key=='Escape')closeUM()});
 const pixelShapes=['tv','pad','bolt','book','phone','cloud','gift','shield','gem','cap'];
@@ -1731,19 +1655,18 @@ function otpM(email){
     <p class="mu">1. Abre tu correo electrónico</p>
     <p class="mu">2. Busca el mensaje de <b>Ken Store</b></p>
     <p class="mu">3. Haz clic en el enlace para ingresar</p>
-    <p class="mu" style="margin-top:6px;font-size:.8rem">⏱ El enlace expira en 10 minutos</p>
+    <p class="mu" style="margin-top:6px;font-size:.8rem">⏱ Usa el enlace más reciente que recibas</p>
   </div>
   <p class="mu" style="font-size:.8rem">¿No llegó? Revisa tu carpeta de spam.</p>
   <button class="w" onclick="authEmailM()" style="margin-top:8px">← Reenviar enlace</button>`);
 }
-function afterAuth(){closeM();nav();toastCF();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}}
 async function doGoogle(){
   try{
-    const redirect=encodeURIComponent(location.origin);
-    location.href=SUPA_URL+'/auth/v1/authorize?provider=google&redirect_to='+redirect;
-  }catch(x){
-    if($('#ab'))$('#ab').showFormError('No se pudo conectar con Google. Intenta con tu correo.');
-  }
+    if(S.pend!=null)sessionStorage.setItem('ks_pending_product',String(S.pend));
+    await kenResult(storeClient.auth.signInWithOAuth({
+      provider:'google',options:{redirectTo:location.origin+'/'}
+    }));
+  }catch(e){toast('No se pudo abrir el acceso con Google. Intenta de nuevo.')}
 }
 async function doSendOTP(){
   const button=$('#ab');
@@ -1751,59 +1674,13 @@ async function doSendOTP(){
   const email=v('ae').trim().toLowerCase();
   S.busy=true;button.setSubmitting(true);
   try{
-    const res=await fetch(SUPA_URL+'/auth/v1/otp',{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email,create_user:true})
-    });
-    if(!res.ok){const d=await res.json().catch(()=>({}));throw d.error_description||d.msg||'Error';}
-    S.busy=false;
+    if(S.pend!=null)sessionStorage.setItem('ks_pending_product',String(S.pend));
+    await kenResult(storeClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+'/'}}));
     otpM(email);
-  }catch(x){
-    S.busy=false;button.setSubmitting(false);
-    button.showFormError('No se pudo enviar el código. Intenta de nuevo.');
-  }
-}
-async function doVerifyOTP(email){
-  const button=$('#otp-btn');
-  if(S.busy||!button.checkFields())return;
-  const token=v('otp').trim();
-  S.busy=true;button.setSubmitting(true);
-  try{
-    const res=await fetch(SUPA_URL+'/auth/v1/verify',{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({email,token,type:'magiclink'})
-    });
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok){
-      // Intentar también con type email
-      const res2=await fetch(SUPA_URL+'/auth/v1/verify',{
-        method:'POST',
-        headers:{'apikey':SUPA_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({email,token,type:'email'})
-      });
-      const data2=await res2.json().catch(()=>({}));
-      if(!res2.ok)throw data2.error_description||data2.msg||'Código incorrecto';
-      Object.assign(data,data2);
-    }
-    sb.token=data.access_token;
-    const name=data.user?.user_metadata?.name||email.split('@')[0];
-    // Guardar en tabla users
-    if(data.access_token){
-      fetch(SUPA_URL+'/rest/v1/users',{
-        method:'POST',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+data.access_token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-        body:JSON.stringify({id:data.user?.id,name,email})
-      }).catch(()=>{});
-    }
-    API.start({name,email});
-    S.busy=false;
-    afterAuth();
-  }catch(x){
-    S.busy=false;button.setSubmitting(false);
-    button.showFormError(typeof x==='string'?x:'Código incorrecto. Intenta de nuevo.');
-  }
+  }catch(e){
+    button.setSubmitting(false);
+    button.showFormError('No se pudo enviar el enlace. Intenta de nuevo.');
+  }finally{S.busy=false}
 }
 
 /* --- Flujo de compra --- */
@@ -1915,10 +1792,13 @@ function buy(id){
   playJumpSound();
   if(!S.user){S.pend=id;authM('login',true)}else proceed(id);
 }
-function proceed(id){const p=prod(id);
+async function proceed(id){
+  if(!await publishedCatalog)return toast('El catálogo aún no está disponible para pedidos. Intenta de nuevo.');
+  const p=prod(id);
   if(!p||p.st===0)return toast('Este producto está agotado.');
   if(p.p===0){ // producto gratis: sin pago
-    if(API.hasOrder(id))return toast('Ya reclamaste este regalo.');
+    try{if(await API.hasOrder(id))return toast('Ya reclamaste este regalo.')}
+    catch(e){return toast('No se pudieron consultar tus pedidos. Intenta de nuevo.')}
     confirmM(id)}else payM(id)}
 
 async function savePaymentQr(event,link){
@@ -2016,7 +1896,7 @@ async function send(id){
   S.busy=true;button.setSubmitting(true);
   let o;
   try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:f?f.name:'',name:S.user.name,email:S.user.email})}
-  catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo guardar el pedido en este navegador. Inténtalo de nuevo.')}
+  catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Revisa tu sesión e inténtalo de nuevo.')}
   S.busy=false;doneM(o);
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
@@ -2040,19 +1920,22 @@ const stLbl=o=>({
   aceptado:'🟢 Aceptado',en_proceso:'🟠 En preparación',entregado:'🟢 Entregado / Completado',rechazado:'🔴 Rechazado'
 })[o.status]||'🟡 Pendiente de verificación';
 function supLink(o){
-  const t=`Hola soporte de Ken Store, soy el usuario ${S.user.name} y necesito ayuda con mi compra:\n- Orden: ${o.id}\n- Producto: ${o.pn}\n- Fecha: ${fdate(o.date)}\n- Estado: ${stLbl(o).slice(2)}`;
+  const t=`Hola soporte de Ken Store, soy el usuario ${o.name} y necesito ayuda con mi compra:\n- Orden: ${o.id}\n- Producto: ${o.pn}\n- Fecha: ${fdate(o.date)}\n- Estado: ${stLbl(o).slice(2)}`;
   return 'https://wa.me/'+CFG.WA+'?text='+encodeURIComponent(t);
 }
-function mineM(){
-  const L=API.mine();
-  modal(`<h2>🛍️ Mis Compras</h2>`+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${p.img||''}" alt=""></div><div class="bd">
+async function mineM(){
+  modal('<h2>🛍️ Mis Compras</h2><p id="purchase-loading">Cargando tus pedidos…</p>','big purchases');
+  const loading=$('#purchase-loading');
+  let L;
+  try{L=await API.mine()}
+  catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar tus compras. Intenta de nuevo.';return}
+  if(!loading.isConnected)return;
+  modal(`<h2>🛍️ Mis Compras</h2>`+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
    <b>${esc(o.pn)}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
-   <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extraLabel)}: ${esc(o.extra)}</span>`:''}
+   <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extra_label)}: ${esc(o.extra)}</span>`:''}
    <span class="st">${stLbl(o)}</span>${o.status=='rechazado'&&o.reason?`<span class="mu">Motivo: ${esc(o.reason)}</span>`:''}
    <a class="btn purchase-support" target="_blank" rel="noopener" href="${supLink(o)}">Soporte por WhatsApp</a></div></div>`}).join(''):'<p class="mu">Aún no tienes compras. Elige un producto del catálogo para empezar.</p>'),'big purchases');
 }
-window.addEventListener('storage',event=>{if((event.key==='ks_orders'||event.key===null)&&document.querySelector('.md.purchases'))mineM()});
-
 /* --- Libro de Reclamaciones (versión básica, revisa los requisitos vigentes de Indecopi) --- */
 function claimM(){
   modal(`<h2>📖 Libro de Reclamaciones</h2>
@@ -2061,9 +1944,9 @@ function claimM(){
   <label for="rd">DNI / CE</label><input id="rd" inputmode="numeric" maxlength="12">
   <label for="rw">WhatsApp o teléfono</label><p class="form-rule" id="rw-rule">9 dígitos que empiecen con 9. Puedes incluir el +51.</p><input id="rw" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="rw-rule">
   <label for="re">Correo electrónico</label><input id="re" type="email" inputmode="email" value="${esc(S.user?S.user.email:'')}" autocomplete="email">
-  <label for="ro">N.º de orden (opcional)</label><input id="ro" placeholder="KS-...">
+  <label for="ro">N.º de orden (opcional)</label><input id="ro" placeholder="KEN-...">
   <label for="rt">Tipo</label><select id="rt"><option value="Reclamo">Reclamo (disconformidad con el producto o servicio)</option><option value="Queja">Queja (malestar con la atención)</option></select>
-  <label for="rx">Detalle</label><p class="form-rule" id="rx-rule">Escribe al menos 10 caracteres.</p><textarea id="rx" aria-describedby="rx-rule" placeholder="Cuéntanos qué pasó y qué solución esperas"></textarea>
+  <label for="rx">Detalle</label><p class="form-rule" id="rx-rule">Escribe al menos 10 caracteres.</p><textarea id="rx" maxlength="5000" aria-describedby="rx-rule" placeholder="Cuéntanos qué pasó y qué solución esperas"></textarea>
   <button class="ok w" id="claim-submit" onclick="doClaim()">Enviar</button>`,'big');
   guideForm('claim-submit',[
     ['rn','nombre completo',value=>value.trim()?'':'Escribe tu nombre completo.'],
@@ -2072,16 +1955,19 @@ function claimM(){
     ['rx','detalle',value=>value.trim().length>=10?'':'Describe tu caso con al menos 10 caracteres.']
   ]);
 }
-function doClaim(){
-  if(!$('#claim-submit').checkFields())return;
+async function doClaim(){
+  const button=$('#claim-submit');
+  if(S.busy||!button.checkFields())return;
+  S.busy=true;button.setSubmitting(true);
   const n=v('rn').trim(),d=v('rd').trim(),w=normPhone(v('rw')),e=v('re').trim().toLowerCase(),x=v('rx').trim(),t=v('rt'),o=v('ro').trim();
   let c;
   try {
-    c=API.createClaim({name:n,doc:d,wa:w,email:e,type:t,order:o,detail:x});
+    c=await API.createClaim({name:n,doc:d,wa:w,email:e,type:t,order:o,detail:x});
   } catch {
-    toast('No se pudo guardar el reclamo. Vuelve a intentarlo.');
+    button.setSubmitting(false);
+    button.showFormError('No se pudo guardar el reclamo. Vuelve a intentarlo.');
     return;
-  }
+  }finally{S.busy=false}
   modal(`<div class="big-ok"><h2>Reclamo registrado ✅</h2><p class="mu">Código</p><div class="oid">${c.id}</div>
   <p>Guarda este código para consultar tu reclamo.</p>
   <button class="w" onclick="playPipeSound();closeM()">Cerrar</button></div>`);
@@ -2116,23 +2002,22 @@ function infoM(id){
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
 $('#gp').href=CFG.GROUP; // botón del grupo de WhatsApp junto a "Ver catálogo"
 
-/* ===== CATÁLOGO PUBLICADO =====
-   Lee los productos guardados desde el panel de administración (web aparte: keen-store-admin.html).
-   Ambas páginas deben estar en el mismo dominio/carpeta para compartir los datos. Si no hay datos guardados, usa el catálogo de arriba. */
-const pl=p=>[...(p.t?[p.t]:[]),...(p.pills||[])];   // el tipo aparece como primera etiqueta
-const originalProducts=P.slice();
-(function(){const sp=DB.get('products',null),sc=DB.get('cats',null),ss=DB.get('subs',null);
-  if(Array.isArray(sp)){P.length=0;sp.forEach(x=>P.push(x))}
-  if(Array.isArray(sc)&&sc.length){CATS.length=0;sc.forEach(x=>CATS.push(x))}
-  if(ss&&typeof ss=='object'){Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,ss)}})();
-window.addEventListener('storage',event=>{
-  if(event.key!=='ks_products'&&event.key!==null)return;
-  const saved=DB.get('products',originalProducts);
-  if(!Array.isArray(saved))return;
-  P.length=0;
-  saved.forEach(product=>P.push(product));
-  grid();
-});
+const pl=p=>[...(p.t?[p.t]:[]),...(p.pills||[])];
+async function loadPublishedCatalog(){
+  if(!storeClient)return;
+  const data=await kenReadCatalog(storeClient);
+  if(!data)return false;
+  P.splice(0,P.length,...data.products);
+  CATS.splice(0,CATS.length,...data.categories);
+  Object.keys(SUBS).forEach(k=>delete SUBS[k]);
+  Object.assign(SUBS,data.subcategories);
+  SITE=data.site;
+  Object.assign(CFG,SITE.cfg||{});
+  $('#gp').href=CFG.GROUP;
+  applyStoreAppearance();
+  tabs();grid();showMaintenance(SITE.maint);
+  return true;
+}
 
 /* ===== INICIO: arte, pantalla de carga con precarga real de imágenes ===== */
 (function art(){
@@ -2180,10 +2065,22 @@ siteMenu.addEventListener('click',e=>{
 });
 /* Personalización guardada desde keen-store-admin.html */
 const rt=t=>t.split(/\n\s*\n/).map(b=>/^#\s/.test(b)?`<h3>${esc(b.slice(2))}</h3>`:`<p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('');
-(function(){const fm=t=>esc(t).replace(/\*([^*]+)\*/g,'<span>$1</span>').replace(/\n/g,'<br>');
+function applyStoreAppearance(){const fm=t=>esc(t).replace(/\*([^*]+)\*/g,'<span>$1</span>').replace(/\n/g,'<br>');
   document.querySelectorAll('[data-ed]').forEach(e=>{const t=(SITE.t||{})[e.dataset.ed];if(t)e.innerHTML=fm(e.dataset.ed==='k10'?t.replace(/^💬\s*/,''):t)});
   const k=SITE.col||{};['ac','ac2'].forEach(x=>{if(k[x])document.documentElement.style.setProperty('--'+x,k[x])});
-  if(SITE.title)document.title=SITE.title})();
+  if(SITE.title)document.title=SITE.title;
+  if(CFG.LOGO){
+    const logo=document.createElement('img');
+    logo.src=CFG.LOGO;logo.alt='Ken Store';logo.style.cssText='max-width:52px;max-height:40px;object-fit:contain';
+    $('header .brand').insertBefore(logo,$('header .brand .brand-wordmark'));
+  }
+  const hidden=SITE.hide||[];
+  const sections={hero:'.hero',seals:'.seals',steps:'.sec:has(.steps)',trust:'.trust',faq:'#preguntas',band:'.band',gp:'#gp'};
+  for(const [key,selector] of Object.entries(sections))if(hidden.includes(key)){
+    const section=$(selector);if(section)section.style.display='none';
+  }
+  if(SITE.ann?.t){const banner=document.createElement('div');banner.textContent=SITE.ann.t;banner.style.cssText='text-align:center;padding:.5rem;color:white';banner.style.backgroundColor=SITE.ann.c||'#1c1c1c';document.body.prepend(banner)}
+}
 nav();tabs();grid();
 const serviceDragon=$('#ldd').cloneNode(true);
 serviceDragon.removeAttribute('id');
@@ -2200,14 +2097,8 @@ function showMaintenance(message){
   if(!maintenanceNotice.open)maintenanceNotice.showModal();
 }
 showMaintenance(SITE.maint);
-window.addEventListener('storage',event=>{
-  if(event.key==='ks_site'||event.key===null)showMaintenance(DB.get('site',{})?.maint);
-});
+const publishedCatalog=loadPublishedCatalog().catch(()=>toast('No se pudo actualizar el catálogo.'));
 (function loadStore(){
-  // Si viene de Google OAuth, limpiar el hash para que la carga no se bloquee
-  if(location.hash&&location.hash.includes('access_token')){
-    history.replaceState(null,'',location.pathname+location.search);
-  }
   const loader=$('#ld'),track=loader.querySelector('.bw'),percent=$('#pc');
   const assets=[$('#inicio .dragon .dr'),...Array.from(document.querySelectorAll('#grid .card .im img')).slice(0,4)];
   let finished=0,ready=false,shown=0,lastFrame;
@@ -2296,40 +2187,13 @@ window.addEventListener('storage',event=>{
         loader.classList.add('is-leaving');
         setTimeout(()=>{
           loader.remove();
-          // Procesar callback de Google/Magic Link si hay token guardado
-          if(_googleHash){
-            // Decodificar JWT sin fetch para respuesta inmediata
-            try{
-              const payload=JSON.parse(atob(_googleHash.split('.')[1]));
-              const email=payload.email;
-              const name=payload.user_metadata?.full_name||payload.user_metadata?.name||email.split('@')[0];
-              if(email){
-                window._sb.token=_googleHash;
-                DB.set('session',{name,email});
-                S.user={name,email};
-                nav();
-                toastCF();
-                // Guardar en tabla users en segundo plano
-                fetch(SUPA_URL+'/rest/v1/users',{
-                  method:'POST',
-                  headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-                  body:JSON.stringify({id:payload.sub,name,email})
-                }).catch(()=>{});
-              }
-            }catch(e){
-              // Fallback: fetch si el JWT no se puede decodificar
-              fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash}})
-                .then(r=>r.json()).then(user=>{
-                  if(user?.email){
-                    window._sb.token=_googleHash;
-                    const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
-                    DB.set('session',{name,email:user.email});
-                    S.user={name,email:user.email};
-                    nav();toastCF();
-                  }
-                }).catch(()=>{});
-            }
-          }
+          Promise.all([storeSession,publishedCatalog]).then(()=>{
+            const pending=sessionStorage.getItem('ks_pending_product');
+            if(!S.user||!pending)return;
+            sessionStorage.removeItem('ks_pending_product');
+            toastCF();
+            proceed(Number(pending));
+          }).catch(()=>{});
         },220);
       },120);
     },100);
