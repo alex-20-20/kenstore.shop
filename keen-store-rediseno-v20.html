@@ -2276,24 +2276,39 @@ window.addEventListener('storage',event=>{
         loader.classList.add('is-leaving');
         setTimeout(()=>{
           loader.remove();
-          // Procesar callback de Google si hay token guardado
+          // Procesar callback de Google/Magic Link si hay token guardado
           if(_googleHash){
-            fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash}})
-              .then(r=>r.json()).then(user=>{
-                if(user?.email){
-                  window._sb.token=_googleHash;
-                  const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
-                  fetch(SUPA_URL+'/rest/v1/users',{
-                    method:'POST',
-                    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-                    body:JSON.stringify({id:user.id,name,email:user.email})
-                  }).catch(()=>{});
-                  DB.set('session',{name,email:user.email});
-                  S.user={name,email:user.email};
-                  nav();
-                  toastCF();
-                }
-              }).catch(()=>{});
+            // Decodificar JWT sin fetch para respuesta inmediata
+            try{
+              const payload=JSON.parse(atob(_googleHash.split('.')[1]));
+              const email=payload.email;
+              const name=payload.user_metadata?.full_name||payload.user_metadata?.name||email.split('@')[0];
+              if(email){
+                window._sb.token=_googleHash;
+                DB.set('session',{name,email});
+                S.user={name,email};
+                nav();
+                toastCF();
+                // Guardar en tabla users en segundo plano
+                fetch(SUPA_URL+'/rest/v1/users',{
+                  method:'POST',
+                  headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+                  body:JSON.stringify({id:payload.sub,name,email})
+                }).catch(()=>{});
+              }
+            }catch(e){
+              // Fallback: fetch si el JWT no se puede decodificar
+              fetch(SUPA_URL+'/auth/v1/user',{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+_googleHash}})
+                .then(r=>r.json()).then(user=>{
+                  if(user?.email){
+                    window._sb.token=_googleHash;
+                    const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email.split('@')[0];
+                    DB.set('session',{name,email:user.email});
+                    S.user={name,email:user.email};
+                    nav();toastCF();
+                  }
+                }).catch(()=>{});
+            }
           }
         },220);
       },120);
