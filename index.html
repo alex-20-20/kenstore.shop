@@ -1477,8 +1477,13 @@ const API={
   start(n){S.user={name:n.name,email:n.email};DB.set('session',S.user);return S.user},
   async register(name,email,pass){
     const data=await sbAuth('signup',{email,password:pass,data:{name}});
-    // Guardar en tabla users
-    await sbFetch('/rest/v1/users',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({id:data.user?.id,name,email})}).catch(()=>{});
+    const token=data.access_token;
+    // Guardar en tabla users con token de auth
+    await fetch(SUPA_URL+'/rest/v1/users',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({id:data.user?.id,name,email})
+    }).catch(()=>{});
     return API.start({name,email});
   },
   async login(email,pass){
