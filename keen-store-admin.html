@@ -20,7 +20,14 @@ async function sbGetOrders(){
   try{return await sbFetch('/rest/v1/orders?order=date.desc&select=*')}catch(e){return null}
 }
 async function sbUpdateOrder(id,status,reason=''){
-  try{await sbFetch('/rest/v1/orders?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({status,reason})})}catch(e){}
+  try{
+    const r=await fetch('/api/update-order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id,status,reason})
+    });
+    if(!r.ok)console.error('Update order error:',await r.json().catch(()=>({})));
+  }catch(e){console.error('Update order error:',e);}
 }
 async function sbGetClaims(){
   try{return await sbFetch('/rest/v1/claims?order=date.desc&select=*')}catch(e){return null}
