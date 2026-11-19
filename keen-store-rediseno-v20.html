@@ -1531,14 +1531,21 @@ function drawCategoryPixel(emoji){
 }
 function categoryPixelArtwork(shape){return spr(shape)}
 function chosenCategoryPixel(value){const i=categoryPixelIndex(value);return i<0?"":categoryPixelImage(i)}
+function hiddenCatalogEntry(category,sub){
+  const entries=SITE.hiddenCatalog;
+  return Array.isArray(entries)&&entries.some(entry=>entry?.[0]===category&&entry[1]===sub);
+}
+function visibleProduct(product){
+  return Boolean(product&&!hiddenCatalogEntry(product.c)&&!hiddenCatalogEntry(product.c,product.s));
+}
 function tabs(){
-  $('#tabs').innerHTML=CATS.map(([k,l,emoji,iconKey=k])=>`<button data-k="${esc(k)}" class="${S.cat==k?'on':''}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`).join('');
-  const sb=SUBS[S.cat];
-  $('#subs').style.display=sb?'flex':'none';
-  $('#subs').innerHTML=sb?['',...sb].map(s=>`<button data-s="${esc(s)}" class="${S.sub==s?'on':''}">${esc(s||'Todos')}</button>`).join(''):'';
+  $('#tabs').innerHTML=CATS.filter(([key])=>key==='all'||!hiddenCatalogEntry(key)).map(([k,l,emoji,iconKey=k])=>`<button data-k="${esc(k)}" class="${S.cat==k?'on':''}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`).join('');
+  const sb=(SUBS[S.cat]||[]).filter(sub=>!hiddenCatalogEntry(S.cat,sub));
+  $('#subs').style.display=sb.length?'flex':'none';
+  $('#subs').innerHTML=sb.length?['',...sb].map(s=>`<button data-s="${esc(s)}" class="${S.sub==s?'on':''}">${esc(s||'Todos')}</button>`).join(''):'';
 }
 function grid(){
-  const L=P.filter(p=>(S.cat=='all'||p.c==S.cat)&&(!S.sub||p.s==S.sub));
+  const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||p.s==S.sub));
   $('#grid').innerHTML=L.map(p=>{
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=p.po&&p.po>p.p;
     const stock=p.st==null?'<span class="stk">Disponible</span>':out?'<span class="stk out">Agotado</span>':low?`<span class="stk low">Quedan ${p.st}</span>`:`<span class="stk">Stock ${p.st}</span>`;
@@ -1755,14 +1762,14 @@ function playStarSound(){_play(ctx=>{
 function buy(id){
   if(_mopen)return;
   const p=prod(id);
-  if(!p||p.st===0)return toast('Este producto está agotado.');
+  if(!visibleProduct(p)||p.st===0)return toast('Este producto no está disponible.');
   playJumpSound();
   if(!S.user){S.pend=id;authM(true)}else proceed(id);
 }
 async function proceed(id){
   if(!await publishedCatalog)return toast('El catálogo aún no está disponible para pedidos. Intenta de nuevo.');
   const p=prod(id);
-  if(!p||p.st===0)return toast('Este producto está agotado.');
+  if(!visibleProduct(p)||p.st===0)return toast('Este producto no está disponible.');
   if(p.p===0){ // producto gratis: sin pago
     try{if(await API.hasOrder(id))return toast('Ya reclamaste este regalo.')}
     catch(e){return toast('No se pudieron consultar tus pedidos. Intenta de nuevo.')}
@@ -1988,6 +1995,8 @@ async function loadPublishedCatalog(){
   Object.keys(SUBS).forEach(k=>delete SUBS[k]);
   Object.assign(SUBS,data.subcategories);
   SITE=data.site;
+  if(hiddenCatalogEntry(S.cat)){S.cat='all';S.sub=''}
+  if(hiddenCatalogEntry(S.cat,S.sub))S.sub='';
   Object.assign(CFG,SITE.cfg||{});
   updateWhatsAppGroup();
   applyStoreAppearance();
@@ -2011,10 +2020,10 @@ siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
   const row=(href,icon,label,extra='',count=null,emoji='')=>`<a href="${href}" ${extra}><span class="site-menu-icon" aria-hidden="true">${chosenCategoryPixel(emoji)||`<img src="${spr(...icon)}" alt="">`}</span><span>${esc(label)}</span>${count==null?'':`<span class="site-menu-count">${count}</span>`}<span class="site-menu-arrow" aria-hidden="true">›</span></a>`;
   const group=(label,rows)=>`<section class="site-menu-group"><h3>${label}</h3><div class="site-menu-list">${rows}</div></section>`;
-  const categories=[...CATS.filter(([k])=>k!=='all'),['all','Todo el catálogo']];
+  const categories=[...CATS.filter(([k])=>k!=='all'&&!hiddenCatalogEntry(k)),['all','Todo el catálogo']];
   $('#site-menu-links').innerHTML=group('General',row('#inicio',['bolt'],'Inicio'))+
     group('Catálogo',categories.map(([k,l,emoji,iconKey=k])=>row('#catalogo',Object.hasOwn(CICON,iconKey)?CICON[iconKey]:[k==='all'?'book':'gem'],l,
-      `data-category="${esc(k)}"${S.cat===k?' aria-current="true"':''}`,k==='all'?P.length:P.filter(p=>p.c===k).length,emoji)).join(''))+
+      `data-category="${esc(k)}"${S.cat===k?' aria-current="true"':''}`,P.filter(p=>visibleProduct(p)&&(k==='all'||p.c===k)).length,emoji)).join(''))+
     group('Ayuda',row('#preguntas',['cloud'],'Preguntas frecuentes')+row('#pie-tienda',['shield'],'Términos y garantía'));
   $('#site-menu-logout').hidden=!S.user;
   siteMenu.showModal();

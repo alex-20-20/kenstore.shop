@@ -180,6 +180,21 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm .g2>*{min-width:0}
 }
 @media(max-width:360px){.brand .brand-text{font-size:.78rem}.adm .stat{grid-template-columns:repeat(2,minmax(0,1fr))}}
+ .catalog-admin-card{padding:clamp(12px,2vw,20px);margin:14px 0}
+.catalog-card-head,.catalog-card-actions,.catalog-sub-row,.catalog-sub-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.catalog-card-head,.catalog-sub-row{justify-content:space-between}
+.catalog-card-actions{margin:10px 0}
+.catalog-card-head p{font-size:.8rem;margin-top:3px}
+.catalog-status{display:inline-block;border-radius:100px;padding:3px 9px;background:#e1f4e7;color:#225a39;font-size:.72rem;font-weight:700}
+.catalog-status.off{background:#f0ede7;color:#62594f}
+.catalog-sub-row{border-top:1px solid var(--stroke);padding:8px 0!important}
+.catalog-sub-main{flex:1;min-width:min(100%,155px)}
+.catalog-sub-main strong{overflow-wrap:anywhere}
+.catalog-toggle[aria-pressed=true]{background:#f5f8f4;color:#225a39}
+.catalog-toggle[aria-pressed=false]{background:#fff5df;color:#724a0d}
+.catalog-card-actions button,.catalog-sub-row button{min-height:40px}
+.catalog-add-sub{border-top:1px solid var(--stroke);padding-top:7px}
+@media(max-width:520px){.catalog-card-actions button,.catalog-sub-row button{min-height:44px}.catalog-sub-row{row-gap:6px}.catalog-sub-row .catalog-sub-main{flex-basis:100%}}
 </style></head>
 <body>
 <header>
@@ -621,6 +636,23 @@ function admCategoryIcon(category,emoji){
   const icon=Object.hasOwn(categoryIcons,category)?categoryIcons[category]:categoryIcons.default;
   return `<img src="${icon}" alt="" width="22" height="22">`;
 }
+function catalogHidden(category,sub){
+  return (Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).some(entry=>entry?.[0]===category&&entry[1]===sub);
+}
+function admCatalogToggle(i,j){
+  const category=CATS[i]?.[0];
+  if(!category||category==='all')return;
+  const sub=j===undefined?undefined:admSubs(category)[j];
+  if(j!==undefined&&!sub)return;
+  const hidden=catalogHidden(category,sub);
+  const label=sub?'Subcategoría':'Categoría';
+  admCatalogChange(()=>{
+    const entries=Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[];
+    SITE.hiddenCatalog=hidden
+      ? entries.filter(entry=>entry[0]!==category||entry[1]!==sub)
+      : [...entries,sub===undefined?[category]:[category,sub]];
+  },label+(hidden?' activada':' desactivada'),true);
+}
 function admCats(){
   ADM.tab='cat';
   const cs=CATS.filter(c=>c[0]!='all');
@@ -631,13 +663,17 @@ function admCats(){
   <div class="bar2"><button class="pri" onclick="admCatAdd()">Agregar categoría</button></div></fieldset>
   ${cs.map(entry=>{
     const [c,,emoji,iconKey=c]=entry,i=CATS.indexOf(entry),subs=admSubs(c);
-    const products=P.filter(p=>p.c===c);
-    return `<section aria-labelledby="cat_${i}" style="border:2px solid;padding:12px;margin:14px 0">
-      <h3 class="adm-cat-title" id="cat_${i}">${admCategoryIcon(iconKey,emoji)}${esc(c)}</h3>
-      <p class="mu">${products.length} producto${products.length===1?'':'s'}</p>
-      <div class="bar2"><button type="button" onclick="admCatEdit(${i})">Editar categoría</button><button type="button" class="del" onclick="admCatDel(${i})">Eliminar categoría</button></div>
-      ${subs.length?`<ul class="adm-sub-list" aria-label="Subcategorías de ${esc(c)}">${subs.map((s,j)=>`<li><span>${esc(s)}</span><button type="button" aria-label="Editar ${esc(s)}" onclick="admSubEdit(${i},${j})">Editar</button><button type="button" class="del" aria-label="Eliminar ${esc(s)}" onclick="admSubDel(${i},${j})">Eliminar</button></li>`).join('')}</ul>`:'<p class="mu">Sin subcategorías.</p>'}
-      <form onsubmit="admSubAdd(${i});return false">
+    const products=P.filter(p=>p.c===c), hidden=catalogHidden(c);
+    return `<section class="catalog-admin-card" aria-labelledby="cat_${i}">
+      <div class="catalog-card-head"><div><h3 class="adm-cat-title" id="cat_${i}">${admCategoryIcon(iconKey,emoji)}${esc(c)}</h3>
+      <p class="mu">${products.length} producto${products.length===1?'':'s'}</p></div>
+      <span class="catalog-status${hidden?' off':''}">${hidden?'Desactivada':'Activa'}</span></div>
+      <div class="catalog-card-actions"><button type="button" class="catalog-toggle" aria-label="${hidden?'Activar':'Desactivar'} categoría ${esc(c)}" aria-pressed="${!hidden}" onclick="admCatalogToggle(${i})">${hidden?'Activar':'Desactivar'}</button><button type="button" onclick="admCatEdit(${i})">Editar categoría</button><button type="button" class="del" onclick="admCatDel(${i})">Eliminar categoría</button></div>
+      ${subs.length?`<ul class="adm-sub-list" aria-label="Subcategorías de ${esc(c)}">${subs.map((sub,j)=>{
+        const ownHidden=catalogHidden(c,sub);
+        return `<li class="catalog-sub-row"><div class="catalog-sub-main"><strong>${esc(sub)}</strong><span class="catalog-status${hidden||ownHidden?' off':''}">${ownHidden?'Desactivada':hidden?'Oculta por categoría':'Activa'}</span></div><button type="button" class="catalog-toggle" aria-label="${ownHidden?'Activar':'Desactivar'} subcategoría ${esc(c)} · ${esc(sub)}" aria-pressed="${!ownHidden}" onclick="admCatalogToggle(${i},${j})">${ownHidden?'Activar':'Desactivar'}</button><button type="button" aria-label="Editar ${esc(sub)}" onclick="admSubEdit(${i},${j})">Editar</button><button type="button" class="del" aria-label="Eliminar ${esc(sub)}" onclick="admSubDel(${i},${j})">Eliminar</button></li>`;
+      }).join('')}</ul>`:'<p class="mu">Sin subcategorías.</p>'}
+      <form class="catalog-add-sub" onsubmit="admSubAdd(${i});return false">
         <label for="ns_${i}">Nueva subcategoría</label>
         <input id="ns_${i}" maxlength="40" placeholder="Ej: Spotify" required>
         <div class="bar2"><button type="submit" class="pri">Agregar subcategoría</button></div>
@@ -669,11 +705,16 @@ async function admSubAdd(i){if(publishing)return;
   $('#ns_'+i).focus();
   toast('Subcategoría agregada');
 }
-async function admCatalogChange(update,message){if(publishing)return;
-  const snapshot=JSON.parse(JSON.stringify([P,CATS,SUBS]));
+async function admCatalogChange(update,message,keepPosition=false){
+  if(publishing)return;
+  const snapshot=structuredClone([P,CATS,SUBS,SITE.hiddenCatalog||[]]);
+  const scroll=window.scrollY;
   update();
-  if(!await admSave()){admApply(...snapshot);return}
-  admCats();
+  if(!await admSave()){admApply(...snapshot.slice(0,3));SITE.hiddenCatalog=snapshot[3];return}
+  if(ADM.tab==='cat'){
+    admCats();
+    if(keepPosition)window.scrollTo(0,scroll);
+  }
   toast(message);
 }
 function admCatEdit(i){
@@ -691,6 +732,7 @@ function admCatEditSave(i){
   admCatalogChange(()=>{
     CATS[i]=[name,name,v('cat-icon'),iconKey];
     if(name===category)return;
+    SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry[0]===category?[name,...entry.slice(1)]:entry);
     if(Object.hasOwn(SUBS,category)){SUBS[name]=SUBS[category];delete SUBS[category]}
     P.filter(p=>p.c===category).forEach(p=>{p.c=name});
   },'Categoría actualizada');
@@ -710,6 +752,7 @@ function admCatDelSave(i){
     products.forEach(p=>{p.c=destination;p.s=''});
     CATS.splice(i,1);
     delete SUBS[category];
+    SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category);
   },'Categoría eliminada');
 }
 function admSubEdit(i,j){
@@ -724,6 +767,7 @@ function admSubEditSave(i,j){
   if(subs.some((item,k)=>k!==j&&item.toLowerCase()===name.toLowerCase()))return toast('Esa subcategoría ya existe en esta categoría.');
   admCatalogChange(()=>{
     SUBS[category]=subs.map(item=>item===sub?name:item);
+    SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry?.[0]===category&&entry[1]===sub?[category,name]:entry);
     P.filter(p=>p.c===category&&p.s===sub).forEach(p=>{p.s=name});
   },'Subcategoría actualizada');
 }
@@ -736,6 +780,7 @@ function admSubDelSave(i,j){
   const [category]=CATS[i],subs=admSubs(category),sub=subs[j];
   admCatalogChange(()=>{
     SUBS[category]=subs.filter(item=>item!==sub);
+    SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category||entry[1]!==sub);
     P.filter(p=>p.c===category&&p.s===sub).forEach(p=>{p.s=''});
   },'Subcategoría eliminada');
 }
@@ -768,8 +813,10 @@ async function admImport(){
 async function admReset(){
   if(publishing)return;
   const previous=structuredClone([P,CATS,SUBS]);
+  const previousVisibility=SITE.hiddenCatalog;
+  SITE.hiddenCatalog=[];
   admApply(structuredClone(ORIG.P),structuredClone(ORIG.C),structuredClone(ORIG.S));
-  if(!await admSave()){admApply(...previous);return}
+  if(!await admSave()){admApply(...previous);SITE.hiddenCatalog=previousVisibility;return}
   S.cat='all';S.sub='';toast('Catálogo original restaurado');admList();
 }
 
