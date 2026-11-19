@@ -194,6 +194,13 @@ footer p{margin-top:12px;color:#b9bedf;font-size:.82rem}
 .errm{color:#d12f3b;font-size:.8rem;margin-top:4px;min-height:1em}
 .ter h3{font-family:var(--px);font-size:1rem;margin-top:12px}.ter p,.ter li{font-size:.85rem;color:var(--mu);margin-top:4px}.ter ul{padding-left:18px}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ln);color:#fff;border:3px solid #fff;padding:10px 16px;z-index:90;display:none;max-width:90vw;text-align:center;box-shadow:4px 4px 0 #0006}
+#toast-cf{position:fixed;bottom:18px;right:18px;left:auto;transform:none;background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:12px 16px;z-index:999;display:none;max-width:320px;box-shadow:0 4px 20px #0008;font-size:.9rem;align-items:center;gap:12px;flex-direction:column}
+#toast-cf .cf-top{display:flex;align-items:center;gap:10px;width:100%}
+#toast-cf .cf-check{width:22px;height:22px;background:#1a9a44;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+#toast-cf .cf-check::after{content:"✓";color:#fff;font-size:13px;font-weight:900}
+#toast-cf .cf-msg{font-weight:600;flex:1}
+#toast-cf .cf-brand{display:flex;align-items:center;gap:6px;border-top:1px solid #333;padding-top:8px;width:100%;font-size:.75rem;color:#aaa}
+#toast-cf .cf-brand svg{width:20px;height:20px}
 @media(max-width:820px){
  .hero,.trust .in{grid-template-columns:1fr}
  .trust .scene{display:none}
@@ -1199,6 +1206,16 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 
 <div id="mr"></div>
 <div id="toast"></div>
+<div id="toast-cf" style="display:none">
+  <div class="cf-top">
+    <div class="cf-check"></div>
+    <span class="cf-msg">¡Operación exitosa!</span>
+  </div>
+  <div class="cf-brand">
+    <svg viewBox="0 0 109 41" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M78.5 32.5H24.5L28 24.5L66 23L78.5 32.5Z" fill="#F6821F"/><path d="M79.5 32.5C79.5 32.5 80.5 29 79 27C77.5 25 66 23 66 23L64 28L79.5 32.5Z" fill="#FBAD41"/><path d="M24.5 32.5C24.5 32.5 23.5 29 25 27C26.5 25 38 23.5 38 23.5L40 28.5L24.5 32.5Z" fill="#FBAD41"/><path d="M66 23C66 23 67 19 65 17C63 15 55 14.5 52 15C49 15.5 47 18 47 18C47 18 44 16 41 17C38 18 37 20 37 20C37 20 32 20.5 30 22C28 23.5 28 24.5 28 24.5L66 23Z" fill="white"/></svg>
+    <span>Cloudflare · <a href="#" style="color:#aaa">Privacidad</a> · <a href="#" style="color:#aaa">Ayuda</a></span>
+  </div>
+</div>
 
 <script>
 /* ===== CONFIGURACIÓN (cambia estos datos) ===== */
@@ -1413,6 +1430,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const money=n=>Number(n)===0?'Gratis':'S/ '+Number(n).toFixed(2), prod=id=>P.find(p=>p.id==id);
 const fdate=d=>new Date(d).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'});
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2800)}
+let ttcf;function toastCF(){const t=$('#toast-cf');t.style.display='flex';clearTimeout(ttcf);ttcf=setTimeout(()=>t.style.display='none',3500)}
 const qrPh='data:image/svg+xml;utf8,'+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' fill='#fff'/><rect x='14' y='14' width='46' height='46' fill='#111'/><rect x='120' y='14' width='46' height='46' fill='#111'/><rect x='14' y='120' width='46' height='46' fill='#111'/><rect x='76' y='76' width='28' height='28' fill='#111'/><text x='90' y='98' font-size='13' fill='#fff' text-anchor='middle'>QR</text></svg>");
 /* Teléfono peruano: acepta 9XXXXXXXX o 519XXXXXXXX. Devuelve '519XXXXXXXX' o '' si no es válido */
 function normPhone(raw){let d=String(raw).replace(/\D/g,'');if(d.length==11&&d.startsWith('51'))d=d.slice(2);return /^9\d{8}$/.test(d)?'51'+d:''}
@@ -1620,7 +1638,7 @@ function authM(tab,warn){
     ['ap','contraseña',value=>reg?(value.length>=6?'':'Escribe al menos 6 caracteres.'):(value?'':'Escribe tu contraseña.')]
   ]);
 }
-function afterAuth(){closeM();nav();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}else toast('Sesión iniciada')}
+function afterAuth(){closeM();nav();if(S.pend){const id=S.pend;S.pend=null;setTimeout(()=>proceed(id),350)}else{toastCF()}}
 function doGoogle(){try{API.google();afterAuth()}catch(x){$('#ab').showFormError('El acceso con Google aún no está disponible. Puedes continuar con tu correo.')}}
 async function doLogin(){const button=$('#ab');if(S.busy||!button.checkFields())return;
   S.busy=true;button.setSubmitting(true);
