@@ -1028,7 +1028,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 #ld #ldd{left:calc(var(--load-progress) * (100% - var(--loader-dragon-width)));width:var(--loader-dragon-width);transform:none;bottom:calc(100% + 5px)}
 #ld #bi{width:calc(var(--load-progress) * 100%)}
 #ld #pc{font-variant-numeric:tabular-nums;font-weight:700}
-@keyframes service-fly{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+@keyframes service-fly{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(max-width:740px){.service-train{animation-duration:12s;animation-delay:-2.5s}}
 @media(prefers-reduced-motion:reduce){
  .service-runway{overflow-x:auto}
@@ -2028,10 +2028,18 @@ $('#service-train').append(serviceDragon);
   original.forEach(el=>{
     const clone=el.cloneNode(true);
     clone.setAttribute('aria-hidden','true');
-    // quitar ids del clon para no duplicarlos
     clone.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
     train.append(clone);
   });
+  // Mover el dragon al inicio de cada set para que lidere el desfile
+  // Set 1: dragon ya está al final — lo movemos al inicio
+  const dragon1=train.querySelector('.service-dragon');
+  train.prepend(dragon1);
+  // Set 2: el clon del dragon está en la segunda mitad — también al inicio del segundo set
+  const allChildren=[...train.children];
+  const half=allChildren.length/2;
+  const dragon2=allChildren.find((el,i)=>i>=half&&el.classList.contains('service-dragon'));
+  if(dragon2) train.children[half].before(dragon2);
 })();
 const maintenanceNotice=$('#maintenance-notice');
 maintenanceNotice.addEventListener('cancel',event=>event.preventDefault());
