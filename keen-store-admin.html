@@ -173,7 +173,8 @@ async function admSave(){
 function admLock(){
   modal('<h2>⚙️ Panel de administración</h2><p class="mu">Ingresa con el correo autorizado.</p>'+
     '<label for="admin-email">Correo</label><input id="admin-email" type="email" autocomplete="email">'+
-    '<button class="pri w" id="apb" onclick="admEnter()">Enviar enlace de acceso</button>');
+    '<button class="pri w" id="apb" onclick="admEnter()">Enviar enlace de acceso</button>'+
+    '<button class="w" onclick="admGoogle()">Entrar con Google</button>');
   $('#admin-email').onkeydown=e=>{if(e.key==='Enter')admEnter()};
 }
 async function admEnter(){
@@ -186,8 +187,18 @@ async function admEnter(){
       options:{shouldCreateUser:false,emailRedirectTo:location.origin+location.pathname}
     }));
     toast('Si el correo tiene acceso, recibirás un enlace.');
-  }catch(e){toast('No se pudo enviar el enlace de acceso.')}
-  finally{button.disabled=false}
+  }catch(e){
+    const message=e?.status===429?'Supabase limitó los envíos de correo. Puedes entrar con Google.':'No se pudo enviar el enlace. Puedes entrar con Google.';
+    toast(message);
+  }finally{button.disabled=false}
+}
+async function admGoogle(){
+  try{
+    await kenResult(adminClient.auth.signInWithOAuth({
+      provider:'google',
+      options:{redirectTo:location.origin+location.pathname}
+    }));
+  }catch(e){toast('No se pudo abrir el acceso con Google.')}
 }
 async function admStart(){
   try{
