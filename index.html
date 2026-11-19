@@ -1646,6 +1646,13 @@ function _mctx(){
   if(_AC.state==='suspended')_AC.resume();
   return _AC;
 }
+async function _play(fn){
+  try{
+    if(!_AC)_AC=new(window.AudioContext||window.webkitAudioContext)();
+    if(_AC.state==='suspended')await _AC.resume();
+    fn(_AC);
+  }catch(e){}
+}
 // Precalienta el contexto en el primer toque/clic para latencia cero
 document.addEventListener('pointerdown',()=>{_mctx()},{once:true,passive:true});
 
@@ -1669,69 +1676,69 @@ function _ramp(ctx,type,f0,f1,start,dur,vol){
 }
 
 // Salto de Mario
-function playJumpSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playJumpSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _ramp(ctx,'square',220,880,t,0.08,0.18);
   _ramp(ctx,'square',880,440,t+0.08,0.10,0.12);
-}catch(e){}}
+})}
 
 // Moneda (coin)
-function playCoinSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playCoinSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _note(ctx,'square',1568,t,0.04,0.20);
   _note(ctx,'square',2093,t+0.04,0.18,0.18);
-}catch(e){}}
+})}
 
 // Power-up (sube la escala)
-function playPowerUpSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playPowerUpSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   [[659,0],[784,0.1],[988,0.2],[1319,0.3]].forEach(([f,d])=>_note(ctx,'square',f,t+d,0.14,0.16));
-}catch(e){}}
+})}
 
 // 1-Up (jingle clásico)
-function play1UpSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function play1UpSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   [[784,0],[988,0.1],[784,0.2],[988,0.3],[1175,0.4],[1568,0.5]].forEach(([f,d])=>_note(ctx,'square',f,t+d,0.12,0.15));
-}catch(e){}}
+})}
 
 // Cursor / select (bip corto suave)
-function playCursorSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playCursorSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _note(ctx,'square',523,t,0.06,0.12);
   _note(ctx,'square',659,t+0.06,0.06,0.10);
-}catch(e){}}
+})}
 
 // Subcategoría (bip único más suave)
-function playSubSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playSubSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _note(ctx,'square',440,t,0.07,0.09);
-}catch(e){}}
+})}
 
 // Pausa (dos notas descendentes)
-function playPauseSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playPauseSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _note(ctx,'square',660,t,0.09,0.14);
   _note(ctx,'square',440,t+0.09,0.12,0.14);
-}catch(e){}}
+})}
 
 // Block hit (golpe de bloque ?)
-function playBlockSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playBlockSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _ramp(ctx,'square',300,180,t,0.07,0.20);
   _note(ctx,'square',523,t+0.07,0.07,0.14);
-}catch(e){}}
+})}
 
 // Pipe / warp (baja rápido)
-function playPipeSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playPipeSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   _ramp(ctx,'square',880,220,t,0.18,0.16);
-}catch(e){}}
+})}
 
 // Star (melodía rápida)
-function playStarSound(){try{
-  const ctx=_mctx(),t=ctx.currentTime;
+function playStarSound(){_play(ctx=>{
+  const t=ctx.currentTime;
   [[988,0],[1319,0.08],[1568,0.16],[1976,0.24],[1568,0.32],[1319,0.40]].forEach(([f,d])=>_note(ctx,'square',f,t+d,0.09,0.15));
-}catch(e){}}
+})}
 /* ============================= */
 function buy(id){
   if(_mopen)return;
@@ -2034,9 +2041,8 @@ window.addEventListener('storage',event=>{
   let finished=0,ready=false,shown=0,lastFrame;
 
   // Rugido del dragón al iniciar la carga
-  function playDragonRoar(){try{
-    const ctx=_mctx(),t=ctx.currentTime;
-    // Cuerpo del rugido: onda de diente de sierra grave que cae
+  function playDragonRoar(){_play(ctx=>{
+    const t=ctx.currentTime;
     const o1=ctx.createOscillator(),g1=ctx.createGain();
     o1.type='sawtooth';
     o1.frequency.setValueAtTime(180,t);
@@ -2046,7 +2052,6 @@ window.addEventListener('storage',event=>{
     g1.gain.exponentialRampToValueAtTime(0.001,t+0.65);
     o1.connect(g1);g1.connect(ctx.destination);
     o1.start(t);o1.stop(t+0.66);
-    // Armónico agudo (aleteo)
     const o2=ctx.createOscillator(),g2=ctx.createGain();
     o2.type='square';
     o2.frequency.setValueAtTime(320,t+0.1);
@@ -2055,7 +2060,6 @@ window.addEventListener('storage',event=>{
     g2.gain.exponentialRampToValueAtTime(0.001,t+0.55);
     o2.connect(g2);g2.connect(ctx.destination);
     o2.start(t+0.1);o2.stop(t+0.56);
-    // Pulso de fuego al final
     const o3=ctx.createOscillator(),g3=ctx.createGain();
     o3.type='sawtooth';
     o3.frequency.setValueAtTime(90,t+0.5);
@@ -2064,12 +2068,11 @@ window.addEventListener('storage',event=>{
     g3.gain.exponentialRampToValueAtTime(0.001,t+0.78);
     o3.connect(g3);g3.connect(ctx.destination);
     o3.start(t+0.5);o3.stop(t+0.79);
-  }catch(e){}}
+  })}
 
   // Rugido de salida épico al terminar la carga
-  function playDragonFinish(){try{
-    const ctx=_mctx(),t=ctx.currentTime;
-    // Rugido largo descendente
+  function playDragonFinish(){_play(ctx=>{
+    const t=ctx.currentTime;
     const o1=ctx.createOscillator(),g1=ctx.createGain();
     o1.type='sawtooth';
     o1.frequency.setValueAtTime(220,t);
@@ -2078,7 +2081,6 @@ window.addEventListener('storage',event=>{
     g1.gain.exponentialRampToValueAtTime(0.001,t+0.95);
     o1.connect(g1);g1.connect(ctx.destination);
     o1.start(t);o1.stop(t+0.96);
-    // Chispa de fuego inicial
     const o2=ctx.createOscillator(),g2=ctx.createGain();
     o2.type='square';
     o2.frequency.setValueAtTime(600,t);
@@ -2087,7 +2089,6 @@ window.addEventListener('storage',event=>{
     g2.gain.exponentialRampToValueAtTime(0.001,t+0.32);
     o2.connect(g2);g2.connect(ctx.destination);
     o2.start(t);o2.stop(t+0.33);
-    // Notas de fanfarria Mario al final
     [[523,1.0],[659,1.12],[784,1.24],[1047,1.36]].forEach(([f,d])=>{
       const o=ctx.createOscillator(),g=ctx.createGain();
       o.type='square';o.frequency.value=f;
@@ -2096,7 +2097,7 @@ window.addEventListener('storage',event=>{
       o.connect(g);g.connect(ctx.destination);
       o.start(t+d);o.stop(t+d+0.15);
     });
-  }catch(e){}}
+  })}
 
   playDragonRoar();
 
