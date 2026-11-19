@@ -1508,20 +1508,40 @@ const API={
   hasOrder:(pid)=>API.orders().some(o=>o.email==S.user?.email&&o.pid==pid),
   async createOrder(d){
     const o={...d,id:newOrderId(),date:new Date().toISOString(),status:'pendiente',reason:''};
-    // Guardar en Supabase
-    sbFetch('/rest/v1/orders',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({
-      id:o.id,pid:o.pid,pn:o.pn,cat:o.cat,sub:o.sub,price:o.price,
-      extra:o.extra,extra_label:o.extraLabel,wa:o.wa,voucher:o.voucher,
-      name:o.name,email:o.email,date:o.date,status:o.status,reason:o.reason
-    })}).catch(()=>{});
-    // También guardar local como respaldo
+    // Guardar en Supabase con await para detectar errores
+    try{
+      const token=window._sb?.token||SUPA_KEY;
+      const res=await fetch(SUPA_URL+'/rest/v1/orders',{
+        method:'POST',
+        headers:{
+          'apikey':SUPA_KEY,
+          'Authorization':'Bearer '+token,
+          'Content-Type':'application/json',
+          'Prefer':'return=minimal'
+        },
+        body:JSON.stringify({
+          id:o.id,pid:o.pid,pn:o.pn,cat:o.cat,sub:o.sub,price:o.price,
+          extra:o.extra,extra_label:o.extraLabel,wa:o.wa,voucher:o.voucher,
+          name:o.name,email:o.email,date:o.date,status:o.status,reason:o.reason
+        })
+      });
+      if(!res.ok){const e=await res.json().catch(()=>({}));console.error('Supabase order error:',e);}
+    }catch(e){console.error('Order fetch error:',e);}
+    // Guardar local como respaldo
     localStorage.setItem('ks_orders',JSON.stringify([...API.orders(),o]));
     return o;
   },
   claims:()=>DB.get('claims',[]),
   async createClaim(d){
     const c={...d,id:'LR-'+newOrderId().slice(3),date:new Date().toISOString()};
-    sbFetch('/rest/v1/claims',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(c)}).catch(()=>{});
+    try{
+      const token=window._sb?.token||SUPA_KEY;
+      await fetch(SUPA_URL+'/rest/v1/claims',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify(c)
+      });
+    }catch(e){}
     localStorage.setItem('ks_claims',JSON.stringify([...API.claims(),c]));
     return c;
   }
