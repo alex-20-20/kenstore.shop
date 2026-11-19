@@ -774,8 +774,8 @@ footer .links button{font-size:.7rem}
 @keyframes k14-nudge{0%,62%,100%{translate:0 0}70%{translate:0 -3px}78%{translate:0 0}86%{translate:0 -2px}94%{translate:0 0}}
 @keyframes k14-march{to{background-position:12px 0}}
 @keyframes k14-blink{50%{opacity:0}}
-/* Dragón: respira y se balancea, con chispas pixel que suben */
-.dragon .dr{animation:k14-dragon 4s ease-in-out infinite,k-dr-glow 4s ease-in-out infinite}
+/* Dragón: quieto, sin animación de movimiento */
+.dragon .dr{animation:k-dr-glow 4s ease-in-out infinite}
 .dragon::before,.dragon::after{content:"";display:block!important;position:absolute;width:6px;height:6px;left:50%;background:var(--ac);pointer-events:none;z-index:2;opacity:0;border-radius:0;max-width:none;filter:none}
 .dragon::before{top:46%;box-shadow:-128px 14px 0 var(--ac),112px 34px 0 var(--ln),-150px -18px 0 var(--ac);animation:k14-ember 3s steps(8) infinite}
 .dragon::after{top:58%;bottom:auto;height:6px;transform:none;box-shadow:136px 4px 0 var(--ac),-122px 30px 0 var(--ln),100px 52px 0 var(--ac);animation:k14-ember 3s 1.5s steps(8) infinite}
@@ -924,7 +924,7 @@ body:has(#site-menu[open]){overflow:hidden}
 .maintenance-subtitle{margin-top:8px;font:700 clamp(1rem,4.5vw,1.3rem)/1.2 var(--px);text-wrap:balance}
 #maintenance-message{margin-top:10px;overflow-wrap:anywhere}
 .maintenance-dragon{position:relative;isolation:isolate;display:grid;place-items:center;margin:0 auto 20px;padding-bottom:8px}
-.maintenance-dragon img{width:auto;height:clamp(100px,29dvh,180px);max-width:100%;object-fit:contain;animation:k14-dragon 3s ease-in-out infinite}
+.maintenance-dragon img{width:auto;height:clamp(100px,29dvh,180px);max-width:100%;object-fit:contain;animation:k-dr-glow 3s ease-in-out infinite}
 .maintenance-dragon::before{content:"";position:absolute;z-index:-1;bottom:5px;width:38%;height:8px;background:var(--ac);box-shadow:-3px 3px var(--ln),3px 3px var(--ln),0 6px var(--ln)}
 .maintenance-dragon::after{content:"";position:absolute;pointer-events:none;top:40%;left:21%;width:5px;height:5px;background:var(--ac);box-shadow:-12px 35px var(--ln),min(45vw,180px) 24px var(--ac);animation:k14-ember 3s steps(8) infinite}
 @media(prefers-reduced-motion:reduce){.maintenance-dragon img,.maintenance-dragon::after{animation-duration:.01ms!important}}
