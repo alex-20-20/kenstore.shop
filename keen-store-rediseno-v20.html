@@ -1437,7 +1437,7 @@ function normPhone(raw){let d=String(raw).replace(/\D/g,'');if(d.length==11&&d.s
 const okEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 async function hp(p){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('ks:'+p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return p}}
 /* N.º de orden: fecha + código aleatorio. Evita choques entre clientes hasta que el servidor genere el definitivo */
-function newOrderId(){const d=new Date(),y=String(d.getFullYear()).slice(2),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');const r=Math.random().toString(36).slice(2,6).toUpperCase();return `KS-${y}${m}${dd}-${r}`}
+function newOrderId(){const r=Math.random().toString(36).slice(2,8).toUpperCase();return `KEN-${r}`}
 
 /* ===== CAPA DE DATOS (aquí conectarás tu backend después) =====
    Hoy guarda en el navegador (localStorage). Cada función de API
@@ -1989,13 +1989,13 @@ function confirmM(id){ // Paso 3: formulario de confirmación
 }
 // 1-Up al completar pedido exitoso
 function playSuccessSound(){play1UpSound()}
-function send(id){
+async function send(id){
   const button=$('#sb');
   if(S.busy||!button.checkFields())return;
   const p=prod(id),free=p.p===0,field=orderField(p),w=normPhone(v('cw')),x=field?v('cx').trim():'',f=free?null:$('#cv').files[0];
   S.busy=true;button.setSubmitting(true);
   let o;
-  try{o=API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:f?f.name:'',name:S.user.name,email:S.user.email})}
+  try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:f?f.name:'',name:S.user.name,email:S.user.email})}
   catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo guardar el pedido en este navegador. Inténtalo de nuevo.')}
   S.busy=false;doneM(o);
 }
