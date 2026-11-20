@@ -1606,10 +1606,18 @@ function renderCatalogRow(row,pinned,items){
   row.innerHTML=pinned+`<div class="catalog-tab-scroll">${items}</div>`;
   row.querySelector('.catalog-tab-scroll').scrollLeft=offset;
 }
+setInterval(()=>{if(!document.hidden)refreshAvailableStock()},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAvailableStock()});
+function catalogHasProducts(category,sub=''){
+  return P.some(product=>activeProductPlacements(product).some(item=>item.category===category&&(!sub||item.subs.includes(sub))));
+}
 function tabs(){
-  const buttons=CATS.filter(([key])=>key==='all'||!hiddenCatalogEntry(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
+  if(S.cat!=='all'&&!catalogHasProducts(S.cat)){S.cat='all';S.sub=''}
+  if(S.sub&&!catalogHasProducts(S.cat,S.sub))S.sub='';
+
+  const buttons=CATS.filter(([key])=>key==='all'||catalogHasProducts(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
   renderCatalogRow($('#tabs'),buttons.find(([key])=>key==='all')?.[1]||'',buttons.filter(([key])=>key!=='all').map(([,html])=>html).join(''));
-  const sb=(SUBS[S.cat]||[]).filter(sub=>!hiddenCatalogEntry(S.cat,sub));
+  const sb=(SUBS[S.cat]||[]).filter(sub=>catalogHasProducts(S.cat,sub));
   const row=$('#subs');
   row.style.display=sb.length?'flex':'none';
   if(!sb.length){row.innerHTML='';return}
@@ -1669,15 +1677,26 @@ function syncCatalogHeader(){
 }
 syncCatalogHeader();
 new ResizeObserver(syncCatalogHeader).observe(catalogHeader);
+let availableStock={};
+async function refreshAvailableStock(){
+  if(!storeClient)return;
+  try{
+    const stock=await kenResult(storeClient.rpc('ken_public_availability'));
+    if(!stock||JSON.stringify(stock)===JSON.stringify(availableStock))return;
+    availableStock=stock;
+    grid();
+  }catch{}
+}
 function grid(){
   const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
   const now=Date.now();
   const L=catalogOffersFirst(orderedCatalogProducts(matches,S.cat,S.sub),now);
   $('#grid').innerHTML=L.map(product=>{
     const offer=activeScheduledOffer(product,now),p=pricedProduct(product,now);
-    const out=p.st===0, low=p.st>0&&p.st<=5, sale=hasCatalogDiscount(p);
+    const quantity=p.st===0?0:availableStock[p.id]??p.st;
+    const out=quantity===0, low=quantity>0&&quantity<=5, sale=hasCatalogDiscount(p);
     const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
-    const stock=p.st==null?'<span class="stk">Disponible</span>':out?'<span class="stk out">Agotado</span>':low?`<span class="stk low">Quedan ${p.st}</span>`:`<span class="stk">Stock ${p.st}</span>`;
+    const stock=quantity==null?'<span class="stk">Disponible</span>':out?`<span class="stk out">${p.st===0?'Agotado':'Sin unidades ahora'}</span>`:low?`<span class="stk low">Quedan ${quantity}</span>`:`<span class="stk">Stock ${quantity}</span>`;
     const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
     return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
@@ -1928,6 +1947,12 @@ function updateCheckoutClock(){
   if(review)review.hidden=false;
   if(submit&&checkoutProduct.p>0&&!submit.disabled)submit.textContent='Registrar para revisión →';
 }
+function resumeCheckout(quote,product){
+  checkoutHold={id:quote.id,orderRef:newOrderId(),started:performance.now(),duration:Date.parse(quote.expires_at)-Date.parse(quote.server_time)};
+  checkoutProduct={...product,p:Number(quote.price)};
+  if(checkoutProduct.p===0||checkoutMillisLeft()===0)confirmM(product.id);
+  else payM(product.id);
+}
 async function proceed(id){
   if(openingCheckout)return;
   openingCheckout=true;
@@ -1937,10 +1962,8 @@ async function proceed(id){
     if(!visibleProduct(p)||p.st===0)return toast('Este producto no está disponible.');
     if(p.p===0&&await API.hasOrder(id))return toast('Ya reclamaste este regalo.');
     const quote=await kenResult(storeClient.rpc('ken_reserve_checkout',{product:id}));
-    checkoutHold={id:quote.id,orderRef:newOrderId(),started:performance.now(),duration:Date.parse(quote.expires_at)-Date.parse(quote.server_time)};
-    checkoutProduct={...p,p:Number(quote.price)};
-    if(checkoutProduct.p===0)confirmM(id);
-    else payM(id);
+    resumeCheckout(quote,p);
+    refreshAvailableStock();
   }catch(error){
     toast(/KEN_OUT_OF_STOCK|KEN_UNAVAILABLE/.test(error.message)?'Sin unidades disponibles en este momento.':'No se pudo reservar el producto. Intenta de nuevo.');
   }finally{openingCheckout=false}
@@ -2036,7 +2059,7 @@ async function send(id){
   let o;
   try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:'',name:S.user.name,email:S.user.email,allowLate})}
   catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Si ya pagaste, conserva tu comprobante y contacta a soporte.')}
-  S.busy=false;doneM(o);
+  S.busy=false;doneM(o);refreshAvailableStock();
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
   const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nCorreo de la cuenta: ${o.email}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?(o.extraLabel||o.extra_label||'Dato de entrega')+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación${o.late_checkout?' (reserva vencida, revisión manual)':''}\n${o.price>0?'📎 Adjunto la captura de mi comprobante en este chat.':'Regalo de bienvenida (sin pago)'}`;
@@ -2065,15 +2088,27 @@ function supLink(o){
 async function mineM(){
   modal('<h2>🛍️ Mis Compras</h2><p id="purchase-loading">Cargando tus pedidos…</p>','big purchases');
   const loading=$('#purchase-loading');
-  let L;
-  try{L=await API.mine()}
+  let L,holds;
+  try{[L,holds]=await Promise.all([API.mine(),kenResult(storeClient.rpc('ken_my_checkouts')).catch(()=>[])])}
   catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar tus compras. Intenta de nuevo.';return}
   if(!loading.isConnected)return;
-  modal(`<h2>🛍️ Mis Compras</h2>`+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
+  const recoveryLoaded=performance.now();
+  const recoverable=holds.filter(hold=>prod(hold.product_id));
+  const recovery=recoverable.length?`<h3>Pagos por continuar</h3>${recoverable.map((hold,index)=>{
+    const expired=Date.parse(hold.expires_at)<=Date.parse(hold.server_time);
+    return `<div class="oc"><div class="bd"><b>${esc(prod(hold.product_id).n)}</b><span>${money(hold.price)} · ${expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
+  }).join('')}`:'';
+  modal(`<h2>🛍️ Mis Compras</h2>`+recovery+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
    <b>${esc(o.pn)}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
    <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extra_label)}: ${esc(o.extra)}</span>`:''}
    <span class="st">${stLbl(o)}</span>${o.status=='rechazado'&&o.reason?`<span class="mu">Motivo: ${esc(o.reason)}</span>`:''}
    <a class="btn purchase-support" target="_blank" rel="noopener" href="${o.status==='pendiente'&&o.price>0?waLink(o):supLink(o)}">${o.status==='pendiente'&&o.price>0?'Adjuntar comprobante en WhatsApp':'Soporte por WhatsApp'}</a></div></div>`}).join(''):'<p class="mu">Aún no tienes compras. Elige un producto del catálogo para empezar.</p>'),'big purchases');
+  for(const button of document.querySelectorAll('[data-resume-checkout]')){
+    button.onclick=()=>{
+      const hold=recoverable[Number(button.dataset.resumeCheckout)];
+      resumeCheckout({...hold,server_time:new Date(Date.parse(hold.server_time)+performance.now()-recoveryLoaded).toISOString()},prod(hold.product_id));
+    };
+  }
 }
 /* --- Libro de Reclamaciones (versión básica, revisa los requisitos vigentes de Indecopi) --- */
 function claimM(){
@@ -2235,7 +2270,7 @@ async function loadPublishedCatalog(){
   Object.assign(CFG,SITE.cfg||{});
   updateWhatsAppGroup();
   applyStoreAppearance();
-  tabs();grid();refreshAtPromotionBoundary();showMaintenance(SITE.maint);
+  tabs();grid();refreshAvailableStock();refreshAtPromotionBoundary();showMaintenance(SITE.maint);
   return true;
 }
 
@@ -2255,7 +2290,7 @@ siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
   const row=(href,icon,label,extra='',count=null,emoji='')=>`<a href="${href}" ${extra}><span class="site-menu-icon" aria-hidden="true">${chosenCategoryPixel(emoji)||`<img src="${spr(...icon)}" alt="">`}</span><span>${esc(label)}</span>${count==null?'':`<span class="site-menu-count">${count}</span>`}<span class="site-menu-arrow" aria-hidden="true">›</span></a>`;
   const group=(label,rows)=>`<section class="site-menu-group"><h3>${label}</h3><div class="site-menu-list">${rows}</div></section>`;
-  const categories=[...CATS.filter(([k])=>k!=='all'&&!hiddenCatalogEntry(k)),['all','Todo el catálogo']];
+  const categories=[...CATS.filter(([k])=>k!=='all'&&catalogHasProducts(k)),['all','Todo el catálogo']];
   $('#site-menu-links').innerHTML=group('General',row('#inicio',['bolt'],'Inicio'))+
     group('Catálogo',categories.map(([k,l,emoji,iconKey=k])=>row('#catalogo',Object.hasOwn(CICON,iconKey)?CICON[iconKey]:[k==='all'?'book':'gem'],l,
       `data-category="${esc(k)}"${S.cat===k?' aria-current="true"':''}`,P.filter(p=>activeProductPlacements(p).some(item=>k==='all'||item.category===k)).length,emoji)).join(''))+

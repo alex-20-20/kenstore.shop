@@ -1134,7 +1134,7 @@ function admIO(){
   <div class="bar2"><button onclick="admDown()">⬇️ Descargar</button><button onclick="$('#aio').select();document.execCommand('copy');toast('Copiado')">📋 Copiar</button><button class="pri" onclick="admImport()">Importar</button></div>
   <div class="bar2"><button class="del" onclick="admReset()">Restablecer catálogo original</button><button onclick="admList()">Volver</button></div>`,'adm');
 }
-function admDown(){const b=new Blob([v('aio')],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='catalogo-keen-store.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+function admDown(source=v('aio')){const b=new Blob([source],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='catalogo-keen-store.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 function admApply(pr,cs,sb){P.length=0;pr.forEach(x=>P.push(x));CATS.length=0;cs.forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,sb)}
 async function admImport(){
   if(publishing)return;
@@ -1163,7 +1163,15 @@ async function publishCatalogImport(products,categories,subcategories,site){
   if(!await admSave()){admApply(...previous.slice(0,3));SITE=previous[3];return}
   toast('Catálogo importado');admList();
 }
-async function admReset(){
+function admReset(){
+  const count=CATS.filter(([key])=>key!=='all').length;
+  modal(`<h2>Restablecer catálogo original</h2><p>Se reemplazarán <strong>${P.length} productos</strong> y <strong>${count} categorías</strong> del catálogo publicado.</p>
+    <div class="bar2"><button type="button" onclick="downloadCatalogBackup()">Descargar respaldo</button><button type="button" onclick="admIO()">Cancelar</button><button type="button" class="del" onclick="publishCatalogReset()">Confirmar restablecimiento</button></div>`);
+}
+function downloadCatalogBackup(){
+  admDown(JSON.stringify({products:P,cats:CATS,subs:SUBS,site:SITE}));
+}
+async function publishCatalogReset(){
   if(publishing)return;
   const previous=structuredClone([P,CATS,SUBS]);
   const previousVisibility=SITE.hiddenCatalog;
@@ -1500,12 +1508,21 @@ async function admOrders(filter=ADM.orderFilter||'',scope=''){
   modal('<h2>Pedidos</h2><p id="orders-loading">Cargando pedidos…</p>');
   const loading=$('#orders-loading');
   try{
-    const orders=(await loadAdminOrders()).filter(o=>orderInScope(o,scope));
+    const [allOrders,holds]=await Promise.all([loadAdminOrders(),kenResult(adminClient.rpc('ken_pending_hold_status')).catch(()=>null)]);
     if(!loading.isConnected)return;
-    _renderOrders(orders);
+    _renderOrders(allOrders.filter(o=>orderInScope(o,scope)),holds);
   }catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar los pedidos.'}
 }
-function _renderOrders(orders){
+async function extendPendingHold(button){
+  button.disabled=true;
+  try{
+    await kenResult(adminClient.rpc('ken_extend_pending_hold',{order_ref:button.closest('[data-order]').dataset.order}));
+    toast('Reserva extendida por 2 horas');
+    if(button.isConnected)admOrders(ADM.orderFilter,ADM.orderScope);
+  }catch(e){toast(/KEN_OUT_OF_STOCK/.test(e.message)?'No hay stock disponible para extender la reserva.':'No se pudo extender la reserva.')}
+  finally{button.disabled=false}
+}
+function _renderOrders(orders,holds){
   const counts=Object.fromEntries(Object.keys(orderStates).map(key=>[key,0]));
   for(const order of orders){
     const key=Object.hasOwn(orderStates,order.status)?order.status:'pendiente';
@@ -1531,6 +1548,7 @@ function _renderOrders(orders){
         <div class="order-contact"><strong>${esc(o.name)}</strong>${phone.length>=8&&phone.length<=15?`<a href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer">WhatsApp · ${esc(o.wa)}</a>`:`<span>${esc(o.wa)}</span>`}</div>
         ${o.activated_at?`<p class="mu">Activado el ${limaDate.format(new Date(o.activated_at))}${o.expires_at?` · Vence el ${limaDate.format(new Date(o.expires_at))}`:''}</p>`:''}
         ${o.extra?`<p class="order-extra">${esc(o.extra_label||'Dato del pedido')} · ${esc(o.extra)}</p>`:''}
+        ${state==='pendiente'&&holds&&Object.hasOwn(holds,o.id)?`<p class="mu">${Date.parse(holds[o.id])>Date.now()?'Reserva hasta '+esc(new Date(holds[o.id]).toLocaleString('es-PE',{timeZone:'America/Lima'})):'Sin reserva · Revisión manual'}</p><button type="button" onclick="extendPendingHold(this)">Extender reserva 2 h</button>`:''}
         ${o.late_checkout?'<p class="warn">Reserva vencida. Verifica el comprobante y la disponibilidad antes de aceptar.</p>':''}
         ${o.price>0?`<p class="mu">Comprobante por WhatsApp${o.voucher?' · '+esc(o.voucher):''}</p>`:''}
         <div class="order-edit">
