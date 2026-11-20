@@ -483,6 +483,7 @@ function updateUsdtPrice(){
   const usdt=solesToUsdt($('#pp').value);
   $('#pu').value=usdt===null?'':usdt.toFixed(2);
 }
+const ACCESS_UNITS={days:'Días',months:'Meses',years:'Años'};
 function admForm(id){
   ADM.tab='prod';
   const p=id?prod(id):{},cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=id||0;
@@ -513,6 +514,8 @@ function admForm(id){
   <p class="mu" style="font-size:.78rem">La foto se ajusta a 4:3 y se comprime a menos de 150 KB. Al guardar se sube a Supabase Storage.</p>
   </fieldset><fieldset><legend>Tipo de producto y datos del pedido</legend>
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
+  <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
+  <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
   <p id="type-order-help" class="mu" hidden></p>
   <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
   <div id="pxfields"${p.x?.l?'':' hidden'}>
@@ -547,6 +550,11 @@ async function admGuardar(){if(publishing)return;
   if(newSub)s=admSubs(c).find(name=>name.toLowerCase()===s.toLowerCase())||s;
   const old=ADM.id?prod(ADM.id):null,inf=v('pi').trim(),t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
+  const durationInput=$('#access-amount'),amount=durationInput.valueAsNumber,unit=v('access-unit');
+  const hasDuration=durationInput.value!=='';
+  if(!durationInput.checkValidity()||(hasDuration&&(!Number.isSafeInteger(amount)||!Object.hasOwn(ACCESS_UNITS,unit)))){
+    return toast('Escribe una duración válida en días, meses o años.');
+  }
   try{
     const imageUrl=await uploadStoreImage(imageInput,'product');
     if(!imageInput.isConnected)return;
@@ -557,6 +565,7 @@ async function admGuardar(){if(publishing)return;
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(inf)o.i=inf;if(t)o.t=t;
+  if(hasDuration)o.accessDuration={amount,unit};
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
   if(s){SUBS[c]=SUBS[c]||[];if(!SUBS[c].includes(s))SUBS[c].push(s)}
