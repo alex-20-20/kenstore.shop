@@ -1084,6 +1084,21 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
  #grid .card .inf svg{width:17px;height:17px}
 }
 #gp[hidden]{display:none!important}
+ 
+.det .detail-intro{margin:10px 0 13px;line-height:1.5;color:#342e27;overflow-wrap:anywhere}
+.det .detail-tags,.det .detail-meta{display:flex;flex-wrap:wrap;gap:6px;padding:0;list-style:none;margin:0}
+.det .detail-tags li,.det .detail-meta li{margin:0;padding:4px 8px;border-radius:8px;font-size:.76rem;line-height:1.35}
+.det .detail-tags li{background:#f2eae0;color:#413126}
+.det .detail-meta li{background:#f5f3ee;color:#51473d}
+.det section,.det details{border-top:1px solid #e4ded4;margin-top:13px;padding-top:12px}
+.det section h3{margin:0 0 6px;font-size:.93rem}
+.det .detail-copy{line-height:1.45;overflow-wrap:anywhere}
+.det .detail-copy p{margin:0 0 6px;white-space:pre-line}
+.det .detail-copy ul{padding-left:18px;margin:0}
+.det .detail-copy li{margin:4px 0}
+.det details summary{cursor:pointer;color:#322820;font-weight:700;padding:3px 0;font-size:.88rem}
+.det details[open] summary{margin-bottom:8px}
+.det details summary:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
 </style>
 </head>
 <body>
@@ -1964,14 +1979,38 @@ function privM(){if(SITE.priv)return modal(`<h2>Política de privacidad</h2><div
 }
 
 /* --- Detalles del producto (botón "?" junto al stock): solo informa; comprar usa el mismo flujo de siempre --- */
+function productDetailSections(description){
+  const text=String(description||'').replace(/\r\n?/g,'\n').trim();
+  const heading=/(?:✅\s*)?(?:¿\s*)?qu[eé]\s+incluye\s*[?:]|(?:📌\s*)?condiciones(?:\s+y\s+entrega)?\s*:/giu;
+  const sections={intro:text,includes:'',conditions:''};
+  const markers=[...text.matchAll(heading)];
+  if(markers.length)sections.intro=text.slice(0,markers[0].index).trim();
+  markers.forEach((marker,index)=>{
+    const key=/incluye/i.test(marker[0])?'includes':'conditions';
+    const content=text.slice(marker.index+marker[0].length,markers[index+1]?.index??text.length).trim();
+    if(content)sections[key]+=(sections[key]?'\n':'')+content;
+  });
+  return sections;
+}
+function detailCopy(text){
+  const parts=String(text).split(/\s*[•▪●]\s*|\n\s*[-–]\s+/u);
+  const intro=parts.shift().trim();
+  const items=parts.map(item=>item.trim()).filter(Boolean);
+  return `${intro?`<p>${esc(intro)}</p>`:''}${items.length?`<ul>${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}`;
+}
 function infoM(id){
   const p=prod(id);if(!p)return;
-  const out=p.st===0;
-  const av=p.st==null?'Disponible':out?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
+  const av=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
+  const details=productDetailSections(p.i||p.d);
+  const field=orderField(p);
+  const terms=[p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago',field?`Te pediremos: ${field.l}`:''].filter(Boolean);
   modal(`<div class="det"><span class="dcat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span><h2>${esc(p.n)}</h2>
-  <p class="dd">${esc(p.i||p.d)}</p>
-  ${p.pills&&p.pills.length?`<h3>Incluye</h3><ul>${p.pills.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}
-  <h3>Para tu pedido</h3><ul>${p.t?`<li>Tipo: ${esc(p.t)}</li>`:''}<li>${av}</li>${orderField(p)?`<li>Te pediremos: ${esc(orderField(p).l)}</li>`:''}<li>${p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago'}</li></ul></div>`);
+    <ul class="detail-meta"><li>${esc(av)}</li>${p.t?`<li>${esc(p.t)}</li>`:''}</ul>
+    ${details.intro?`<div class="detail-intro detail-copy">${detailCopy(details.intro)}</div>`:''}
+    ${p.pills?.length?`<ul class="detail-tags" aria-label="Características">${p.pills.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
+    ${details.includes?`<section><h3>Qué incluye</h3><div class="detail-copy">${detailCopy(details.includes)}</div></section>`:''}
+    <details><summary>Condiciones y entrega</summary><div class="detail-copy">${details.conditions?detailCopy(details.conditions):''}
+      <ul>${terms.map(term=>`<li>${esc(term)}</li>`).join('')}</ul></div></details></div>`);
 }
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
 function updateWhatsAppGroup(){
