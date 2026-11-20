@@ -1468,13 +1468,21 @@ async function changePromotion(id,promotion){
   if(publishing)return;
   const product=prod(id);
   if(!product)return;
+  const editor=$('#promotion-form');
   const index=P.indexOf(product);
   const changed={...product};
   if(promotion)changed.promotion=promotion;
   else delete changed.promotion;
   P[index]=changed;
   if(!await admSave()){P[index]=product;return}
-  if(ADM.tab==='promotions')admPromotions(id);
+  if(ADM.tab==='promotions'){
+    if(editor?.isConnected||!$('#promotion-form')){
+      admPromotions();
+      $('#promotion-product').focus({preventScroll:true});
+    }else{
+      renderPromotionLists($('#promotion-lists'));
+    }
+  }
   toast(promotion?'Descuento guardado':'Descuento retirado');
 }
 async function admOrders(filter=ADM.orderFilter||'',scope=''){
