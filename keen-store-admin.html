@@ -1129,7 +1129,7 @@ function admSubDelSave(i,j){
 }
 function admIO(){
   const j=JSON.stringify({products:P,cats:CATS,subs:SUBS,site:SITE});
-  modal(`<h2>💾 Respaldo del catálogo</h2><p class="mu">Descarga una copia, o pega aquí un respaldo para restaurarlo. Para publicar el catálogo a todos tus clientes, copia el contenido de <b>products</b> dentro de <code>const P=[ ]</code>.</p>
+  modal(`<h2>💾 Respaldo del catálogo</h2><p class="mu">Descarga una copia del catálogo o importa un respaldo para restaurarlo. Incluye productos, categorías y configuración. Los pedidos, reclamos y costos privados se respaldan por separado.</p>
   <textarea id="aio" style="min-height:120px;font-size:.72rem">${esc(j)}</textarea>
   <div class="bar2"><button onclick="admDown()">⬇️ Descargar</button><button onclick="$('#aio').select();document.execCommand('copy');toast('Copiado')">📋 Copiar</button><button class="pri" onclick="admImport()">Importar</button></div>
   <div class="bar2"><button class="del" onclick="admReset()">Restablecer catálogo original</button><button onclick="admList()">Volver</button></div>`,'adm');
@@ -1147,8 +1147,18 @@ async function admImport(){
   const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
   if(!Array.isArray(categories)||!categories.length||!categories.every(c=>Array.isArray(c)&&c.slice(0,2).length===2&&c.every(x=>typeof x==='string'))
      ||!object(subcategories)||!Object.values(subcategories).every(a=>Array.isArray(a)&&a.every(x=>typeof x==='string'))||!object(site))return toast('Revisa las categorías y los ajustes del respaldo.');
+  if(new Set(d.products.map(p=>p.id)).size!==d.products.length)return toast('El respaldo contiene productos con el mismo identificador.');
+  const source=v('aio');
+  const count=categories.filter(([key])=>key!=='all').length;
+  modal(`<h2>Confirmar restauración</h2><p>El respaldo contiene <strong>${d.products.length} productos</strong> y <strong>${count} categorías</strong>. Al confirmar, reemplazará el catálogo publicado.</p>
+    <div class="bar2"><button type="button" class="pri" id="confirm-catalog-import">Restaurar catálogo</button><button type="button" id="cancel-catalog-import">Cancelar</button></div>`);
+  $('#confirm-catalog-import').onclick=()=>publishCatalogImport(d.products,categories,subcategories,site);
+  $('#cancel-catalog-import').onclick=()=>{admIO();$('#aio').value=source};
+}
+async function publishCatalogImport(products,categories,subcategories,site){
+  if(publishing)return;
   const previous=structuredClone([P,CATS,SUBS,SITE]);
-  admApply(d.products,categories,subcategories);
+  admApply(products,categories,subcategories);
   SITE={...site,t:site.t||{},cfg:site.cfg||{},col:site.col||{}};
   if(!await admSave()){admApply(...previous.slice(0,3));SITE=previous[3];return}
   toast('Catálogo importado');admList();
@@ -1521,6 +1531,7 @@ function _renderOrders(orders){
         <div class="order-contact"><strong>${esc(o.name)}</strong>${phone.length>=8&&phone.length<=15?`<a href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer">WhatsApp · ${esc(o.wa)}</a>`:`<span>${esc(o.wa)}</span>`}</div>
         ${o.activated_at?`<p class="mu">Activado el ${limaDate.format(new Date(o.activated_at))}${o.expires_at?` · Vence el ${limaDate.format(new Date(o.expires_at))}`:''}</p>`:''}
         ${o.extra?`<p class="order-extra">${esc(o.extra_label||'Dato del pedido')} · ${esc(o.extra)}</p>`:''}
+        ${o.late_checkout?'<p class="warn">Reserva vencida. Verifica el comprobante y la disponibilidad antes de aceptar.</p>':''}
         ${o.price>0?`<p class="mu">Comprobante por WhatsApp${o.voucher?' · '+esc(o.voucher):''}</p>`:''}
         <div class="order-edit">
           <label>Estado<select name="status" onchange="this.form.querySelector('.order-reason').hidden=this.value!=='rechazado'">${Object.entries(orderStates).map(([key,label])=>`<option value="${key}"${key===state?' selected':''}>${label}</option>`).join('')}</select></label>
@@ -1573,6 +1584,14 @@ async function admOrderSave(event,form){
     });
     if(!response.ok)throw new Error('La API rechazó el cambio.');
     toast('Estado actualizado');
+    if(form.isConnected&&!publishing){
+      const version=catalogVersion;
+      const fresh=await kenReadCatalog(adminClient).catch(()=>null);
+      if(fresh&&form.isConnected&&!publishing&&catalogVersion===version){
+        admApply(fresh.products,fresh.categories,fresh.subcategories);
+        SITE=fresh.site;publishedSite=structuredClone(SITE);catalogVersion=fresh.updated_at;
+      }
+    }
     if(form.isConnected){
       const scroll=window.scrollY;
       if(ADM.tab==='delivery')await admDelivery();
