@@ -484,15 +484,28 @@ function updateUsdtPrice(){
   $('#pu').value=usdt===null?'':usdt.toFixed(2);
 }
 const ACCESS_UNITS={days:'Días',months:'Meses',years:'Años'};
+function productDescriptionFields(product){
+  if(product.descriptionSpec)return product.descriptionSpec;
+  const legacy=String(product.i||'');
+  const access=legacy.match(/^\s*-\s*👤\s*(.+)$/mu)?.[1]||'';
+  const delivery=legacy.match(/^\s*\*\*📦\s*(.+)$/mu)?.[1]?.replaceAll('**','')||'';
+  const rule=legacy.match(/^\s*⚠️\s*(.+)$/mu)?.[1]||'';
+  return {access,delivery,rule};
+}
 function admForm(id){
   ADM.tab='prod';
   const p=id?prod(id):{},cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=id||0;
+  const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
   <div class="product-editor"><fieldset><legend>Información del producto</legend>
   <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
-  <label for="pd">Descripción corta (se ve en la tarjeta)</label><input id="pd" maxlength="120" value="${esc(p.d||'')}" placeholder="Ej: Pantalla completa, entrega inmediata">
-  <label for="pi">Información detallada (botón "?", opcional)</label><textarea id="pi" placeholder="Explica qué incluye, condiciones, duración…">${esc(p.i||'')}</textarea>
-  <label for="ptg">Etiquetas (separadas por coma)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Garantía, Entrega inmediata">
+  </fieldset><fieldset><legend>Descripción en la tienda</legend>
+  <label for="desc-access">Qué recibe el cliente</label><input id="desc-access" maxlength="70" value="${esc(description.access)}" placeholder="Ej. 1 perfil privado">
+  <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
+  <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
+  <label for="ptg">Beneficios (separados por comas)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
+  <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
+  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset><fieldset><legend>Categoría y subcategoría</legend>
   <div class="g2"><div><label for="pc">Categoría</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select></div>
   <div><label for="ps">Subcategoría</label><select id="ps" onchange="admSubSel()"></select></div></div>
@@ -514,8 +527,6 @@ function admForm(id){
   <p class="mu" style="font-size:.78rem">La foto se ajusta a 4:3 y se comprime a menos de 150 KB. Al guardar se sube a Supabase Storage.</p>
   </fieldset><fieldset><legend>Tipo de producto y datos del pedido</legend>
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
-  <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
-  <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
   <p id="type-order-help" class="mu" hidden></p>
   <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
   <div id="pxfields"${p.x?.l?'':' hidden'}>
@@ -531,9 +542,8 @@ function admForm(id){
 async function admGuardar(){if(publishing)return;
   const imageInput=$('#pfile');
   if(imageInput.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
-  const n=v('pn').trim(),d=v('pd').trim();let c=v('pc');
+  const n=v('pn').trim();let c=v('pc');
   if(!n)return toast('Escribe el nombre del producto.');
-  if(!d)return toast('Escribe la descripción corta.');
   if(c=='__new__'){c=v('pcn').trim();if(!c)return toast('Escribe el nombre de la nueva categoría.');
     if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
     const ex=CATS.find(x=>x[0].toLowerCase()==c.toLowerCase());if(ex)c=ex[0]}
@@ -548,7 +558,7 @@ async function admGuardar(){if(publishing)return;
   let s=newSub?v('psn').trim():v('ps');
   if(newSub&&!s)return toast('Escribe el nombre de la nueva subcategoría.');
   if(newSub)s=admSubs(c).find(name=>name.toLowerCase()===s.toLowerCase())||s;
-  const old=ADM.id?prod(ADM.id):null,inf=v('pi').trim(),t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
+  const old=ADM.id?prod(ADM.id):null,t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
   const durationInput=$('#access-amount'),amount=durationInput.valueAsNumber,unit=v('access-unit');
   const hasDuration=durationInput.value!=='';
@@ -561,10 +571,14 @@ async function admGuardar(){if(publishing)return;
     if(imageUrl){ADM.img=imageUrl;clearImagePreview();$('#pv').src=imageUrl}
   }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
   if(publishing)return;
+  const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
+  const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
-  if(inf)o.i=inf;if(t)o.t=t;
+  if(old?.i)o.i=old.i;
+  if(!old||old.descriptionSpec||Object.values(descriptionSpec).some(Boolean))o.descriptionSpec=descriptionSpec;
+  if(t)o.t=t;
   if(hasDuration)o.accessDuration={amount,unit};
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);

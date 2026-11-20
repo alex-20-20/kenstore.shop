@@ -2009,6 +2009,19 @@ function shortProductIntro(text){
   const clipped=input.slice(0,89);
   return (clipped.replace(/\s+\S*$/u,'').trimEnd()||clipped)+'…';
 }
+function structuredProductDetail(product){
+  const spec=product.descriptionSpec;
+  if(!spec)return '';
+  const duration=accessDurationLabel(product.accessDuration);
+  const access=[spec.access?`👤 ${spec.access}`:'',duration?`📅 ${duration} de acceso`:''].filter(Boolean);
+  const tags=Array.isArray(product.pills)?product.pills:[];
+  const delivery=spec.delivery||(!product.p?'':'Entrega por WhatsApp tras verificar el pago');
+  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${product.s?' · '+esc(product.s):''}</span><h2>${esc(product.n)}</h2>
+    ${access.length?`<ul class="detail-benefits">${access.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}
+    ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
+    ${delivery?`<p class="detail-delivery">📦 ${esc(delivery)}</p>`:''}
+    ${spec.rule?`<p class="detail-rule">⚠️ ${esc(spec.rule)}</p>`:''}</div>`;
+}
 function formattedProductDetail(product){
   const lines=String(product.i||'').replace(/\r\n?/g,'\n').split('\n').map(line=>line.trim()).filter(Boolean);
   if(!/^\*\*[^*]+\*\*$/u.test(lines[0]||'')||!lines.some(line=>line.startsWith('- ')))return '';
@@ -2028,7 +2041,7 @@ function formattedProductDetail(product){
 }
 function infoM(id){
   const p=prod(id);if(!p)return;
-  const formatted=formattedProductDetail(p);
+  const formatted=structuredProductDetail(p)||formattedProductDetail(p);
   if(formatted){modal(formatted);return}
   const availability=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
   const details=productDetailSections(p.i||p.d);
