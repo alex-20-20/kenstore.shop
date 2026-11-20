@@ -195,6 +195,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .catalog-card-actions button,.catalog-sub-row button{min-height:40px}
 .catalog-add-sub{border-top:1px solid var(--stroke);padding-top:7px}
 @media(max-width:520px){.catalog-card-actions button,.catalog-sub-row button{min-height:44px}.catalog-sub-row{row-gap:6px}.catalog-sub-row .catalog-sub-main{flex-basis:100%}}
+ .product-card-preview{max-width:285px;width:100%;background:var(--surface);border:1px solid var(--stroke);border-radius:12px;overflow:hidden;margin:8px 0}
+.product-card-preview img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--soft)}
+.preview-body{padding:10px;display:grid;gap:5px}
+.preview-top,.preview-tags,.preview-prices{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.preview-top{justify-content:space-between;color:var(--ac);font-weight:700;font-size:.75rem}
+.preview-category{color:var(--ac);font-size:.7rem;font-weight:700;text-transform:uppercase}
+.preview-name{font-size:1rem;font-weight:700}
+.preview-tags span{padding:2px 5px;border:1px solid var(--stroke);border-radius:6px;font-size:.72rem;background:var(--canvas)}
+.preview-prices strong{font-size:1.1rem}.preview-prices small{color:var(--ac)}.preview-prices s{color:var(--mu)}
 </style></head>
 <body>
 <header>
@@ -429,7 +438,7 @@ async function uploadStoreImage(input,kind){
   }
 }
 function admPick(){
-  prepareStoreImage($('#pfile'),$('#pv'),v('pfit'),'product',()=>{$('#pfurl').value=''});
+  prepareStoreImage($('#pfile'),$('#pv'),v('pfit'),'product',()=>{$('#pfurl').value='';updateProductCardPreview()});
 }
 function admUrl(){
   const value=v('pfurl').trim(),input=$('#pfile');
@@ -492,18 +501,49 @@ function productDescriptionFields(product){
   const rule=legacy.match(/^\s*⚠️\s*(.+)$/mu)?.[1]||'';
   return {access,delivery,rule};
 }
+function updateProductCardPreview(){
+  const photo=$('#pv').getAttribute('src');
+  $('#card-preview-image').src=photo||tile('gift','#e6dcff');
+  $('#card-preview-name').textContent=v('pn').trim()||'Nombre del producto';
+  const c=v('pc')==='__new__'?v('pcn'):v('pc');
+  const sub=$('#ps').selectedOptions[0]?.hasAttribute('data-new')?v('psn'):v('ps');
+  $('#card-preview-category').textContent=[c,sub].filter(Boolean).join(' · ');
+  const n=Number(v('access-amount')),u=v('access-unit');
+  const units={days:['día','días'],months:['mes','meses'],years:['año','años']};
+  const duration=v('access-amount')!==''&&units[u]?`${n} ${units[u][n===1?0:1]}`:'';
+  const benefit=cardBenefit({n:v('pn'),t:v('pt'),cardBenefit:v('card-benefit'),pills:v('ptg').split(',')});
+  $('#card-preview-tags').replaceChildren(...[v('pt'),duration,benefit].filter(Boolean).map(text=>{
+    const tag=document.createElement('span');tag.textContent=text;return tag;
+  }));
+  const stock=v('pst');
+  $('#card-preview-stock').textContent=v('pstock')==='out'?'Agotado':stock?(Number(stock)<=5?'Quedan ':'Stock ')+stock:'Disponible';
+  const price=v('pp'),previous=Number(v('ppo')),sale=price!==''&&previous>Number(price);
+  $('#card-preview-price').textContent=price===''?'':money(price);
+  $('#card-preview-previous').textContent=sale?money(previous):'';
+  $('#card-preview-discount').textContent=sale?'-'+Math.round((1-Number(price)/previous)*100)+'%':'';
+  const usdt=solesToUsdt(price);
+  $('#card-preview-usdt').textContent=usdt>0?'≈ '+usdt.toFixed(2)+' USDT':'';
+}
 function admForm(id){
   ADM.tab='prod';
   const p=id?prod(id):{},cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=id||0;
   const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
-  <div class="product-editor"><fieldset><legend>Información del producto</legend>
+  <div class="product-editor"><fieldset><legend>Vista previa de la tarjeta</legend>
+    <article class="product-card-preview"><img id="card-preview-image" alt="">
+      <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
+      <p id="card-preview-category" class="preview-category"></p><p id="card-preview-name" class="preview-name"></p>
+      <div id="card-preview-tags" class="preview-tags"></div>
+      <div class="preview-prices"><strong id="card-preview-price"></strong><s id="card-preview-previous"></s><small id="card-preview-usdt"></small></div></div></article>
+    </fieldset><fieldset><legend>Información del producto</legend>
   <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
   </fieldset><fieldset><legend>Descripción en la tienda</legend>
   <label for="desc-access">Qué recibe el cliente</label><input id="desc-access" maxlength="70" value="${esc(description.access)}" placeholder="Ej. 1 perfil privado">
   <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
   <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
   <label for="ptg">Beneficios (separados por comas)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
+  <label for="card-benefit">Beneficio en la tarjeta (opcional)</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
+  <small class="mu">Si lo dejas vacío, se elige automáticamente de los beneficios.</small>
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
   <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset><fieldset><legend>Categoría y subcategoría</legend>
@@ -538,6 +578,10 @@ function admForm(id){
   if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
   admCatSel(p.s||'');
   admTypeFields();
+  const editor=$('.product-editor');
+  editor.addEventListener('input',updateProductCardPreview);
+  editor.addEventListener('change',updateProductCardPreview);
+  updateProductCardPreview();
 }
 async function admGuardar(){if(publishing)return;
   const imageInput=$('#pfile');
@@ -580,6 +624,8 @@ async function admGuardar(){if(publishing)return;
   if(!old||old.descriptionSpec||Object.values(descriptionSpec).some(Boolean))o.descriptionSpec=descriptionSpec;
   if(t)o.t=t;
   if(hasDuration)o.accessDuration={amount,unit};
+  const benefit=v('card-benefit').trim();
+  if(benefit)o.cardBenefit=benefit;
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
   if(s){SUBS[c]=SUBS[c]||[];if(!SUBS[c].includes(s))SUBS[c].push(s)}

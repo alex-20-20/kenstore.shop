@@ -15,3 +15,12 @@ function kenReadCatalog(client) {
 }
 
 if (typeof module !== 'undefined') module.exports = { SUPA_URL, SUPA_KEY };
+
+function cardBenefit(product){
+  if(typeof product.cardBenefit==='string'&&product.cardBenefit.trim())return product.cardBenefit.trim();
+  const tags=Array.isArray(product.pills)?product.pills.map(tag=>String(tag).trim()).filter(Boolean):[];
+  const redundant=[product.n,product.t].map(value=>String(value||'').toLowerCase());
+  const useful=tags.filter(tag=>tag.length<=18&&!redundant.some(text=>text.includes(tag.toLowerCase()))
+    && !/^(?:gratis|entrega inmediata|\d+\s*(?:días?|mes(?:es)?|años?))$/iu.test(tag));
+  return useful.find(tag=>/\b4K\b/i.test(tag))||useful[0]||'';
+}

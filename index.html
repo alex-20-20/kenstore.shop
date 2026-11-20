@@ -1560,13 +1560,6 @@ function tabs(){
   $('#subs').style.display=sb.length?'flex':'none';
   $('#subs').innerHTML=sb.length?['',...sb].map(s=>`<button data-s="${esc(s)}" class="${S.sub==s?'on':''}">${esc(s||'Todos')}</button>`).join(''):'';
 }
-function cardBenefit(product){
-  const tags=Array.isArray(product.pills)?product.pills.map(tag=>String(tag).trim()).filter(Boolean):[];
-  const redundant=[product.n,product.t].map(value=>String(value||'').toLowerCase());
-  const useful=tags.filter(tag=>tag.length<=18&&!redundant.some(text=>text.includes(tag.toLowerCase()))
-    && !/^(?:gratis|entrega inmediata|\d+\s*(?:días?|mes(?:es)?|años?))$/iu.test(tag));
-  return useful.find(tag=>/\b4K\b/i.test(tag))||useful[0]||'';
-}
 function grid(){
   const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||p.s==S.sub));
   $('#grid').innerHTML=L.map(p=>{
