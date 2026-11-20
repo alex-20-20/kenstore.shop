@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="kenstore-data.js?v=product-card"></script>
 <script>
-const returnToStoreStart=performance.getEntriesByType('navigation')[0]?.type==='reload';
+const returnToStoreStart=!new URLSearchParams(location.search).has('pagina')&&performance.getEntriesByType('navigation')[0]?.type==='reload';
 if(returnToStoreStart){
   history.scrollRestoration='manual';
   if(location.hash&&!new URLSearchParams(location.hash.slice(1)).has('access_token')){
@@ -1122,6 +1122,15 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .store-plan-options button[aria-pressed=true]{background:var(--ac);color:#fff;--rc:var(--ac)}
 .store-plan-options strong,.store-plan-options small{display:block}
 .store-plan-summary{margin:10px 0;padding:10px;border:1px solid var(--stroke);border-radius:10px;background:var(--canvas)}
+#catalog-pagination{margin:10px 0 16px;text-align:center}
+#catalog-pagination[hidden]{display:none}
+#catalog-pagination p{font-size:.83rem;color:var(--mu);margin:0 0 8px}
+.catalog-page-links{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:5px}
+.catalog-page-links button{min-width:38px;min-height:38px;padding:4px 7px;border:1px solid var(--stroke);border-radius:9px;background:var(--surface);color:var(--ln);box-shadow:none}
+.catalog-page-links button[aria-current=page]{background:var(--ac);border-color:var(--ac);color:#fff}
+.catalog-page-links button:disabled{opacity:.45;cursor:default}
+.catalog-page-links button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media(max-width:540px){.catalog-page-label{display:none}}
 </style>
 </head>
 <body>
@@ -1195,6 +1204,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
     <nav id="subs" class="bars"></nav>
   </div>
   <main id="grid"></main>
+  <nav id="catalog-pagination" aria-label="Páginas del catálogo" hidden></nav>
 </section>
 
 <section class="sec">
@@ -1481,7 +1491,7 @@ const okEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 function newOrderId(){return 'KEN-'+crypto.randomUUID().replaceAll('-','').slice(0,12).toUpperCase()}
 
 /* ===== DATOS DE SUPABASE ===== */
-const S={cat:'all',sub:'',user:null,pend:null,busy:false};
+const S={cat:'all',sub:'',page:1,user:null,pend:null,busy:false};
 const storeClient=kenClient();
 const storeSession=storeClient?.auth.getSession();
 function setStoreUser(user){
@@ -1692,11 +1702,49 @@ async function refreshAvailableStock(){
     grid();
   }catch{}
 }
+const catalogPageSize=30;
+function readCatalogLocation(){
+  const params=new URLSearchParams(location.search);
+  S.cat=params.get('categoria')||'all';
+  S.sub=params.get('subcategoria')||'';
+  const page=Number(params.get('pagina'));
+  S.page=Number.isSafeInteger(page)&&page>0?page:1;
+}
+function recordCatalogLocation(){
+  const url=new URL(location.href);
+  if(S.cat==='all')url.searchParams.delete('categoria');else url.searchParams.set('categoria',S.cat);
+  if(S.sub)url.searchParams.set('subcategoria',S.sub);else url.searchParams.delete('subcategoria');
+  url.searchParams.set('pagina',String(S.page));
+  url.hash='catalogo';
+  if(url.href!==location.href)history.pushState(null,'',url);
+}
+function scrollToCatalog(){
+  const catalog=$('#catalogo');
+  const top=window.scrollY+catalog.getBoundingClientRect().top+parseFloat(getComputedStyle(catalog).paddingTop)-catalogHeader.offsetHeight;
+  window.scrollTo({top,behavior:'instant'});
+}
+function renderCatalogPagination(total,start,pages){
+  const nav=$('#catalog-pagination');
+  nav.hidden=pages<2;
+  if(nav.hidden){nav.replaceChildren();return}
+  const numbers=pages<=7?Array.from({length:pages},(_,i)=>i+1):[...new Set([1,...[S.page-1,S.page,S.page+1].filter(p=>p>1&&p<pages),pages])];
+  const items=numbers.map((p,i)=>(i&&p>numbers[i-1]+1?'<span aria-hidden="true">…</span>':'')+
+    `<button type="button" data-page="${p}" aria-label="Página ${p}" ${p===S.page?'aria-current="page"':''}>${p}</button>`).join('');
+  nav.innerHTML=`<p aria-live="polite">Mostrando ${start+1}–${Math.min(start+catalogPageSize,total)} de ${total} productos</p>
+    <div class="catalog-page-links">
+      <button type="button" data-page="${S.page-1}" aria-label="Página anterior" ${S.page===1?'disabled':''}>‹ <span class="catalog-page-label">Anterior</span></button>
+      ${items}
+      <button type="button" data-page="${S.page+1}" aria-label="Página siguiente" ${S.page===pages?'disabled':''}><span class="catalog-page-label">Siguiente</span> ›</button>
+    </div>`;
+}
 function grid(){
   const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
   const now=Date.now();
   const L=catalogOffersFirst(orderedCatalogProducts(matches,S.cat,S.sub),now);
-  $('#grid').innerHTML=L.map(product=>{
+  const pages=Math.max(1,Math.ceil(L.length/catalogPageSize));
+  S.page=Math.min(S.page,pages);
+  const start=(S.page-1)*catalogPageSize;
+  $('#grid').innerHTML=L.slice(start,start+catalogPageSize).map(product=>{
     const offer=activeScheduledOffer(product,now),p=pricedProduct(product,now);
     const quantity=p.st===0?0:availableStock[p.id]??p.st;
     const out=quantity===0, low=quantity>0&&quantity<=5, sale=hasCatalogDiscount(p);
@@ -1712,18 +1760,36 @@ function grid(){
 
       <div class="pr"><div class="pp"><div class="pl"><b>${money(p.p)}</b>${sale?`<span class="old">${money(p.po)}</span>`:''}</div>${p.u?`<span class="usd">≈ ${Number(p.u).toFixed(2)} USDT</span>`:''}</div>
       <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':plans.length?'Ver planes':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
+  renderCatalogPagination(L.length,start,pages);
   refreshOfferCountdowns();
 }
 function selectCatalogFilter(category,sub,row){
   S.cat=category;
   S.sub=sub;
+  S.page=1;
   tabs();
   grid();
-  row.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
-  const catalog=$('#catalogo');
-  const top=window.scrollY+catalog.getBoundingClientRect().top+parseFloat(getComputedStyle(catalog).paddingTop)-catalogHeader.offsetHeight;
-  window.scrollTo({top,behavior:'instant'});
+  recordCatalogLocation();
+  row?.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
+  scrollToCatalog();
 }
+$('#catalog-pagination').onclick=event=>{
+  const button=event.target.closest('button[data-page]');
+  if(!button||button.disabled||Number(button.dataset.page)===S.page)return;
+  S.page=Number(button.dataset.page);
+  grid();
+  recordCatalogLocation();
+  const heading=$('#catalogo h2');
+  heading.tabIndex=-1;
+  heading.focus({preventScroll:true});
+  scrollToCatalog();
+};
+window.addEventListener('popstate',()=>{
+  readCatalogLocation();
+  tabs();
+  grid();
+  if(location.hash==='#catalogo')scrollToCatalog();
+});
 $('#tabs').onclick=event=>{
   const button=event.target.closest('button[data-k]');
   if(!button)return;
@@ -2304,12 +2370,14 @@ async function loadPublishedCatalog(){
   Object.keys(SUBS).forEach(k=>delete SUBS[k]);
   Object.assign(SUBS,data.subcategories);
   SITE=data.site;
+  readCatalogLocation();
   if(hiddenCatalogEntry(S.cat)){S.cat='all';S.sub=''}
   if(hiddenCatalogEntry(S.cat,S.sub))S.sub='';
   Object.assign(CFG,SITE.cfg||{});
   updateWhatsAppGroup();
   applyStoreAppearance();
   tabs();grid();refreshAvailableStock();refreshAtPromotionBoundary();showMaintenance(SITE.maint);
+  if(new URLSearchParams(location.search).has('pagina'))scrollToCatalog();
   return true;
 }
 
@@ -2353,7 +2421,10 @@ siteMenu.addEventListener('click',e=>{
   const link=e.target.closest('#site-menu-links a');
   if(!link)return;
   if(link.dataset.category!==undefined){
-    S.cat=link.dataset.category;S.sub='';tabs();grid();
+    e.preventDefault();
+    siteMenu.close();
+    selectCatalogFilter(link.dataset.category,'');
+    return;
   }
   siteMenu.close();
 });
