@@ -1085,20 +1085,22 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 }
 #gp[hidden]{display:none!important}
  
-.det .detail-intro{margin:10px 0 13px;line-height:1.5;color:#342e27;overflow-wrap:anywhere}
-.det .detail-tags,.det .detail-meta{display:flex;flex-wrap:wrap;gap:6px;padding:0;list-style:none;margin:0}
-.det .detail-tags li,.det .detail-meta li{margin:0;padding:4px 8px;border-radius:8px;font-size:.76rem;line-height:1.35}
+.det .detail-intro{margin:9px 0;line-height:1.42;color:#342e27;overflow-wrap:anywhere}
+.det .detail-intro p{margin:0}
+.det .detail-tags,.det .detail-meta{display:flex;flex-wrap:wrap;gap:5px;padding:0;list-style:none;margin:0}
+.det .detail-tags li,.det .detail-meta li{margin:0;padding:3px 7px;border-radius:6px;font-size:.74rem;line-height:1.35}
 .det .detail-tags li{background:#f2eae0;color:#413126}
 .det .detail-meta li{background:#f5f3ee;color:#51473d}
-.det section,.det details{border-top:1px solid #e4ded4;margin-top:13px;padding-top:12px}
-.det section h3{margin:0 0 6px;font-size:.93rem}
-.det .detail-copy{line-height:1.45;overflow-wrap:anywhere}
-.det .detail-copy p{margin:0 0 6px;white-space:pre-line}
-.det .detail-copy ul{padding-left:18px;margin:0}
-.det .detail-copy li{margin:4px 0}
-.det details summary{cursor:pointer;color:#322820;font-weight:700;padding:3px 0;font-size:.88rem}
-.det details[open] summary{margin-bottom:8px}
-.det details summary:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+.det .detail-expand{border-top:1px solid #e4ded4;margin-top:11px;padding-top:8px}
+.det .detail-expand section+section{margin-top:10px}
+.det .detail-expand h3{margin:0 0 3px;font-size:.86rem}
+.det .detail-copy{line-height:1.4;overflow-wrap:anywhere;font-size:.82rem}
+.det .detail-copy p{margin:0 0 5px;white-space:pre-line}
+.det .detail-copy ul{padding-left:16px;margin:0}
+.det .detail-copy li{margin:3px 0}
+.det .detail-expand summary{cursor:pointer;color:#322820;font-weight:700;padding:5px 0;font-size:.86rem}
+.det .detail-expand[open] summary{margin-bottom:7px}
+.det .detail-expand summary:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
 </style>
 </head>
 <body>
@@ -1999,20 +2001,34 @@ function detailCopy(text){
   const items=parts.map(item=>item.trim()).filter(Boolean);
   return `${intro?`<p>${esc(intro)}</p>`:''}${items.length?`<ul>${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}`;
 }
+function shortProductIntro(text){
+  const input=text.trim();
+  if(input.length<=140)return input;
+  const sentence=input.match(/^.{35,139}?[.!?](?=\s|$)/u)?.[0];
+  if(sentence)return sentence;
+  return input.slice(0,139).replace(/\s+\S*$/u,'').trimEnd()+'…';
+}
 function infoM(id){
   const p=prod(id);if(!p)return;
-  const av=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
+  const availability=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
   const details=productDetailSections(p.i||p.d);
+  const intro=shortProductIntro(details.intro);
   const duration=accessDurationLabel(p.accessDuration);
+  const tags=Array.isArray(p.pills)?p.pills.filter(Boolean):[];
   const field=orderField(p);
-  const terms=[p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago',field?`Te pediremos: ${field.l}`:''].filter(Boolean);
+  const delivery=p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago';
+  const terms=[delivery,field?`Te pediremos: ${field.l}`:''].filter(Boolean);
   modal(`<div class="det"><span class="dcat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span><h2>${esc(p.n)}</h2>
-    <ul class="detail-meta"><li>${esc(av)}</li>${p.t?`<li>${esc(p.t)}</li>`:''}${duration?`<li>${esc(duration)}</li>`:''}</ul>
-    ${details.intro?`<div class="detail-intro detail-copy">${detailCopy(details.intro)}</div>`:''}
-    ${p.pills?.length?`<ul class="detail-tags" aria-label="Características">${p.pills.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
-    ${details.includes?`<section><h3>Qué incluye</h3><div class="detail-copy">${detailCopy(details.includes)}</div></section>`:''}
-    <details><summary>Condiciones y entrega</summary><div class="detail-copy">${details.conditions?detailCopy(details.conditions):''}
-      <ul>${terms.map(term=>`<li>${esc(term)}</li>`).join('')}</ul></div></details></div>`);
+    <ul class="detail-meta">${[availability,p.t,duration].filter(Boolean).map(value=>`<li>${esc(value)}</li>`).join('')}</ul>
+    ${intro?`<div class="detail-intro"><p>${esc(intro)}</p></div>`:''}
+    ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.slice(0,4).map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
+    <details class="detail-expand"><summary>Detalles y condiciones</summary><div class="detail-copy">
+      ${intro!==details.intro?`<section><h3>Descripción</h3>${detailCopy(details.intro)}</section>`:''}
+      ${details.includes||tags.length>4?`<section><h3>Qué incluye</h3>${details.includes?detailCopy(details.includes):''}
+        ${tags.length>4?`<ul>${tags.slice(4).map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}</section>`:''}
+      <section><h3>Condiciones y entrega</h3>${details.conditions?detailCopy(details.conditions):''}
+        <ul>${terms.map(term=>`<li>${esc(term)}</li>`).join('')}</ul></section>
+    </div></details></div>`);
 }
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
 function updateWhatsAppGroup(){
