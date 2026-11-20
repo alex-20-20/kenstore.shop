@@ -1610,10 +1610,14 @@ function tabs(){
   const subButton=sub=>`<button type="button" data-s="${esc(sub)}" class="${S.sub===sub?'on':''}" aria-pressed="${S.sub===sub}">${esc(sub||'Todos')}</button>`;
   renderCatalogRow(row,subButton(''),sb.map(subButton).join(''));
 }
-function pricedProduct(product,now=Date.now()){
+function activeScheduledOffer(product,now){
   const offer=product.promotion;
-  if(!offer||!(offer.price>0&&offer.price<product.p&&now>=Date.parse(offer.start)&&now<Date.parse(offer.end)))return product;
-  return {...product,p:offer.price,po:product.p,u:Math.round(offer.price*31.5)/100};
+  return Boolean(offer&&offer.price>0&&offer.price<product.p&&now>=Date.parse(offer.start)&&now<Date.parse(offer.end));
+}
+function pricedProduct(product,now=Date.now()){
+  if(!activeScheduledOffer(product,now))return product;
+  const price=product.promotion.price;
+  return {...product,p:price,po:product.p,u:Math.round(price*31.5)/100};
 }
 let promotionTimer;
 function refreshAtPromotionBoundary(){
@@ -1626,20 +1630,21 @@ let checkoutProduct;
 function hasCatalogDiscount(product){
   return Number(product.po)>Number(product.p)&&Number(product.p)>0;
 }
-function catalogOffersFirst(products){
+function catalogOffersFirst(products,now){
   const offers=[],regular=[];
-  for(const product of products)(hasCatalogDiscount(product)?offers:regular).push(product);
+  for(const product of products)(activeScheduledOffer(product,now)?offers:regular).push(product);
   return offers.concat(regular);
 }
 function grid(){
   const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
   const now=Date.now();
-  const L=catalogOffersFirst(orderedCatalogProducts(matches,S.cat,S.sub).map(product=>pricedProduct(product,now)));
-  $('#grid').innerHTML=L.map(p=>{
+  const L=catalogOffersFirst(orderedCatalogProducts(matches,S.cat,S.sub),now);
+  $('#grid').innerHTML=L.map(product=>{
+    const offer=activeScheduledOffer(product,now),p=pricedProduct(product,now);
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=hasCatalogDiscount(p);
     const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
     const stock=p.st==null?'<span class="stk">Disponible</span>':out?'<span class="stk out">Agotado</span>':low?`<span class="stk low">Quedan ${p.st}</span>`:`<span class="stk">Stock ${p.st}</span>`;
-    return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${sale?`<span class="offer-label">OFERTA</span><span class="off">-${Math.round((1-p.p/p.po)*100)}%</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
+    return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${offer?'<span class="offer-label">OFERTA</span>':''}${sale?`<span class="off">-${Math.round((1-p.p/p.po)*100)}%</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(displayProductPlacement(p))}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
