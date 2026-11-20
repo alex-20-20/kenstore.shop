@@ -871,10 +871,6 @@ body:has(#site-menu[open]){overflow:hidden}
 .pay-qr-action .btn{padding:6px 9px;font-size:.8rem}
 .pay-number .pay-copy{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;--rw:1px;--so:2px}
 .pay-copy svg{width:13px;height:13px}
-.voucher-upload{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.voucher-upload input{flex:1;min-width:0;margin:0}
-.voucher-preview{flex:none}
-.voucher-preview img{display:block;width:50px;height:58px;object-fit:contain;padding:2px;background:var(--bone);border:2px solid var(--ln)}
 .form-rule,.form-next,.field-error{margin:4px 0 0;font-size:.8rem;line-height:1.35}
 .form-rule,.form-next{color:var(--mu)}
 .form-rule[data-met=true]{color:#245b37}
@@ -1209,7 +1205,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
   <div class="in">
     <div>
       <h2 data-ed="k6">Compra fácil,<br>entrega rápida</h2>
-      <p data-ed="k21">En Ken Store reunimos streaming, recargas, cursos y libros en un solo lugar. Pagas con QR, subes tu voucher y recibes tu acceso por WhatsApp.</p>
+      <p data-ed="k21">En Ken Store reunimos streaming, recargas, cursos y libros en un solo lugar. Pagas con QR, envías tu comprobante por WhatsApp y recibes tu acceso por WhatsApp.</p>
       <div class="chips"><span data-ed="k22">Atención por WhatsApp</span><span data-ed="k23">Pago con QR / Yape</span><span data-ed="k24">Soporte con tu N.º de orden</span></div>
     </div>
     <div class="scene s2" aria-hidden="true">
@@ -1738,12 +1734,6 @@ document.addEventListener('keydown',e=>{if(e.key=='Escape'&&$('#mr').firstChild)
 
 const emailError=value=>okEmail(value.trim())?'':'Escribe un correo válido, por ejemplo nombre@ejemplo.com.';
 const phoneError=value=>normPhone(value)?'':'Ingresa 9 dígitos que empiecen con 9. Puedes incluir el +51.';
-function voucherError(input){
-  const file=input.files[0];
-  if(!file)return 'Adjunta una imagen de tu comprobante.';
-  if(!file.type.startsWith('image/'))return 'Selecciona un archivo de imagen.';
-  return file.size>5*1024*1024?'La imagen debe pesar 5 MB como máximo.':'';
-}
 function guideForm(buttonId,rules){
   const button=$('#'+buttonId),summary=document.createElement('p'),response=document.createElement('p');
   summary.id=buttonId+'-next';summary.className='form-next';summary.setAttribute('aria-live','polite');
@@ -1755,7 +1745,7 @@ function guideForm(buttonId,rules){
     const input=$('#'+id),error=document.createElement('p');
     error.id=id+'-error';error.className='field-error';error.hidden=true;
     error.setAttribute('aria-live','polite');
-    (input.closest('.voucher-upload')||input).after(error);
+    input.after(error);
     input.required=true;
     input.setAttribute('aria-describedby',[input.getAttribute('aria-describedby'),error.id].filter(Boolean).join(' '));
     return {id,input,error,label,validate,touched:false};
@@ -1979,19 +1969,6 @@ function payM(id){ // Paso 2: método de pago
   </div></div>
   <button class="pri w pay-confirm" onclick="this.disabled=true;playCoinSound();confirmM(${id})">Realicé mi pago →</button>`,'payment-modal');
 }
-function previewVoucher(input){
-  const file=input.files[0],preview=$('#voucher-preview'),image=preview.querySelector('img');
-  preview.hidden=true;
-  image.removeAttribute('src');
-  if(!file||!file.type.startsWith('image/')||file.size>5*1024*1024)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    if(!input.isConnected||input.files[0]!==file)return;
-    image.onload=()=>{if(input.files[0]===file)preview.hidden=false};
-    image.src=reader.result;
-  };
-  reader.readAsDataURL(file);
-}
 function orderField(product){
   switch(product.t){
     case 'Perfil':
@@ -2013,12 +1990,11 @@ function confirmM(id){ // Paso 3: formulario de confirmación
   <label for="cn">Nombre</label><input id="cn" value="${esc(S.user.name)}" readonly>
   <label for="cw">Tu número de WhatsApp</label><p class="form-rule" id="cw-rule">9 dígitos que empiecen con 9. Puedes incluir el +51.</p><input id="cw" type="tel" inputmode="tel" placeholder="Ej: 912 345 678" autocomplete="tel" aria-describedby="cw-rule">
   ${field?`<label for="cx">${esc(field.l)}</label>${field.help?`<p class="mu" id="cx-help">${esc(field.help)}</p>`:''}<input id="cx" type="${field.email?'email':'text'}" placeholder="${esc(field.ph||(field.email?'tucorreo@ejemplo.com':''))}"${field.email?' inputmode="email" autocomplete="email"':''}${field.help?' aria-describedby="cx-help"':''}>`:''}
-  ${free?'':`<label for="cv">Captura o foto de tu comprobante (obligatorio, máx. 5 MB)</label><div class="voucher-upload"><input id="cv" type="file" accept="image/*" onchange="previewVoucher(this)"><div class="voucher-preview" id="voucher-preview" hidden><img alt="Vista previa de tu comprobante"></div></div>`}
-  <button class="pri w order-primary" id="sb" onclick="playPowerUpSound();send(${id})">${free?'Reclamar regalo':'Completar pedido'} →</button>`);
+  ${free?'':'<p class="warn">Después de registrar tu pedido, abre WhatsApp y adjunta allí la captura del comprobante.</p>'}
+  <button class="pri w order-primary" id="sb" onclick="playPowerUpSound();send(${id})">${free?'Reclamar regalo':'Registrar pedido'} →</button>`);
   guideForm('sb',[
     ['cw','número de WhatsApp',phoneError],
-    ...(field?[['cx',field.l,field.email?emailError:value=>value.trim()?'':'Completa este dato.']]:[]),
-    ...(free?[]:[['cv','comprobante de pago',(_,input)=>voucherError(input)]])
+    ...(field?[['cx',field.l,field.email?emailError:value=>value.trim()?'':'Completa este dato.']]:[])
   ]);
 }
 // 1-Up al completar pedido exitoso
@@ -2026,24 +2002,24 @@ function playSuccessSound(){play1UpSound()}
 async function send(id){
   const button=$('#sb');
   if(S.busy||!button.checkFields())return;
-  const p=checkoutProduct,free=p.p===0,field=orderField(p),w=normPhone(v('cw')),x=field?v('cx').trim():'',f=free?null:$('#cv').files[0];
+  const p=checkoutProduct,field=orderField(p),w=normPhone(v('cw')),x=field?v('cx').trim():'';
   S.busy=true;button.setSubmitting(true);
   let o;
-  try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:f?f.name:'',name:S.user.name,email:S.user.email})}
+  try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:'',name:S.user.name,email:S.user.email})}
   catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Si ya pagaste y el precio cambió, conserva tu comprobante y contacta a soporte.')}
   S.busy=false;doneM(o);
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
-  const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?o.extraLabel+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación\n${o.price>0?'Adjunto mi voucher de pago 👇':'Regalo de bienvenida (sin pago)'}`;
+  const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nCorreo de la cuenta: ${o.email}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?(o.extraLabel||o.extra_label||'Dato de entrega')+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación\n${o.price>0?'📎 Adjunto la captura de mi comprobante en este chat.':'Regalo de bienvenida (sin pago)'}`;
   return 'https://wa.me/'+CFG.WA+'?text='+encodeURIComponent(t);
 }
 function doneM(o){ // Paso 4: notificación final
   playSuccessSound();
-  modal(`<div class="big-ok"><h2>¡Pedido exitoso! 🎉</h2><p class="mu">N.º de orden</p><div class="oid">${o.id}</div>
-  <p>Espera la entrega de tus datos o acceso, que se realizará por WhatsApp.</p>
+  modal(`<div class="big-ok"><h2>¡Pedido registrado!</h2><p class="mu">N.º de orden</p><div class="oid">${o.id}</div>
+  <p>${o.price>0?'Estado: pendiente de verificación.':'Te contactaremos por WhatsApp para la entrega.'}</p>
   ${o.price>0?`<p class="warn" style="margin-top:12px">📎 <b>Importante:</b> al abrir WhatsApp, adjunta la captura de tu voucher en el chat para que podamos verificar tu pago.</p>`:''}
   <div class="order-actions">
-    <a class="btn pri order-primary" target="_blank" rel="noopener" href="${waLink(o)}"><img src="${spr('phone')}" alt="">Notificar por WhatsApp →</a>
+    <a class="btn pri order-primary" target="_blank" rel="noopener" href="${waLink(o)}"><img src="${spr('phone')}" alt="">${o.price>0?'Adjuntar comprobante en WhatsApp':'Notificar por WhatsApp'} →</a>
     <button type="button" onclick="playPauseSound();mineM()">Ver mis compras</button>
     <button type="button" onclick="playPauseSound();closeM()">Cerrar</button>
   </div></div>`);
@@ -2068,7 +2044,7 @@ async function mineM(){
    <b>${esc(o.pn)}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
    <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extra_label)}: ${esc(o.extra)}</span>`:''}
    <span class="st">${stLbl(o)}</span>${o.status=='rechazado'&&o.reason?`<span class="mu">Motivo: ${esc(o.reason)}</span>`:''}
-   <a class="btn purchase-support" target="_blank" rel="noopener" href="${supLink(o)}">Soporte por WhatsApp</a></div></div>`}).join(''):'<p class="mu">Aún no tienes compras. Elige un producto del catálogo para empezar.</p>'),'big purchases');
+   <a class="btn purchase-support" target="_blank" rel="noopener" href="${o.status==='pendiente'&&o.price>0?waLink(o):supLink(o)}">${o.status==='pendiente'&&o.price>0?'Adjuntar comprobante en WhatsApp':'Soporte por WhatsApp'}</a></div></div>`}).join(''):'<p class="mu">Aún no tienes compras. Elige un producto del catálogo para empezar.</p>'),'big purchases');
 }
 /* --- Libro de Reclamaciones (versión básica, revisa los requisitos vigentes de Indecopi) --- */
 function claimM(){
@@ -2281,7 +2257,7 @@ siteMenu.addEventListener('click',e=>{
 /* Personalización guardada desde keen-store-admin.html */
 const rt=t=>t.split(/\n\s*\n/).map(b=>/^#\s/.test(b)?`<h3>${esc(b.slice(2))}</h3>`:`<p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('');
 function applyStoreAppearance(){const fm=t=>esc(t).replace(/\*([^*]+)\*/g,'<span>$1</span>').replace(/\n/g,'<br>');
-  document.querySelectorAll('[data-ed]').forEach(e=>{const t=(SITE.t||{})[e.dataset.ed];if(t)e.innerHTML=fm(e.dataset.ed==='k10'?t.replace(/^💬\s*/,''):t)});
+  document.querySelectorAll('[data-ed]').forEach(e=>{const t=(SITE.t||{})[e.dataset.ed];if(t){const text=['k18','k21'].includes(e.dataset.ed)?t.replace(/sube tu voucher/gi,'envía tu comprobante por WhatsApp').replace(/subes tu voucher/gi,'envías tu comprobante por WhatsApp'):t;e.innerHTML=fm(e.dataset.ed==='k10'?text.replace(/^💬\s*/,''):text)}});
   const k=SITE.col||{};['ac','ac2'].forEach(x=>{if(k[x])document.documentElement.style.setProperty('--'+x,k[x])});
   if(SITE.title)document.title=SITE.title;
   if(CFG.LOGO){
