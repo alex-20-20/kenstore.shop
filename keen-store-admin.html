@@ -748,6 +748,7 @@ function admForm(id,duplicate=false){
   const p=duplicate?{...source,n:source.n+' (copia)',paused:true}:source,cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=duplicate?0:id||0;ADM.paused=Boolean(p.paused);
   const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
+  ${duplicate?'<p class="mu">La copia se guardará pausada. Puedes reactivarla desde Productos.</p>':''}
   <div class="product-editor"><fieldset><legend>Vista previa de la tarjeta</legend>
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
@@ -1389,9 +1390,10 @@ async function loadSalesSummary(view){
     const orders=await loadAdminOrders();
     if(!view.isConnected)return;
     const sum=scope=>orders.filter(o=>orderInScope(o,scope)).reduce((total,o)=>total+Number(o.price||0),0);
+    const salesMoney=new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'});
     const cards=[
-      ['Cobrado hoy',money(sum('today')),"openOrderTask('today')"],
-      ['Cobrado este mes',money(sum('month')),"openOrderTask('month')"],
+      ['Cobrado hoy',salesMoney.format(sum('today')),"openOrderTask('today')"],
+      ['Cobrado este mes',salesMoney.format(sum('month')),"openOrderTask('month')"],
       ['Por verificar',orders.filter(o=>o.status==='pendiente').length,"openOrderTask('pending')"],
       ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"openOrderTask('delivery')"],
       ['Stock bajo',P.filter(isLowStock).length,"ADM.productFilters={stock:'low'};admList()"]
