@@ -1551,8 +1551,20 @@ function hiddenCatalogEntry(category,sub){
   const entries=SITE.hiddenCatalog;
   return Array.isArray(entries)&&entries.some(entry=>entry?.[0]===category&&entry[1]===sub);
 }
+function productSubcategories(product){
+  const members=Array.isArray(product.subcategories)?product.subcategories:[product.s];
+  return [...new Set(members.filter(name=>typeof name==='string'&&name.trim()))].slice(0,4);
+}
+function activeProductSubcategories(product){
+  return productSubcategories(product).filter(sub=>!hiddenCatalogEntry(product.c,sub));
+}
 function visibleProduct(product){
-  return Boolean(product&&!hiddenCatalogEntry(product.c)&&!hiddenCatalogEntry(product.c,product.s));
+  if(!product||hiddenCatalogEntry(product.c))return false;
+  return !productSubcategories(product).length||activeProductSubcategories(product).length>0;
+}
+function displayProductSubcategory(product){
+  const active=activeProductSubcategories(product);
+  return active.includes(S.sub)?S.sub:(active[0]||'');
 }
 function tabs(){
   $('#tabs').innerHTML=CATS.filter(([key])=>key==='all'||!hiddenCatalogEntry(key)).map(([k,l,emoji,iconKey=k])=>`<button data-k="${esc(k)}" class="${S.cat==k?'on':''}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`).join('');
@@ -1561,13 +1573,13 @@ function tabs(){
   $('#subs').innerHTML=sb.length?['',...sb].map(s=>`<button data-s="${esc(s)}" class="${S.sub==s?'on':''}">${esc(s||'Todos')}</button>`).join(''):'';
 }
 function grid(){
-  const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||p.s==S.sub));
+  const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||activeProductSubcategories(p).includes(S.sub)));
   $('#grid').innerHTML=L.map(p=>{
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=p.po&&p.po>p.p;
     const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
     const stock=p.st==null?'<span class="stk">Disponible</span>':out?'<span class="stk out">Agotado</span>':low?`<span class="stk low">Quedan ${p.st}</span>`:`<span class="stk">Stock ${p.st}</span>`;
     return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${sale?`<span class="off">-${Math.round((1-p.p/p.po)*100)}%</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
-      <span class="cat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span>
+      <span class="cat">${esc(p.c)}${displayProductSubcategory(p)?' · '+esc(displayProductSubcategory(p)):''}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
 
@@ -2009,7 +2021,7 @@ function structuredProductDetail(product){
   const access=[spec.access?`👤 ${spec.access}`:'',duration?`📅 ${duration} de acceso`:''].filter(Boolean);
   const tags=Array.isArray(product.pills)?product.pills:[];
   const delivery=spec.delivery||(!product.p?'':'Entrega por WhatsApp tras verificar el pago');
-  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${product.s?' · '+esc(product.s):''}</span><h2>${esc(product.n)}</h2>
+  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${displayProductSubcategory(product)?' · '+esc(displayProductSubcategory(product)):''}</span><h2>${esc(product.n)}</h2>
     ${access.length?`<ul class="detail-benefits">${access.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}
     ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
     ${delivery?`<p class="detail-delivery">📦 ${esc(delivery)}</p>`:''}
@@ -2025,7 +2037,7 @@ function formattedProductDetail(product){
   const delivery=lines.filter(line=>line.startsWith('**📦'));
   const warnings=lines.filter(line=>line.startsWith('⚠️'));
   const tags=Array.isArray(product.pills)?product.pills:[];
-  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${product.s?' · '+esc(product.s):''}</span><h2>${esc(title)}</h2>
+  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${displayProductSubcategory(product)?' · '+esc(displayProductSubcategory(product)):''}</span><h2>${esc(title)}</h2>
     ${summary.map(line=>`<p class="detail-intro">${format(line)}</p>`).join('')}
     <ul class="detail-benefits">${benefits.map(line=>`<li>${format(line.slice(2))}</li>`).join('')}</ul>
     ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
@@ -2048,7 +2060,7 @@ function infoM(id){
     .find(item=>item.length<=96&&/^(?:no\s|uso exclusivo|solo\s|s[oó]lo\s)/iu.test(item));
   const field=orderField(p);
   const delivery=p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar el pago';
-  modal(`<div class="det"><span class="dcat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span><h2>${esc(p.n)}</h2>
+  modal(`<div class="det"><span class="dcat">${esc(p.c)}${displayProductSubcategory(p)?' · '+esc(displayProductSubcategory(p)):''}</span><h2>${esc(p.n)}</h2>
     <ul class="detail-meta">${[availability,p.t,duration].filter(Boolean).map(value=>`<li>${esc(value)}</li>`).join('')}</ul>
     ${intro?`<p class="detail-intro">${esc(intro)}</p>`:''}
     ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}

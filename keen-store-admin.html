@@ -205,6 +205,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .preview-tags span{padding:2px 5px;border:1px solid var(--stroke);border-radius:6px;font-size:.72rem;background:var(--canvas)}
 .preview-prices strong{font-size:1.1rem}.preview-prices small{color:var(--ac)}.preview-prices s{color:var(--mu)}
 .admin-login-help{margin-top:12px;font-size:.83rem}
+ .product-sub-options{margin-top:12px}
+#ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px}
+#ps label{display:flex;align-items:center;gap:6px;min-height:42px;margin:0;padding:4px 8px;border:1px solid var(--stroke);border-radius:8px}
+#ps label input{flex:none;margin:0}
 </style></head>
 <body>
 <header>
@@ -346,7 +350,7 @@ function admFilterProducts(){
     &&[p.n,p.c,p.s,p.t].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(query));
   $('#product-count').textContent=products.length+' de '+P.length+' productos';
   const rows=products.map(p=>`<div class="ar"><img src="${esc(p.img)}" alt=""><div><b>${esc(p.n)}</b>
-    <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${p.s?' · '+esc(p.s):''}</small>
+    <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${productSubcategories(p).length?' · '+esc(productSubcategories(p).join(' / ')):''}</small>
     <small>${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+p.st}</small></div>
     <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
@@ -455,20 +459,33 @@ function admUrl(){
   ADM.img=url.href;
   $('#pv').src=ADM.img;
 }
-function admSubs(c){
-  return [...new Set([...(SUBS[c]||[]),...P.filter(p=>p.c===c&&p.s).map(p=>p.s)])];
+function productSubcategories(product){
+  const members=Array.isArray(product.subcategories)?product.subcategories:[product.s];
+  return [...new Set(members.filter(name=>typeof name==='string'&&name.trim()))].slice(0,4);
 }
-function admCatSel(selected=''){
+function setProductSubcategories(product,members){
+  product.subcategories=members;
+  product.s=members[0]||'';
+}
+function admSubs(c){
+  return [...new Set([...(SUBS[c]||[]),...P.filter(p=>p.c===c).flatMap(productSubcategories)])];
+}
+function admCheckedSubs(){
+  return [...$('#ps').querySelectorAll('input:checked')].map(input=>input.value);
+}
+function admCatSel(selected=[]){
   const isNew=v('pc')==='__new__';
   $('#pcnw').hidden=!isNew;
   const subs=isNew?[]:admSubs(v('pc'));
-  $('#ps').innerHTML='<option value="">Sin subcategoría</option>'+subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')+'<option data-new>➕ Nueva subcategoría…</option>';
-  $('#ps').value=subs.includes(selected)?selected:'';
+  $('#ps').innerHTML=subs.map(name=>`<label><input type="checkbox" value="${esc(name)}"${selected.includes(name)?' checked':''}> ${esc(name)}</label>`).join('')||
+    '<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
   $('#psn').value='';
-  admSubSel();
+  admSubLimit();
 }
-function admSubSel(){
-  $('#psnw').hidden=!$('#ps').selectedOptions[0].hasAttribute('data-new');
+function admSubLimit(){
+  const count=admCheckedSubs().length;
+  for(const input of $('#ps').querySelectorAll('input'))input.disabled=count>=4&&!input.checked;
+  $('#sub-selection-count').textContent=`${count} de 4 seleccionadas`;
 }
 const typeOrderHelp={
   Perfil:'Se pide WhatsApp y el comprobante de pago.',
@@ -507,8 +524,9 @@ function updateProductCardPreview(){
   $('#card-preview-image').src=photo||tile('gift','#e6dcff');
   $('#card-preview-name').textContent=v('pn').trim()||'Nombre del producto';
   const c=v('pc')==='__new__'?v('pcn'):v('pc');
-  const sub=$('#ps').selectedOptions[0]?.hasAttribute('data-new')?v('psn'):v('ps');
-  $('#card-preview-category').textContent=[c,sub].filter(Boolean).join(' · ');
+  const members=admCheckedSubs();
+  if(v('psn').trim()&&members.length<4)members.push(v('psn').trim());
+  $('#card-preview-category').textContent=[c,members.join(' / ')].filter(Boolean).join(' · ');
   const n=Number(v('access-amount')),u=v('access-unit');
   const units={days:['día','días'],months:['mes','meses'],years:['año','años']};
   const duration=v('access-amount')!==''&&units[u]?`${n} ${units[u][n===1?0:1]}`:'';
@@ -548,10 +566,14 @@ function admForm(id){
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
   <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset><fieldset><legend>Categoría y subcategoría</legend>
-  <div class="g2"><div><label for="pc">Categoría</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select></div>
-  <div><label for="ps">Subcategoría</label><select id="ps" onchange="admSubSel()"></select></div></div>
+  <label for="pc">Categoría</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
-  <div id="psnw" hidden><label for="psn">Nombre de la nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej: Spotify"></div>
+  <div class="product-sub-options" aria-labelledby="product-subs-title">
+    <strong id="product-subs-title">Subcategorías</strong>
+    <p id="sub-selection-count" class="mu" aria-live="polite"></p>
+    <div id="ps" onchange="admSubLimit()"></div>
+    <label for="psn">Añadir una nueva subcategoría (opcional)</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
+  </div>
   </fieldset><fieldset><legend>Precio y disponibilidad</legend>
   <div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
   <div><label for="ppo">Precio anterior S/ (opcional)</label><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" value="${p.po??''}"></div></div>
@@ -577,7 +599,7 @@ function admForm(id){
   </fieldset><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
   if(ADM.img)$('#pv').src=ADM.img;
   if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
-  admCatSel(p.s||'');
+  admCatSel(productSubcategories(p));
   admTypeFields();
   const editor=$('.product-editor');
   editor.addEventListener('input',updateProductCardPreview);
@@ -599,10 +621,14 @@ async function admGuardar(){if(publishing)return;
   const po=num('ppo');if(Number.isNaN(po))return toast('Revisa el precio anterior.');
   const outOfStock=v('pstock')==='out',stt=v('pst').trim(),st=outOfStock?0:stt===''?null:Number(stt);
   if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return toast('Ingresa una cantidad entera mayor a cero.');
-  const newSub=$('#ps').selectedOptions[0].hasAttribute('data-new');
-  let s=newSub?v('psn').trim():v('ps');
-  if(newSub&&!s)return toast('Escribe el nombre de la nueva subcategoría.');
-  if(newSub)s=admSubs(c).find(name=>name.toLowerCase()===s.toLowerCase())||s;
+  const members=admCheckedSubs();
+  const sub=v('psn').trim();
+  if(sub){
+    const existing=admSubs(c).find(name=>name.toLowerCase()===sub.toLowerCase())||sub;
+    if(!members.includes(existing))members.push(existing);
+  }
+  if(members.length>4)return toast('Selecciona hasta cuatro subcategorías.');
+  const s=members[0]||'';
   const old=ADM.id?prod(ADM.id):null,t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
   const durationInput=$('#access-amount'),amount=durationInput.valueAsNumber,unit=v('access-unit');
@@ -618,7 +644,7 @@ async function admGuardar(){if(publishing)return;
   if(publishing)return;
   const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
-  const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
+  const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,subcategories:members,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
@@ -629,7 +655,7 @@ async function admGuardar(){if(publishing)return;
   if(benefit)o.cardBenefit=benefit;
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
-  if(s){SUBS[c]=SUBS[c]||[];if(!SUBS[c].includes(s))SUBS[c].push(s)}
+  if(members.length)SUBS[c]=[...new Set([...(SUBS[c]||[]),...members])];
   if(old)P[P.indexOf(old)]=o;else P.push(o);
   if(!await admSave()){P.length=0;JSON.parse(snap[0]).forEach(x=>P.push(x));CATS.length=0;JSON.parse(snap[1]).forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,JSON.parse(snap[2]));return}
   toast(old?'Producto actualizado':'Producto agregado');admList();
@@ -831,7 +857,7 @@ function admCatDelSave(i){
   const [category]=CATS[i],destination=v('cat-target'),products=P.filter(p=>p.c===category);
   if(products.length&&!CATS.some(([key])=>key===destination&&key!=='all'&&key!==category))return toast('Selecciona una categoría válida.');
   admCatalogChange(()=>{
-    products.forEach(p=>{p.c=destination;p.s=''});
+    products.forEach(p=>{p.c=destination;setProductSubcategories(p,[])});
     CATS.splice(i,1);
     delete SUBS[category];
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category);
@@ -850,7 +876,7 @@ function admSubEditSave(i,j){
   admCatalogChange(()=>{
     SUBS[category]=subs.map(item=>item===sub?name:item);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry?.[0]===category&&entry[1]===sub?[category,name]:entry);
-    P.filter(p=>p.c===category&&p.s===sub).forEach(p=>{p.s=name});
+    P.filter(p=>p.c===category&&productSubcategories(p).includes(sub)).forEach(p=>setProductSubcategories(p,productSubcategories(p).map(item=>item===sub?name:item)));
   },'Subcategoría actualizada');
 }
 function admSubDel(i,j){
@@ -863,7 +889,7 @@ function admSubDelSave(i,j){
   admCatalogChange(()=>{
     SUBS[category]=subs.filter(item=>item!==sub);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category||entry[1]!==sub);
-    P.filter(p=>p.c===category&&p.s===sub).forEach(p=>{p.s=''});
+    P.filter(p=>p.c===category&&productSubcategories(p).includes(sub)).forEach(p=>setProductSubcategories(p,productSubcategories(p).filter(item=>item!==sub)));
   },'Subcategoría eliminada');
 }
 function admIO(){
