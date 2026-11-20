@@ -1100,6 +1100,11 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 #grid .card .pills .product-tag--benefit{background:var(--bl);border-color:var(--soft);color:var(--ln)}
 @media(max-width:420px){#grid .card .pills .product-tag{padding:3px 4px}}
 @container (max-width:150px){#grid .card .pills .product-tag{padding:3px 3px;font-size:.59rem}}
+#tabs.bars,#subs.bars{flex-wrap:nowrap;overflow:visible;align-items:center;gap:8px;min-width:0}
+#tabs.bars>button,#subs.bars>button{flex:none;white-space:nowrap}
+.catalog-tab-scroll{display:flex;flex:1;min-width:0;gap:8px;align-items:center;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none;padding-block:3px}
+.catalog-tab-scroll::-webkit-scrollbar{display:none}
+.catalog-tab-scroll button{flex:none;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1566,11 +1571,21 @@ function displayProductSubcategory(product){
   const active=activeProductSubcategories(product);
   return active.includes(S.sub)?S.sub:(active[0]||'');
 }
+function renderCatalogRow(row,pinned,items){
+  const offset=row.querySelector('.catalog-tab-scroll')?.scrollLeft||0;
+  row.innerHTML=pinned+`<div class="catalog-tab-scroll">${items}</div>`;
+  row.querySelector('.catalog-tab-scroll').scrollLeft=offset;
+}
 function tabs(){
-  $('#tabs').innerHTML=CATS.filter(([key])=>key==='all'||!hiddenCatalogEntry(key)).map(([k,l,emoji,iconKey=k])=>`<button data-k="${esc(k)}" class="${S.cat==k?'on':''}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`).join('');
+  const buttons=CATS.filter(([key])=>key==='all'||!hiddenCatalogEntry(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
+  renderCatalogRow($('#tabs'),buttons.find(([key])=>key==='all')?.[1]||'',buttons.filter(([key])=>key!=='all').map(([,html])=>html).join(''));
   const sb=(SUBS[S.cat]||[]).filter(sub=>!hiddenCatalogEntry(S.cat,sub));
-  $('#subs').style.display=sb.length?'flex':'none';
-  $('#subs').innerHTML=sb.length?['',...sb].map(s=>`<button data-s="${esc(s)}" class="${S.sub==s?'on':''}">${esc(s||'Todos')}</button>`).join(''):'';
+  const row=$('#subs');
+  row.style.display=sb.length?'flex':'none';
+  if(!sb.length){row.innerHTML='';return}
+  if(row.dataset.category!==S.cat){row.innerHTML='';row.dataset.category=S.cat}
+  const subButton=sub=>`<button type="button" data-s="${esc(sub)}" class="${S.sub===sub?'on':''}" aria-pressed="${S.sub===sub}">${esc(sub||'Todos')}</button>`;
+  renderCatalogRow(row,subButton(''),sb.map(subButton).join(''));
 }
 function grid(){
   const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||activeProductSubcategories(p).includes(S.sub)));
