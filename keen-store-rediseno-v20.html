@@ -1085,22 +1085,13 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 }
 #gp[hidden]{display:none!important}
  
-.det .detail-intro{margin:9px 0;line-height:1.42;color:#342e27;overflow-wrap:anywhere}
-.det .detail-intro p{margin:0}
-.det .detail-tags,.det .detail-meta{display:flex;flex-wrap:wrap;gap:5px;padding:0;list-style:none;margin:0}
-.det .detail-tags li,.det .detail-meta li{margin:0;padding:3px 7px;border-radius:6px;font-size:.74rem;line-height:1.35}
-.det .detail-tags li{background:#f2eae0;color:#413126}
+.det .detail-meta,.det .detail-tags{display:flex;flex-wrap:wrap;gap:5px;padding:0;list-style:none;margin:7px 0}
+.det .detail-meta li,.det .detail-tags li{margin:0;padding:3px 7px;border-radius:6px;font-size:.76rem;line-height:1.3}
 .det .detail-meta li{background:#f5f3ee;color:#51473d}
-.det .detail-expand{border-top:1px solid #e4ded4;margin-top:11px;padding-top:8px}
-.det .detail-expand section+section{margin-top:10px}
-.det .detail-expand h3{margin:0 0 3px;font-size:.86rem}
-.det .detail-copy{line-height:1.4;overflow-wrap:anywhere;font-size:.82rem}
-.det .detail-copy p{margin:0 0 5px;white-space:pre-line}
-.det .detail-copy ul{padding-left:16px;margin:0}
-.det .detail-copy li{margin:3px 0}
-.det .detail-expand summary{cursor:pointer;color:#322820;font-weight:700;padding:5px 0;font-size:.86rem}
-.det .detail-expand[open] summary{margin-bottom:7px}
-.det .detail-expand summary:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+.det .detail-tags li{background:#f2eae0;color:#413126}
+.det .detail-intro,.det .detail-delivery,.det .detail-rule{margin:8px 0 0;line-height:1.35;overflow-wrap:anywhere}
+.det .detail-delivery,.det .detail-rule{font-size:.82rem;color:#51473d}
+.det .detail-delivery{border-top:1px solid #e4ded4;padding-top:8px}
 </style>
 </head>
 <body>
@@ -1995,40 +1986,34 @@ function productDetailSections(description){
   });
   return sections;
 }
-function detailCopy(text){
-  const parts=String(text).split(/\s*[•▪●]\s*|\n\s*[-–]\s+/u);
-  const intro=parts.shift().trim();
-  const items=parts.map(item=>item.trim()).filter(Boolean);
-  return `${intro?`<p>${esc(intro)}</p>`:''}${items.length?`<ul>${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}`;
-}
 function shortProductIntro(text){
   const input=text.trim();
-  if(input.length<=140)return input;
-  const sentence=input.match(/^.{35,139}?[.!?](?=\s|$)/u)?.[0];
+  if(input.length<=90)return input;
+  const sentence=input.match(/^.{20,89}?[.!?](?=\s|$)/u)?.[0];
   if(sentence)return sentence;
-  return input.slice(0,139).replace(/\s+\S*$/u,'').trimEnd()+'…';
+  const clipped=input.slice(0,89);
+  return (clipped.replace(/\s+\S*$/u,'').trimEnd()||clipped)+'…';
 }
 function infoM(id){
   const p=prod(id);if(!p)return;
   const availability=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
   const details=productDetailSections(p.i||p.d);
-  const intro=shortProductIntro(details.intro);
-  const duration=accessDurationLabel(p.accessDuration);
-  const tags=Array.isArray(p.pills)?p.pills.filter(Boolean):[];
+  const duration=accessDurationLabel(p.accessDuration)
+    ||details.conditions.match(/\bduraci[oó]n\s*:\s*(\d+\s*(?:d[ií]as?|mes(?:es)?|a[nñ]os?))/iu)?.[1];
+  const name=p.n.toLocaleLowerCase('es');
+  const tags=[...new Set(Array.isArray(p.pills)?p.pills.map(tag=>String(tag).trim()).filter(Boolean):[])]
+    .filter(tag=>tag.length<=32&&!name.includes(tag.toLocaleLowerCase('es'))).slice(0,3);
+  const intro=tags.length?'':shortProductIntro(details.intro);
+  const rule=details.conditions.split(/[•▪●\n]+/u).map(item=>item.trim())
+    .find(item=>item.length<=96&&/^(?:no\s|uso exclusivo|solo\s|s[oó]lo\s)/iu.test(item));
   const field=orderField(p);
-  const delivery=p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar tu pago';
-  const terms=[delivery,field?`Te pediremos: ${field.l}`:''].filter(Boolean);
+  const delivery=p.p===0?'Producto gratuito':'Entrega por WhatsApp tras verificar el pago';
   modal(`<div class="det"><span class="dcat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span><h2>${esc(p.n)}</h2>
     <ul class="detail-meta">${[availability,p.t,duration].filter(Boolean).map(value=>`<li>${esc(value)}</li>`).join('')}</ul>
-    ${intro?`<div class="detail-intro"><p>${esc(intro)}</p></div>`:''}
-    ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.slice(0,4).map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
-    <details class="detail-expand"><summary>Detalles y condiciones</summary><div class="detail-copy">
-      ${intro!==details.intro?`<section><h3>Descripción</h3>${detailCopy(details.intro)}</section>`:''}
-      ${details.includes||tags.length>4?`<section><h3>Qué incluye</h3>${details.includes?detailCopy(details.includes):''}
-        ${tags.length>4?`<ul>${tags.slice(4).map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}</section>`:''}
-      <section><h3>Condiciones y entrega</h3>${details.conditions?detailCopy(details.conditions):''}
-        <ul>${terms.map(term=>`<li>${esc(term)}</li>`).join('')}</ul></section>
-    </div></details></div>`);
+    ${intro?`<p class="detail-intro">${esc(intro)}</p>`:''}
+    ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
+    <p class="detail-delivery">${esc(delivery)}${field?` · ${esc(field.l)}`:''}</p>
+    ${rule?`<p class="detail-rule">${esc(rule)}</p>`:''}</div>`);
 }
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
 function updateWhatsAppGroup(){
