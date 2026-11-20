@@ -1568,7 +1568,7 @@ function grid(){
       <span class="cat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span>
       <h3>${esc(p.n)}</h3>
       ${pl(p).length?`<div class="pills">${pl(p).slice(0,2).map(t=>`<i>${esc(t)}</i>`).join('')}</div>`:''}
-      <p>${esc(p.d)}</p>
+
       <div class="pr"><div class="pp"><div class="pl"><b>${money(p.p)}</b>${sale?`<span class="old">${money(p.po)}</span>`:''}</div>${p.u?`<span class="usd">≈ ${Number(p.u).toFixed(2)} USDT</span>`:''}</div>
       <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
 }
