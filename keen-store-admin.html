@@ -425,6 +425,56 @@ async function admMoveProduct(index,step){
   (button.disabled?$(`[data-move="${next}:${-step}"]`):button).focus({preventScroll:true});
   toast('Orden publicado');
 }
+function admTaxonomyOrder(){
+  ADM.tab='taxonomy-order';
+  const categories=CATS.filter(([key])=>key!=='all');
+  const category=categories.some(([key])=>key===ADM.taxonomyCategory)?ADM.taxonomyCategory:'';
+  ADM.taxonomyCategory=category;
+  const names=category?admSubs(category):categories.map(([,label])=>label);
+  modal(`<div class="catalog-order-head"><div><h2>Orden de categorías</h2><p>Elige una lista y usa las flechas. Cada cambio se guarda automáticamente.</p></div></div>
+    <div class="catalog-order-filters"><label for="taxonomy-scope">Lista que quieres ordenar
+      <select id="taxonomy-scope" onchange="ADM.taxonomyCategory=this.value;admTaxonomyOrder();$('#taxonomy-scope').focus()">
+        <option value="">Categorías principales</option>
+        <optgroup label="Subcategorías de">${categories.map(([key,label])=>`<option value="${esc(key)}" ${key===category?'selected':''}>${esc(label)}</option>`).join('')}</optgroup>
+      </select></label></div>
+    ${names.length?`<ol class="catalog-order-list" role="list">${names.map((name,i)=>`
+      <li><span class="catalog-order-rank" aria-label="Posición ${i+1}">${i+1}</span>
+      <div class="catalog-order-product"><strong>${esc(name)}</strong></div>
+      <div class="catalog-order-actions">${[[-1,'Subir','↑'],[1,'Bajar','↓']].map(([step,label,arrow])=>`
+        <button type="button" data-taxonomy-move="${i}:${step}" aria-label="${label} ${esc(name)}" onclick="admMoveTaxonomy(${i},${step})" ${names[i+step]===undefined?'disabled':''}>
+          <span aria-hidden="true">${arrow}</span><span class="move-label">${label}</span>
+        </button>`).join('')}</div></li>`).join('')}</ol>`:`<p class="mu">${category?'Esta categoría todavía no tiene subcategorías.':'Todavía no hay categorías para ordenar.'}</p>`}`);
+}
+async function admMoveTaxonomy(index,step){
+  if(publishing)return;
+  const category=ADM.taxonomyCategory;
+  const next=index+step;
+  const items=category?admSubs(category):CATS.filter(([key])=>key!=='all');
+  if(items[index]===undefined||items[next]===undefined)return;
+  const scroll=window.scrollY;
+  const previous=CATS.slice();
+  const previousSubs=SUBS[category];
+  [items[index],items[next]]=[items[next],items[index]];
+  if(category)SUBS[category]=items;
+  else{
+    let position=0;
+    CATS.forEach(([key],i)=>{if(key!=='all')CATS[i]=items[position++]});
+  }
+  if(!await admSave()){
+    if(category){
+      if(previousSubs===undefined)delete SUBS[category];
+      else SUBS[category]=previousSubs;
+    }else CATS.splice(0,CATS.length,...previous);
+    return;
+  }
+  if(ADM.tab==='taxonomy-order'&&ADM.taxonomyCategory===category){
+    admTaxonomyOrder();
+    window.scrollTo(0,scroll);
+    const button=$(`[data-taxonomy-move="${next}:${step}"]`);
+    (button.disabled?$(`[data-taxonomy-move="${next}:${-step}"]`):button).focus({preventScroll:true});
+  }
+  toast('Orden publicado');
+}
 function admList(){
   ADM.tab='prod';
   const filters=ADM.productFilters||{};
@@ -1094,7 +1144,7 @@ function admTxtSave(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r
 async function admTxtReset(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r=>delete SITE.t[r[0]]);if(await siteSave())admTextos(i)}
 const MENU=[
   ['General',[['res','📊','Resumen','admRes()']]],
-  ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['cat','🗂️','Categorías','admCats()']]],
+  ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['cat','🗂️','Categorías','admCats()'],['taxonomy-order','↕️','Orden de categorías','admTaxonomyOrder()']]],
   ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
