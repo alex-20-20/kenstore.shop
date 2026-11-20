@@ -845,7 +845,7 @@ function admForm(id,duplicate=false){
   </div>
   <div class="product-extra-categories"><strong>Categorías adicionales (hasta 3)</strong><div class="extra-category-fields">
     ${[0,1,2].map(slot=>`<div><label for="extra-cat-${slot}">Categoría adicional ${slot+1}</label>
-      <select id="extra-cat-${slot}" onchange="admExtraSubs(${slot})"><option value="">Sin categoría adicional</option>
+      <select id="extra-cat-${slot}" onchange="admExtraSubs(${slot})"><option value="">Sin categoría</option>
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div></div>`).join('')}
   </div></div>
