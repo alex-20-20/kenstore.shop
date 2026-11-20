@@ -398,7 +398,6 @@ body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 @media(max-width:640px){
  /* En celular: sin la descripción repetida y con una sola etiqueta */
  .card .bd p{display:none}
- .card .pills i:nth-child(n+2){display:none}
 }
 /* =====================================================================
    INSIGNIAS (descuento / stock) fuera de la imagen: franja propia debajo
@@ -1069,8 +1068,7 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
  #grid .card .im{grid-template-columns:minmax(0,1fr) auto auto}
  #grid .card .im img{aspect-ratio:4/3}
  #grid .card .bd{min-width:0;overflow-wrap:anywhere}
- #grid .card .bd p,#grid .card .pills i:nth-child(n+2){display:none}
- #grid .card .cat,#grid .card .pills i{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #grid .card .bd p,#grid #grid .card .cat{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  #grid .card .pr button{min-height:34px}
 }
 @media(max-width:360px){
@@ -1095,6 +1093,11 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .det .detail-benefits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 9px;padding:0;margin:8px 0;list-style:none;font-size:.8rem}
 .det .detail-benefits li{margin:0;line-height:1.3;overflow-wrap:anywhere}
 @media(max-width:390px){.det .detail-benefits{column-gap:5px;font-size:.76rem}}
+#grid .card .pills{display:flex;flex-wrap:wrap;align-items:center;gap:4px;overflow:visible;min-width:0}
+#grid .card .pills .product-tag{display:inline-flex;max-width:100%;min-width:0;align-items:center;padding:3px 7px;border:1px solid transparent;border-radius:6px;font-size:clamp(.63rem,1.7vw,.72rem);font-weight:700;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+#grid .card .pills .product-tag--type{background:#f3e7dc;border-color:#e7d3c2;color:#573b2a}
+#grid .card .pills .product-tag--duration{background:#e6efe5;border-color:#d0e0ce;color:#324f37}
+@media(max-width:420px){#grid .card .pills .product-tag{padding:3px 5px}}
 </style>
 </head>
 <body>
@@ -1559,12 +1562,12 @@ function grid(){
   const L=P.filter(p=>visibleProduct(p)&&(S.cat=='all'||p.c==S.cat)&&(!S.sub||p.s==S.sub));
   $('#grid').innerHTML=L.map(p=>{
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=p.po&&p.po>p.p;
-    const labels=[p.t,accessDurationLabel(p.accessDuration)].filter(Boolean);
+    const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)]].filter(([,label])=>label);
     const stock=p.st==null?'<span class="stk">Disponible</span>':out?'<span class="stk out">Agotado</span>':low?`<span class="stk low">Quedan ${p.st}</span>`:`<span class="stk">Stock ${p.st}</span>`;
     return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${sale?`<span class="off">-${Math.round((1-p.p/p.po)*100)}%</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(p.c)}${p.s?' · '+esc(p.s):''}</span>
       <h3>${esc(p.n)}</h3>
-      ${labels.length?`<div class="pills">${labels.map(label=>`<i>${esc(label)}</i>`).join('')}</div>`:''}
+      ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}">${esc(label)}</i>`).join('')}</div>`:''}
 
       <div class="pr"><div class="pp"><div class="pl"><b>${money(p.p)}</b>${sale?`<span class="old">${money(p.po)}</span>`:''}</div>${p.u?`<span class="usd">≈ ${Number(p.u).toFixed(2)} USDT</span>`:''}</div>
       <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
