@@ -249,8 +249,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .plan-editor-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr));gap:7px;align-items:end;padding:10px;margin:8px 0;border:1px solid var(--stroke);border-radius:10px}
 .plan-editor-row label{margin:0}.plan-editor-row input,.plan-editor-row select{margin-bottom:0}.plan-editor-row small{display:block}
 .product-price-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 7px;align-items:end}
-.product-editor .product-price-row label{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;min-width:0;margin:0;white-space:nowrap}
-.product-price-row input{min-width:0;width:100%;padding-inline:8px}
+.product-editor .product-price-row label,.product-editor .product-stock-row label{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;min-width:0;margin:0;white-space:nowrap}
+.product-price-row input,.product-stock-row :is(input,select){min-width:0;width:100%;padding-inline:8px}
+.product-stock-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:6px;align-items:end}
 .product-price-row small{grid-column:1/-1;font-size:.73rem}
 #base-product-price[hidden]{display:none}
  .product-editor{gap:10px;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:start}
@@ -854,11 +855,13 @@ function admForm(id,duplicate=false){
     <label for="ppo"><span>P. anterior</span><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="product-price-help" value="${p.po??''}"></label>
     <label for="pu"><span>USDT</span><input id="pu" type="text" readonly aria-describedby="product-price-help" value="${solesToUsdt(p.p)?.toFixed(2)??''}"></label>
     <small id="product-price-help" class="mu">Precios en soles · S/ 0 = gratis · USDT automático</small>
-  </div><div>
-  <div><label for="pstock">Disponibilidad</label><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
-    <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
-  </select>
-  <label for="pst">Unidades disponibles (opcional)</label><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${p.st===0?p.previousStock??'':p.st??''}"${p.st===0?' disabled':''}></div></div>
+  </div>
+  <div class="product-stock-row">
+    <label for="pstock"><span>Disponibilidad</span><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
+      <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
+    </select></label>
+    <label for="pst"><span>Unidades (opcional)</span><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${p.st===0?p.previousStock??'':p.st??''}"${p.st===0?' disabled':''}></label>
+  </div>
   </fieldset><fieldset><legend>Planes y precios</legend>
     <p class="mu">Los planes comparten el stock del producto. Los descuentos programados se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
