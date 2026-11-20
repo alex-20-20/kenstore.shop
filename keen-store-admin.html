@@ -218,6 +218,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .catalog-order-head h2{margin:0}
 .catalog-order-head p{margin:4px 0 0;color:var(--mu);font-size:.9rem}
 .catalog-order-total{border-radius:999px;background:var(--bl);padding:5px 10px;font-size:.8rem;font-weight:700}
+.catalog-order-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:8px;margin-top:12px}
+.catalog-order-filters label{margin:0}
+.catalog-order-filters select{margin-top:4px}
 .catalog-order-list{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:7px}
 .catalog-order-list li{display:grid;grid-template-columns:2.15rem minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 9px;border:1px solid var(--stroke);border-radius:12px;background:var(--canvas)}
 .catalog-order-rank{display:grid;place-items:center;min-height:32px;background:var(--bl);color:var(--ac);border-radius:8px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -356,25 +359,66 @@ async function admExit(){
   try{await kenResult(adminClient.auth.signOut({scope:'local'}));location.reload()}
   catch(e){toast('No se pudo cerrar la sesión.')}
 }
+function catalogScopeKey(category,sub){
+  return JSON.stringify(sub?[category,sub]:[category]);
+}
+function orderedCatalogProducts(products,category,sub){
+  if(category==='all')return products;
+  const ids=SITE.catalogOrders?.[catalogScopeKey(category,sub)]||SITE.catalogOrderBaseline;
+  if(!Array.isArray(ids))return products;
+  const positions=new Map(ids.map((id,index)=>[String(id),index]));
+  return [...products].sort((a,b)=>(positions.get(String(a.id))??ids.length)-(positions.get(String(b.id))??ids.length));
+}
+function admOrderProducts(category,sub){
+  if(category==='all')return P;
+  const matches=P.filter(p=>productPlacements(p).some(item=>item.category===category&&(!sub||item.subs.includes(sub))));
+  return orderedCatalogProducts(matches,category,sub);
+}
 function admCatalogOrder(){
   ADM.tab='catalog-order';
+  const category=CATS.some(([key])=>key===ADM.orderCategory)?ADM.orderCategory:'all';
+  const subs=category==='all'?[]:admSubs(category);
+  const sub=subs.includes(ADM.orderSub)?ADM.orderSub:'';
+  ADM.orderCategory=category;
+  ADM.orderSub=sub;
+  const products=admOrderProducts(category,sub);
   modal(`<div class="catalog-order-head"><div><h2>Orden del catálogo</h2><p>Usa las flechas para mover productos. Los cambios se guardan automáticamente.</p></div>
-    <span class="catalog-order-total">${P.length} ${P.length===1?'producto':'productos'}</span></div>
-    ${P.length?`<ol class="catalog-order-list" role="list">${P.map((product,i)=>`
+    <span class="catalog-order-total">${products.length} ${products.length===1?'producto':'productos'}</span></div>
+    <div class="catalog-order-filters">
+      <label for="order-category">Categoría<select id="order-category" onchange="ADM.orderCategory=this.value;ADM.orderSub='';admCatalogOrder();$('#order-category').focus()">
+        <option value="all">Todos los productos</option>${CATS.filter(([key])=>key!=='all').map(([key,label])=>`<option value="${esc(key)}" ${key===category?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+      ${category==='all'?'':`<label for="order-sub">Subcategoría<select id="order-sub" onchange="ADM.orderSub=this.value;admCatalogOrder();$('#order-sub').focus()">
+        <option value="">Toda la categoría</option>${subs.map(name=>`<option value="${esc(name)}" ${name===sub?'selected':''}>${esc(name)}</option>`).join('')}</select></label>`}
+    </div>
+    ${products.length?`<ol class="catalog-order-list" role="list">${products.map((product,i)=>`
     <li><span class="catalog-order-rank" aria-label="Posición ${i+1}">${i+1}</span>
     <div class="catalog-order-product">${product.img?`<img src="${esc(product.img)}" alt="" loading="lazy">`:''}<strong>${esc(product.n)}</strong></div>
     <div class="catalog-order-actions">
       <button type="button" data-move="${i}:-1" aria-label="Subir ${esc(product.n)}" onclick="admMoveProduct(${i},-1)" ${i===0?'disabled':''}><span aria-hidden="true">↑</span><span class="move-label">Subir</span></button>
-      <button type="button" data-move="${i}:1" aria-label="Bajar ${esc(product.n)}" onclick="admMoveProduct(${i},1)" ${i===P.length-1?'disabled':''}><span aria-hidden="true">↓</span><span class="move-label">Bajar</span></button>
+      <button type="button" data-move="${i}:1" aria-label="Bajar ${esc(product.n)}" onclick="admMoveProduct(${i},1)" ${i===products.length-1?'disabled':''}><span aria-hidden="true">↓</span><span class="move-label">Bajar</span></button>
     </div></li>`).join('')}</ol>`:'<p class="mu">Aún no hay productos para ordenar.</p>'}`);
 }
 async function admMoveProduct(index,step){
   const next=index+step;
-  if(publishing||!P[index]||!P[next])return;
+  const category=ADM.orderCategory,sub=ADM.orderSub;
+  const products=admOrderProducts(category,sub);
+  if(publishing||!products[index]||!products[next])return;
   const scroll=window.scrollY;
-  [P[index],P[next]]=[P[next],P[index]];
-  if(!await admSave()){[P[index],P[next]]=[P[next],P[index]];return}
-  if(ADM.tab!=='catalog-order')return;
+  const previousSite=SITE;
+  if(category==='all'&&!Array.isArray(SITE.catalogOrderBaseline)){
+    SITE={...SITE,catalogOrderBaseline:P.map(p=>p.id)};
+  }
+  [products[index],products[next]]=[products[next],products[index]];
+  if(category!=='all'){
+    const key=catalogScopeKey(category,sub);
+    SITE={...SITE,catalogOrders:{...SITE.catalogOrders,[key]:products.map(p=>p.id)}};
+  }
+  if(!await admSave()){
+    SITE=previousSite;
+    if(category==='all')[P[index],P[next]]=[P[next],P[index]];
+    return;
+  }
+  if(ADM.tab!=='catalog-order'||ADM.orderCategory!==category||ADM.orderSub!==sub)return;
   admCatalogOrder();
   window.scrollTo(0,scroll);
   const button=$(`[data-move="${next}:${step}"]`);
@@ -900,12 +944,23 @@ async function admSubAdd(i){if(publishing)return;
   $('#ns_'+i).focus();
   toast('Subcategoría agregada');
 }
+function updateCatalogOrderScopes(transform){
+  const moved={};
+  for(const [key,ids] of Object.entries(SITE.catalogOrders||{})){
+    let scope;
+    try{scope=JSON.parse(key)}catch{continue}
+    if(!Array.isArray(scope))continue;
+    const next=transform(scope);
+    if(next)moved[catalogScopeKey(...next)]=ids;
+  }
+  SITE.catalogOrders=moved;
+}
 async function admCatalogChange(update,message,keepPosition=false){
   if(publishing)return;
-  const snapshot=structuredClone([P,CATS,SUBS,SITE.hiddenCatalog||[]]);
+  const snapshot=structuredClone([P,CATS,SUBS,SITE.hiddenCatalog||[],SITE.catalogOrders]);
   const scroll=window.scrollY;
   update();
-  if(!await admSave()){admApply(...snapshot.slice(0,3));SITE.hiddenCatalog=snapshot[3];return}
+  if(!await admSave()){admApply(...snapshot.slice(0,3));SITE.hiddenCatalog=snapshot[3];SITE.catalogOrders=snapshot[4];return}
   if(ADM.tab==='cat'){
     admCats();
     if(keepPosition)window.scrollTo(0,scroll);
@@ -927,6 +982,7 @@ function admCatEditSave(i){
   admCatalogChange(()=>{
     CATS[i]=[name,name,v('cat-icon'),iconKey];
     if(name===category)return;
+    updateCatalogOrderScopes(([cat,sub])=>[cat===category?name:cat,sub]);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry[0]===category?[name,...entry.slice(1)]:entry);
     if(Object.hasOwn(SUBS,category)){SUBS[name]=SUBS[category];delete SUBS[category]}
     P.forEach(p=>{const memberships=productPlacements(p);if(memberships.some(item=>item.category===category))applyProductPlacements(p,memberships.map(item=>item.category===category?{...item,category:name}:item))});
@@ -947,6 +1003,7 @@ function admCatDelSave(i){
     products.forEach(p=>{const remaining=productPlacements(p).filter(item=>item.category!==category);applyProductPlacements(p,remaining.length?remaining:[{category:destination,subs:[]}])});
     CATS.splice(i,1);
     delete SUBS[category];
+    updateCatalogOrderScopes(scope=>scope[0]===category?null:scope);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category);
   },'Categoría eliminada');
 }
@@ -962,6 +1019,7 @@ function admSubEditSave(i,j){
   if(subs.some((item,k)=>k!==j&&item.toLowerCase()===name.toLowerCase()))return toast('Esa subcategoría ya existe en esta categoría.');
   admCatalogChange(()=>{
     SUBS[category]=subs.map(item=>item===sub?name:item);
+    updateCatalogOrderScopes(([cat,member])=>[cat,cat===category&&member===sub?name:member]);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry?.[0]===category&&entry[1]===sub?[category,name]:entry);
     P.forEach(p=>{const placements=productPlacements(p);if(placements.some(item=>item.category===category&&item.subs.includes(sub)))applyProductPlacements(p,placements.map(item=>item.category===category?{...item,subs:item.subs.map(value=>value===sub?name:value)}:item))});
   },'Subcategoría actualizada');
@@ -975,6 +1033,7 @@ function admSubDelSave(i,j){
   const [category]=CATS[i],subs=admSubs(category),sub=subs[j];
   admCatalogChange(()=>{
     SUBS[category]=subs.filter(item=>item!==sub);
+    updateCatalogOrderScopes(scope=>scope[0]===category&&scope[1]===sub?null:scope);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category||entry[1]!==sub);
     P.forEach(p=>{const placements=productPlacements(p);if(placements.some(item=>item.category===category&&item.subs.includes(sub)))applyProductPlacements(p,placements.map(item=>item.category===category?{...item,subs:item.subs.filter(value=>value!==sub)}:item))});
   },'Subcategoría eliminada');

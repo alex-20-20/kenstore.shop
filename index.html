@@ -1563,6 +1563,16 @@ function productSubcategories(product){
 function productPlacements(product){
   return [{category:product.c,subs:productSubcategories(product)},...(Array.isArray(product.extraCategories)?product.extraCategories:[])];
 }
+function catalogScopeKey(category,sub){
+  return JSON.stringify(sub?[category,sub]:[category]);
+}
+function orderedCatalogProducts(products,category,sub){
+  if(category==='all')return products;
+  const ids=SITE.catalogOrders?.[catalogScopeKey(category,sub)]||SITE.catalogOrderBaseline;
+  if(!Array.isArray(ids))return products;
+  const positions=new Map(ids.map((id,index)=>[String(id),index]));
+  return [...products].sort((a,b)=>(positions.get(String(a.id))??ids.length)-(positions.get(String(b.id))??ids.length));
+}
 function activeProductPlacements(product){
   return productPlacements(product).flatMap(item=>{
     if(hiddenCatalogEntry(item.category))return [];
@@ -1597,7 +1607,8 @@ function tabs(){
   renderCatalogRow(row,subButton(''),sb.map(subButton).join(''));
 }
 function grid(){
-  const L=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
+  const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
+  const L=orderedCatalogProducts(matches,S.cat,S.sub);
   $('#grid').innerHTML=L.map(p=>{
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=p.po&&p.po>p.p;
     const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
