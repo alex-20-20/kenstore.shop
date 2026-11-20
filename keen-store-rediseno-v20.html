@@ -1047,6 +1047,9 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 #ld #pc{font-variant-numeric:tabular-nums;font-weight:700}
 @keyframes service-fly{from{transform:translateX(-100%)}to{transform:translateX(100cqw)}}
 @media(max-width:740px){.service-train{animation-duration:12s;animation-delay:0s}}
+@media(max-width:740px) and (prefers-reduced-motion:no-preference){
+  .service-runway:not(.is-in-view) .service-train,body:has(#ld) .service-train{animation-name:none;transform:translateX(-100%)}
+}
 @media(prefers-reduced-motion:reduce){
  .service-runway{overflow-x:auto}
  .service-train,.service-tile,.service-train .service-dragon .dbob,.service-train .service-dragon .dw,.service-train .service-dragon .dt,.service-train .service-dragon .df,.service-train .service-dragon .deye{animation-duration:.01ms!important}
@@ -2273,6 +2276,10 @@ const serviceDragon=$('#ldd').cloneNode(true);
 serviceDragon.removeAttribute('id');
 serviceDragon.classList.add('service-dragon');
 $('#service-train').append(serviceDragon);
+const serviceRunway=$('.service-runway');
+new IntersectionObserver(([entry])=>{
+  serviceRunway.classList.toggle('is-in-view',entry.isIntersecting&&entry.intersectionRatio>=0.5);
+},{threshold:0.5}).observe(serviceRunway);
 const maintenanceNotice=$('#maintenance-notice');
 maintenanceNotice.addEventListener('cancel',event=>event.preventDefault());
 function showMaintenance(message){
