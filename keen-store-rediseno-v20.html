@@ -1092,6 +1092,9 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .det .detail-intro,.det .detail-delivery,.det .detail-rule{margin:8px 0 0;line-height:1.35;overflow-wrap:anywhere}
 .det .detail-delivery,.det .detail-rule{font-size:.82rem;color:#51473d}
 .det .detail-delivery{border-top:1px solid #e4ded4;padding-top:8px}
+.det .detail-benefits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 9px;padding:0;margin:8px 0;list-style:none;font-size:.8rem}
+.det .detail-benefits li{margin:0;line-height:1.3;overflow-wrap:anywhere}
+@media(max-width:390px){.det .detail-benefits{column-gap:5px;font-size:.76rem}}
 </style>
 </head>
 <body>
@@ -1994,8 +1997,27 @@ function shortProductIntro(text){
   const clipped=input.slice(0,89);
   return (clipped.replace(/\s+\S*$/u,'').trimEnd()||clipped)+'…';
 }
+function formattedProductDetail(product){
+  const lines=String(product.i||'').replace(/\r\n?/g,'\n').split('\n').map(line=>line.trim()).filter(Boolean);
+  if(!/^\*\*[^*]+\*\*$/u.test(lines[0]||'')||!lines.some(line=>line.startsWith('- ')))return '';
+  const format=text=>esc(text).replace(/\*\*([^*]+)\*\*/gu,'<strong>$1</strong>');
+  const title=lines.shift().slice(2,-2);
+  const summary=lines.filter(line=>!line.startsWith('- ')&&!line.startsWith('⚠️')&&!line.startsWith('**📦'));
+  const benefits=lines.filter(line=>line.startsWith('- '));
+  const delivery=lines.filter(line=>line.startsWith('**📦'));
+  const warnings=lines.filter(line=>line.startsWith('⚠️'));
+  const tags=Array.isArray(product.pills)?product.pills:[];
+  return `<div class="det detail-formatted"><span class="dcat">${esc(product.c)}${product.s?' · '+esc(product.s):''}</span><h2>${esc(title)}</h2>
+    ${summary.map(line=>`<p class="detail-intro">${format(line)}</p>`).join('')}
+    <ul class="detail-benefits">${benefits.map(line=>`<li>${format(line.slice(2))}</li>`).join('')}</ul>
+    ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
+    ${delivery.map(line=>`<p class="detail-delivery">${format(line)}</p>`).join('')}
+    ${warnings.map(line=>`<p class="detail-rule">${format(line)}</p>`).join('')}</div>`;
+}
 function infoM(id){
   const p=prod(id);if(!p)return;
+  const formatted=formattedProductDetail(p);
+  if(formatted){modal(formatted);return}
   const availability=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
   const details=productDetailSections(p.i||p.d);
   const duration=accessDurationLabel(p.accessDuration)
