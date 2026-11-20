@@ -982,6 +982,7 @@ header button:not(.pri):not(.av):not(.site-menu-toggle),header .btn:not(.pri){ba
 #tabs button,#subs button{border-radius:999px;--rc:var(--stroke);--sc:transparent;--rw:1px;--so:0px;background:var(--surface);color:var(--ln)}
 #tabs button.on,#subs button.on{--rc:var(--ac);background:var(--ac);color:#fff}
 #grid{gap:clamp(10px,1.6vw,22px);padding-top:8px}
+@media(min-width:1024px){#grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 #grid .card{border:1px solid var(--stroke)!important;border-radius:16px;box-shadow:var(--lift)!important;background:var(--surface)}
 #grid .card:hover{transform:translateY(-2px);box-shadow:0 7px 18px #1c1c1c15!important}
 #grid .card::before{display:block;height:4px;background:var(--ac);opacity:.85;animation:none}
