@@ -204,6 +204,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .preview-name{font-size:1rem;font-weight:700}
 .preview-tags span{padding:2px 5px;border:1px solid var(--stroke);border-radius:6px;font-size:.72rem;background:var(--canvas)}
 .preview-prices strong{font-size:1.1rem}.preview-prices small{color:var(--ac)}.preview-prices s{color:var(--mu)}
+.admin-login-help{margin-top:12px;font-size:.83rem}
 </style></head>
 <body>
 <header>
@@ -284,22 +285,22 @@ async function admSave(){
   return true;
 }
 const ADMIN_EMAIL='av139660@gmail.com';
-function admLock(){
-  modal('<h2>⚙️ Panel de administración</h2><p class="mu">Entra con la cuenta de Google autorizada.</p>'+
-    '<button class="pri w" type="button" onclick="admGoogle()">Entrar con Google</button>');
-}
 function adminRedirectUrl(){
-  const destination=new URL(location.pathname,location.origin);
-  if(destination.hostname==='www.kenstore.shop')destination.hostname='kenstore.shop';
-  return destination.href;
+  return new URL('/keen-store-admin.html',location.origin).href;
 }
-async function admGoogle(){
-  try{
-    await kenResult(adminClient.auth.signInWithOAuth({
-      provider:'google',
-      options:{redirectTo:adminRedirectUrl(),queryParams:{prompt:'select_account',login_hint:ADMIN_EMAIL}}
-    }));
-  }catch(e){toast('No se pudo abrir el acceso con Google.')}
+function adminGoogleUrl(){
+  const url=new URL('/auth/v1/authorize',SUPA_URL);
+  url.searchParams.set('provider','google');
+  url.searchParams.set('redirect_to',adminRedirectUrl());
+  url.searchParams.set('prompt','select_account');
+  return url.href;
+}
+function admLock(){
+  const installed=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  modal('<h2>⚙️ Panel de administración</h2><p class="mu">Entra con la cuenta de Google autorizada.</p>'+
+    '<a class="btn pri w" href="'+esc(adminGoogleUrl())+'">Entrar con Google</a>'+
+    (installed?'<p class="mu admin-login-help">Si Google no abre aquí, abre el panel en Safari o Chrome.</p>'+
+      '<a class="btn w" href="'+esc(adminRedirectUrl())+'" target="_blank" rel="noopener">Abrir panel en el navegador</a>':''));
 }
 async function admStart(){
   try{
