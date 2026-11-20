@@ -249,6 +249,18 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .plan-editor-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr));gap:7px;align-items:end;padding:10px;margin:8px 0;border:1px solid var(--stroke);border-radius:10px}
 .plan-editor-row label{margin:0}.plan-editor-row input,.plan-editor-row select{margin-bottom:0}.plan-editor-row small{display:block}
 #base-product-price[hidden]{display:none}
+ .product-editor{gap:8px}
+.product-editor .editor-name{border:1px solid var(--stroke);border-radius:12px;padding:9px 12px;background:var(--canvas)}
+.product-editor .editor-name label{margin-top:0}
+.product-editor .editor-name input{margin-bottom:0}
+.product-editor .editor-section{border:1px solid var(--stroke);border-radius:12px;background:var(--surface);min-width:0}
+.product-editor .editor-section>summary{cursor:pointer;font-weight:700;min-height:44px;padding:11px 12px;color:var(--tx)}
+.product-editor .editor-section>summary::marker{color:var(--ac)}
+.product-editor .editor-section[open]>summary{border-bottom:1px solid var(--stroke);color:var(--ac)}
+.product-editor .editor-section>fieldset{padding:8px 12px 12px;border:0}
+.product-editor .editor-section>fieldset+fieldset{border-top:1px solid var(--stroke)}
+.product-editor #pv{width:clamp(96px,22vw,150px);max-height:112px;object-fit:contain}
+.product-editor .editor-actions{padding:8px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -5px 12px #1c1c1c08}
 </style></head>
 <body>
 <header>
@@ -801,15 +813,17 @@ function admForm(id,duplicate=false){
   const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
   ${duplicate?'<p class="mu">La copia se guardará pausada. Puedes reactivarla desde Productos.</p>':''}
-  <div class="product-editor"><fieldset><legend>Vista previa de la tarjeta</legend>
+  <div class="product-editor"><div class="editor-name">
+  <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
+  </div>
+  <details class="editor-section"><summary>Vista previa de la tarjeta</summary><fieldset aria-label="Vista previa de la tarjeta">
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
       <p id="card-preview-category" class="preview-category"></p><p id="card-preview-name" class="preview-name"></p>
       <div id="card-preview-tags" class="preview-tags"></div>
       <div class="preview-prices"><strong id="card-preview-price"></strong><s id="card-preview-previous"></s><small id="card-preview-usdt"></small></div></div></article>
-    </fieldset><fieldset><legend>Información del producto</legend>
-  <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
-  </fieldset><fieldset><legend>Descripción en la tienda</legend>
+  </fieldset></details>
+  <details class="editor-section"><summary>Descripción en la tienda</summary><fieldset aria-label="Descripción en la tienda">
   <label for="desc-access">Qué recibe el cliente</label><input id="desc-access" maxlength="70" value="${esc(description.access)}" placeholder="Ej. 1 perfil privado">
   <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
   <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
@@ -818,7 +832,7 @@ function admForm(id,duplicate=false){
   <small class="mu">Si lo dejas vacío, se elige automáticamente de los beneficios.</small>
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
   <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
-  </fieldset><fieldset><legend>Categoría y subcategoría</legend>
+  </fieldset></details><details class="editor-section"><summary>Categorías y subcategorías</summary><fieldset aria-label="Categoría y subcategoría">
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
   <div class="product-sub-options" aria-labelledby="product-subs-title">
@@ -834,7 +848,7 @@ function admForm(id,duplicate=false){
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div>`).join('')}
   </details>
-  </fieldset><fieldset><legend>Precio y disponibilidad</legend>
+  </fieldset></details><details class="editor-section"><summary>Precios, planes y stock</summary><fieldset aria-label="Precio y disponibilidad">
   <div id="base-product-price"><div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
   <div><label for="ppo">Precio anterior S/ (opcional)</label><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" value="${p.po??''}"></div></div>
   <div class="g2"><div><label for="pu">Precio USDT (automático)</label><input id="pu" type="text" readonly aria-describedby="usdt-rate" value="${solesToUsdt(p.p)?.toFixed(2)??''}"><small id="usdt-rate" class="mu">S/ 10 = 3.15 USDT</small></div></div></div><div>
@@ -846,13 +860,13 @@ function admForm(id,duplicate=false){
     <p class="mu">Los planes comparten el stock del producto. Los descuentos programados se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
     <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
-  </fieldset><fieldset><legend>Imagen</legend>
+  </fieldset></details><details class="editor-section"><summary>Imagen</summary><fieldset aria-label="Imagen">
   <img id="pv" class="pv" alt="Vista previa">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
   <div class="g2"><div><label for="pfit">Ajuste</label><select id="pfit"><option value="cover">Rellenar (recorta)</option><option value="contain">Mostrar completa</option></select></div>
   <div><label for="pfurl">O pega una URL</label><input id="pfurl" placeholder="https://" onchange="admUrl()"></div></div>
   <p class="mu" style="font-size:.78rem">La foto se ajusta a 4:3 y se comprime a menos de 150 KB. Al guardar se sube a Supabase Storage.</p>
-  </fieldset><fieldset><legend>Tipo de producto y datos del pedido</legend>
+  </fieldset></details><details class="editor-section"><summary>Tipo de producto y entrega</summary><fieldset aria-label="Tipo de producto y datos del pedido">
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
   <p id="type-order-help" class="mu" hidden></p>
   <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
@@ -860,7 +874,7 @@ function admForm(id,duplicate=false){
     <label for="pxl">Dato solicitado</label><input id="pxl" value="${esc(p.x?.l||'')}" placeholder="Ej: Correo de invitación, dominio o ID de jugador">
     <label for="pxp">Ejemplo (opcional)</label><input id="pxp" value="${esc(p.x?.ph||'')}" placeholder="Ejemplo que verá el cliente">
   </div></div>
-  </fieldset><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
+  </fieldset></details><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
   if(ADM.img)$('#pv').src=ADM.img;
   if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
   admCatSel(productSubcategories(p));
@@ -872,40 +886,47 @@ function admForm(id,duplicate=false){
   updateProductCardPreview();
   updatePlanEditor();
 }
+function productEditorError(message,field){
+  const input=$(field);
+  const section=input?.closest('.editor-section');
+  if(section)section.open=true;
+  input?.focus();
+  toast(message);
+}
 async function admGuardar(){if(publishing)return;
   const imageInput=$('#pfile');
   if(imageInput.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
   const n=v('pn').trim();let c=v('pc');
-  if(!n)return toast('Escribe el nombre del producto.');
-  if(c=='__new__'){c=v('pcn').trim();if(!c)return toast('Escribe el nombre de la nueva categoría.');
+  if(!n)return productEditorError('Escribe el nombre del producto.','#pn');
+  if(c=='__new__'){c=v('pcn').trim();if(!c)return productEditorError('Escribe el nombre de la nueva categoría.','#pcn');
     if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
     const ex=CATS.find(x=>x[0].toLowerCase()==c.toLowerCase());if(ex)c=ex[0]}
   let plans;
-  try{plans=readProductPlans()}catch(error){return toast(error.message)}
+  try{plans=readProductPlans()}catch(error){return productEditorError(error.message,'.plan-editor-row input')}
   const priceField=$('#pp'),u=solesToUsdt(plans[0]?.price??priceField.value);
-  if(!plans.length&&(u===null||!priceField.checkValidity()))return toast('Ingresa un precio válido con hasta dos decimales (0 = gratis).');
+  if(!plans.length&&(u===null||!priceField.checkValidity()))return productEditorError('Ingresa un precio válido con hasta dos decimales (0 = gratis).','#pp');
   const price=plans[0]?.price??Number(priceField.value);
   const num=(i)=>{const t=v(i).trim();if(t==='')return null;const x=parseFloat(t);return isNaN(x)||x<0?NaN:x};
-  const po=plans.length?plans[0].previous:num('ppo');if(Number.isNaN(po))return toast('Revisa el precio anterior.');
+  const po=plans.length?plans[0].previous:num('ppo');if(Number.isNaN(po))return productEditorError('Revisa el precio anterior.','#ppo');
   const outOfStock=v('pstock')==='out',stt=v('pst').trim(),st=outOfStock?0:stt===''?null:Number(stt);
-  if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return toast('Ingresa una cantidad entera mayor a cero.');
+  if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return productEditorError('Ingresa una cantidad entera mayor a cero.','#pst');
   const members=admCheckedSubs();
   const sub=v('psn').trim();
   if(sub){
     const existing=admSubs(c).find(name=>name.toLowerCase()===sub.toLowerCase())||sub;
     if(!members.includes(existing))members.push(existing);
   }
-  if(members.length>4)return toast('Selecciona hasta cuatro subcategorías.');
+  if(members.length>4)return productEditorError('Selecciona hasta cuatro subcategorías.','#psn');
   const extraCategories=readExtraCategories();
   if(new Set([c,...extraCategories.map(item=>item.category)]).size!==extraCategories.length+1)return toast('Elige categorías distintas.');
   if(extraCategories.some(item=>item.subs.length>4))return toast('Selecciona hasta cuatro subcategorías por categoría.');
   const s=members[0]||'';
   const old=ADM.id?prod(ADM.id):null,t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
-  if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
+  if(askExtra&&!xl)return productEditorError('Escribe qué dato quieres pedir al cliente.','#pxl');
   const durationInput=$('#access-amount'),amount=durationInput.valueAsNumber,unit=v('access-unit');
   const hasDuration=durationInput.value!=='';
   if(!durationInput.checkValidity()||(hasDuration&&(!Number.isSafeInteger(amount)||!Object.hasOwn(ACCESS_UNITS,unit)))){
-    return toast('Escribe una duración válida en días, meses o años.');
+    return productEditorError('Escribe una duración válida en días, meses o años.','#access-amount');
   }
   try{
     const imageUrl=await uploadStoreImage(imageInput,'product');
