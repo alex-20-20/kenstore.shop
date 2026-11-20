@@ -1174,10 +1174,12 @@ function downloadCatalogBackup(){
 async function publishCatalogReset(){
   if(publishing)return;
   const previous=structuredClone([P,CATS,SUBS]);
-  const previousVisibility=SITE.hiddenCatalog;
-  SITE.hiddenCatalog=[];
+  const previousSite=SITE;
+  SITE={...SITE,hiddenCatalog:[]};
+  delete SITE.catalogOrders;
+  delete SITE.catalogOrderBaseline;
   admApply(structuredClone(ORIG.P),structuredClone(ORIG.C),structuredClone(ORIG.S));
-  if(!await admSave()){admApply(...previous);SITE.hiddenCatalog=previousVisibility;return}
+  if(!await admSave()){admApply(...previous);SITE=previousSite;return}
   S.cat='all';S.sub='';toast('Catálogo original restaurado');admList();
 }
 
@@ -1239,7 +1241,7 @@ async function admClaimSave(event,form){
 }
 function openRelatedOrder(id){
   ADM.orderQuery=id;
-  admOrders();
+  admOrders('');
 }
 async function admClaims(){
   ADM.tab='claims';
@@ -1600,6 +1602,10 @@ async function admOrderSave(event,form){
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
       body:JSON.stringify({id:form.dataset.order,status,reason})
     });
+    if(response.status===409){
+      const {code}=await response.json().catch(()=>({}));
+      return toast(code==='PRODUCT_REMOVED'?'El producto fue retirado. Revisa el comprobante y coordina la solución con el cliente.':'No hay unidades disponibles para aceptar este pedido.');
+    }
     if(!response.ok)throw new Error('La API rechazó el cambio.');
     toast('Estado actualizado');
     if(form.isConnected&&!publishing){

@@ -1948,8 +1948,9 @@ function updateCheckoutClock(){
   if(submit&&checkoutProduct.p>0&&!submit.disabled)submit.textContent='Registrar para revisión →';
 }
 function resumeCheckout(quote,product){
-  checkoutHold={id:quote.id,orderRef:newOrderId(),started:performance.now(),duration:Date.parse(quote.expires_at)-Date.parse(quote.server_time)};
-  checkoutProduct={...product,p:Number(quote.price)};
+  const original=quote.product||product;
+  checkoutHold={id:quote.id,orderRef:newOrderId(),started:performance.now(),duration:quote.unavailable?0:Date.parse(quote.expires_at)-Date.parse(quote.server_time)};
+  checkoutProduct={...original,p:Number(quote.price)};
   if(checkoutProduct.p===0||checkoutMillisLeft()===0)confirmM(product.id);
   else payM(product.id);
 }
@@ -2058,7 +2059,15 @@ async function send(id){
   S.busy=true;button.setSubmitting(true);
   let o;
   try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:'',name:S.user.name,email:S.user.email,allowLate})}
-  catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Si ya pagaste, conserva tu comprobante y contacta a soporte.')}
+  catch(e){
+    S.busy=false;button.setSubmitting(false);
+    if(/KEN_RESERVATION_EXPIRED|KEN_OUT_OF_STOCK/.test(e.message)&&p.p>0){
+      checkoutHold.duration=0;
+      updateCheckoutClock();
+      return button.showFormError('La reserva ya no está disponible. Si pagaste, marca la casilla para solicitar revisión.');
+    }
+    return button.showFormError('No se pudo registrar el pedido. Si ya pagaste, conserva tu comprobante y contacta a soporte.');
+  }
   S.busy=false;doneM(o);refreshAvailableStock();
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
@@ -2093,10 +2102,10 @@ async function mineM(){
   catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar tus compras. Intenta de nuevo.';return}
   if(!loading.isConnected)return;
   const recoveryLoaded=performance.now();
-  const recoverable=holds.filter(hold=>prod(hold.product_id));
+  const recoverable=holds.filter(hold=>(hold.product||prod(hold.product_id))&&(!hold.unavailable||Number(hold.price)>0));
   const recovery=recoverable.length?`<h3>Pagos por continuar</h3>${recoverable.map((hold,index)=>{
-    const expired=Date.parse(hold.expires_at)<=Date.parse(hold.server_time);
-    return `<div class="oc"><div class="bd"><b>${esc(prod(hold.product_id).n)}</b><span>${money(hold.price)} · ${expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
+    const expired=hold.unavailable||Date.parse(hold.expires_at)<=Date.parse(hold.server_time);
+    return `<div class="oc"><div class="bd"><b>${esc((hold.product||prod(hold.product_id)).n)}</b><span>${money(hold.price)} · ${hold.unavailable?'Producto retirado':expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
   }).join('')}`:'';
   modal(`<h2>🛍️ Mis Compras</h2>`+recovery+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
    <b>${esc(o.pn)}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
