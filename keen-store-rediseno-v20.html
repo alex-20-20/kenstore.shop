@@ -100,8 +100,8 @@ header{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:14px;ali
 .seal img{width:20px;flex:none}
 /* ===== Secciones ===== */
 .sec{max-width:1100px;margin:auto;padding:18px 14px 2px}
-.sec>h2{font-family:var(--px);font-weight:700;text-transform:uppercase;font-size:1.2rem;letter-spacing:.03em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.sec>h2::before{content:"";width:12px;height:12px;background:var(--ac);border:2px solid var(--ln);box-shadow:2px 2px 0 var(--ln)}
+:is(.sec,.catalog-tools)>h2{font-family:var(--px);font-weight:700;text-transform:uppercase;font-size:1.2rem;letter-spacing:.03em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+:is(.sec,.catalog-tools)>h2::before{content:"";width:12px;height:12px;background:var(--ac);border:2px solid var(--ln);box-shadow:2px 2px 0 var(--ln)}
 #catalogo{scroll-margin-top:70px}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .ct{display:flex;align-items:center;gap:10px;text-align:left;padding:10px;box-shadow:4px 4px 0 var(--ln)}
@@ -223,7 +223,7 @@ footer p{margin-top:12px;color:#b9bedf;font-size:.82rem}
  #tabs,#subs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
  #tabs button,#subs button{flex:none;white-space:nowrap}
  #grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
- .sec>h2{font-size:1.25rem}
+ :is(.sec,.catalog-tools)>h2{font-size:1.25rem}
 }
 @media(max-width:480px){.gt{display:none}}
 @media(max-width:420px){.scene .mon{width:100px}.scene .kid{width:72px}.scene .f2{left:40%}}
@@ -308,7 +308,7 @@ button,.btn{transition:transform .12s,box-shadow .12s,background .15s}
 .bars button:hover{transform:translate(-1px,-2px)}
 .bars button:active{transform:translate(2px,2px)}
 .bars button:hover img{animation:k-hop .5s steps(3)}
-.sec>h2::before{animation:k-sq 4s steps(4) infinite}
+:is(.sec,.catalog-tools)>h2::before{animation:k-sq 4s steps(4) infinite}
 
 /* Tarjetas de producto */
 #grid .card{animation:k-pop .5s var(--ease) backwards}
@@ -340,8 +340,8 @@ footer .links button:hover{transform:translateY(-2px)}
 
 /* Aparición al hacer scroll (solo navegadores con scroll-driven animations; si no, se ve normal) */
 @supports (animation-timeline:view()){
- .sec>h2,.steps .step,.faq details,.trust .in>*,.band .in>*,footer>*{animation:k-rev linear backwards;animation-timeline:view();animation-range:entry 0% entry 45%}
- .sec>h2::before{animation:k-sq 4s steps(4) infinite;animation-timeline:auto}
+ :is(.sec,.catalog-tools)>h2,.steps .step,.faq details,.trust .in>*,.band .in>*,footer>*{animation:k-rev linear backwards;animation-timeline:view();animation-range:entry 0% entry 45%}
+ :is(.sec,.catalog-tools)>h2::before{animation:k-sq 4s steps(4) infinite;animation-timeline:auto}
  .step:hover .n{animation:k-hop .5s steps(3);animation-timeline:auto}
 }
 
@@ -519,9 +519,9 @@ header .av{border-color:#fff;box-shadow:2px 2px 0 #fff}
 .seal{background:#fff;border:2px solid var(--ln);box-shadow:2px 2px 0 var(--ln);padding:10px 6px;font-weight:700;justify-content:center;align-items:center}
 @media(hover:hover){.seal:hover{transform:translateY(-3px);box-shadow:2px 5px 0 var(--ac)}}
 /* Títulos */
-.sec>h2{font-family:var(--px);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.sec>h2::before{width:12px;height:12px;border-width:2px;box-shadow:none;background:var(--ac);flex:none}
-.sec>h2::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--ln),transparent);opacity:.25}
+:is(.sec,.catalog-tools)>h2{font-family:var(--px);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+:is(.sec,.catalog-tools)>h2::before{width:12px;height:12px;border-width:2px;box-shadow:none;background:var(--ac);flex:none}
+:is(.sec,.catalog-tools)>h2::after{content:"";flex:1;height:2px;background:linear-gradient(90deg,var(--ln),transparent);opacity:.25}
 /* Categorías y filtros */
 .ct{background:#fff;box-shadow:2px 2px 0 var(--ln)}
 @media(hover:hover){.ct:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ac)}}
@@ -567,7 +567,7 @@ header .av{border-color:#fff;box-shadow:2px 2px 0 #fff}
 .tb .on{background:var(--ac);color:#fff}
 footer{background-image:radial-gradient(#ffffff12 1.2px,transparent 1.2px);background-size:16px 16px;padding:22px 14px}
 #toast{background:var(--ln);box-shadow:4px 4px 0 #0006}
-@media(max-width:640px){.hero{padding-top:20px}.hero h1{font-size:2rem}.sec>h2::after{display:none}
+@media(max-width:640px){.hero{padding-top:20px}.hero h1{font-size:2rem}:is(.sec,.catalog-tools)>h2::after{display:none}
  header button:not(.pri):not(.av),header .btn:not(.pri){box-shadow:2px 2px 0 #ffffff55}}
 
 /* ===== Ajustes v4: sellos compactos y sin sombra bajo el dragón ===== */
@@ -591,7 +591,7 @@ html,body{max-width:100%;overflow-x:clip;overscroll-behavior-x:none}
 .step .n{width:20px;height:20px;font-size:.78rem;margin:0 5px 3px 0}
 .step b{font-size:.92rem}
 .step p{font-size:.7rem;line-height:1.25}
-.sec>h2{margin-bottom:10px}
+:is(.sec,.catalog-tools)>h2{margin-bottom:10px}
 .trust .in{padding:12px 14px;gap:10px}
 .trust h2{margin-bottom:4px}
 .trust p{font-size:.84rem;line-height:1.4;margin-bottom:8px}
@@ -624,8 +624,8 @@ header .av{box-shadow:3px 3px 0 #fff}
 .hero h1::after{height:8px;width:96px;animation:k5-line .9s .5s steps(6) backwards}
 .scene{box-shadow:5px 5px 0 var(--ln);border-width:4px}
 .seals .seal{border-width:3px;box-shadow:3px 3px 0 var(--ln)}
-.sec>h2::before{width:14px;height:14px;border-width:3px}
-.sec>h2::after{height:4px;background:repeating-linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px);opacity:.25}
+:is(.sec,.catalog-tools)>h2::before{width:14px;height:14px;border-width:3px}
+:is(.sec,.catalog-tools)>h2::after{height:4px;background:repeating-linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px);opacity:.25}
 .ct,.bars button,.step{border-width:3px}
 .ct{box-shadow:3px 3px 0 var(--ln)}
 .step{box-shadow:3px 3px 0 var(--ln)}
@@ -678,7 +678,7 @@ header{border-bottom-color:var(--ac)}
 .hero h1 span{animation:none;color:var(--ac)}
 .brand .lg{box-shadow:3px 3px 0 var(--ac)}
 .card .im{background:#e4dccb}
-.sec>h2::after{background:repeating-linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px)}
+:is(.sec,.catalog-tools)>h2::after{background:repeating-linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px)}
 
 /* =====================================================================
    v10 · ESTILO PIXEL REFORZADO (solo CSS)
@@ -798,7 +798,7 @@ footer .links button{font-size:.7rem}
 .card.sold .im img{animation:none}
 .hero .cta .btn{animation:none}
 .hero .cta .pri{animation:k14-nudge 3.6s steps(1,end) infinite}
-.sec>h2::after{background:linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px);background-size:12px 100%;animation:k14-march 1.2s steps(4) infinite}
+:is(.sec,.catalog-tools)>h2::after{background:linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px);background-size:12px 100%;animation:k14-march 1.2s steps(4) infinite}
 header .brand .site-menu-toggle{display:grid;place-content:center;gap:4px;width:36px;height:36px;padding:0;background:var(--ac);color:var(--bone);border:2px solid var(--bone);box-shadow:3px 3px 0 var(--ac)}
 .site-menu-toggle span{display:block;width:16px;height:2px;background:currentColor}
 header .brand>span{font-size:clamp(1.65rem,8vw,2.25rem);line-height:1;white-space:nowrap}
@@ -976,9 +976,11 @@ header button:not(.pri):not(.av):not(.site-menu-toggle),header .btn:not(.pri){ba
 .catalog-stats>div,.seals .seal{border-radius:12px;background:var(--surface);border:1px solid var(--stroke)!important;box-shadow:var(--lift)!important}
 .catalog-stats dd{color:var(--ac)}
 #catalogo{padding-top:28px}
-#catalogo>h2{font-size:clamp(1.55rem,4vw,2.6rem);gap:10px}
-#catalogo>h2::before{width:9px;height:9px;border:0;box-shadow:2px 2px var(--ln)}
-#catalogo>h2::after{content:none}
+#catalogo{scroll-margin-top:var(--store-header-height,72px)}
+.catalog-tools{position:sticky;top:var(--store-header-height,72px);z-index:10;background:var(--canvas);padding-block:3px 1px}
+#catalogo .catalog-tools>h2{font-size:clamp(1.55rem,4vw,2.6rem);gap:10px}
+#catalogo .catalog-tools>h2::before{width:9px;height:9px;border:0;box-shadow:2px 2px var(--ln)}
+#catalogo .catalog-tools>h2::after{content:none}
 #tabs button,#subs button{border-radius:999px;--rc:var(--stroke);--sc:transparent;--rw:1px;--so:0px;background:var(--surface);color:var(--ln)}
 #tabs button.on,#subs button.on{--rc:var(--ac);background:var(--ac);color:#fff}
 #grid{gap:clamp(10px,1.6vw,22px);padding-top:8px}
@@ -1177,9 +1179,11 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 
 
 <section class="sec" id="catalogo">
-  <h2 data-ed="k11">Catálogo</h2>
-  <nav id="tabs" class="bars"></nav>
-  <nav id="subs" class="bars"></nav>
+  <div class="catalog-tools">
+    <h2 data-ed="k11">Catálogo</h2>
+    <nav id="tabs" class="bars"></nav>
+    <nav id="subs" class="bars"></nav>
+  </div>
   <main id="grid"></main>
 </section>
 
@@ -1658,6 +1662,12 @@ function catalogOffersFirst(products,now){
   for(const product of products)(activeScheduledOffer(product,now)?offers:regular).push(product);
   return offers.concat(regular);
 }
+const catalogHeader=document.querySelector('header');
+function syncCatalogHeader(){
+  document.documentElement.style.setProperty('--store-header-height',catalogHeader.offsetHeight+'px');
+}
+syncCatalogHeader();
+new ResizeObserver(syncCatalogHeader).observe(catalogHeader);
 function grid(){
   const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
   const now=Date.now();
