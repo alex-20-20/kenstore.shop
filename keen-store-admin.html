@@ -206,9 +206,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .preview-prices strong{font-size:1.1rem}.preview-prices small{color:var(--ac)}.preview-prices s{color:var(--mu)}
 .admin-login-help{margin-top:12px;font-size:.83rem}
  .product-sub-options{margin-top:12px}
-#ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px}
-#ps label{display:flex;align-items:center;gap:6px;min-height:42px;margin:0;padding:4px 8px;border:1px solid var(--stroke);border-radius:8px}
-#ps label input{flex:none;margin:0}
+#ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr));gap:6px}
+#ps label{display:grid;gap:3px;margin:0;min-width:0}
+#ps select{width:100%;min-width:0;padding-inline:7px}
  .product-extra-categories{margin-top:12px}
 .product-extra-categories summary{cursor:pointer;font-weight:700}
 .extra-sub-options{display:flex;flex-wrap:wrap;gap:4px 12px}
@@ -680,21 +680,27 @@ function admSubs(c){
   return [...new Set([...(SUBS[c]||[]),...P.flatMap(productPlacements).filter(p=>p.category===c).flatMap(p=>p.subs)])];
 }
 function admCheckedSubs(){
-  return [...$('#ps').querySelectorAll('input:checked')].map(input=>input.value);
+  return [...$('#ps').querySelectorAll('select')].map(select=>select.value).filter(Boolean);
 }
 function admCatSel(selected=[]){
   const isNew=v('pc')==='__new__';
   $('#pcnw').hidden=!isNew;
   const subs=isNew?[]:admSubs(v('pc'));
-  $('#ps').innerHTML=subs.map(name=>`<label><input type="checkbox" value="${esc(name)}"${selected.includes(name)?' checked':''}> ${esc(name)}</label>`).join('')||
-    '<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
+  const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
+  $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,subs.length)},(_,index)=>`
+    <label for="product-sub-${index}">Subcategoría ${index+1}<select id="product-sub-${index}">
+      <option value="">Sin subcategoría</option>
+      ${subs.map(name=>`<option value="${esc(name)}"${members[index]===name?' selected':''}>${esc(name)}</option>`).join('')}
+    </select></label>`).join(''):'<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
   $('#psn').value='';
   admSubLimit();
 }
 function admSubLimit(){
-  const count=admCheckedSubs().length;
-  for(const input of $('#ps').querySelectorAll('input'))input.disabled=count>=4&&!input.checked;
-  $('#sub-selection-count').textContent=`${count} de 4 seleccionadas`;
+  const selected=admCheckedSubs();
+  for(const select of $('#ps').querySelectorAll('select')){
+    for(const option of select.options)option.disabled=Boolean(option.value&&option.value!==select.value&&selected.includes(option.value));
+  }
+  $('#sub-selection-count').textContent=`${selected.length} de 4 seleccionadas`;
 }
 function admExtraSubs(slot,selected=[]){
   const options=$('#extra-subs-'+slot);
