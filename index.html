@@ -2543,7 +2543,7 @@ const publishedCatalog=loadPublishedCatalog().catch(()=>toast('No se pudo actual
     const elapsed=lastFrame===undefined?0:Math.min(now-lastFrame,50);
     lastFrame=now;
     const target=ready?100:Math.min(94,12+82*finished/assets.length);
-    shown=Math.min(target,shown+elapsed*.25);
+    shown=Math.min(target,shown+elapsed*.15);
     track.style.setProperty('--load-progress',shown/100);
     const text=Math.floor(shown)+'%';
     if(percent.textContent!==text)percent.textContent=text;
