@@ -243,6 +243,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .workflow-order-position{grid-column:2/-1;font-size:.82rem}.workflow-order-position summary{cursor:pointer;color:var(--ac)}
 .workflow-order-position form{display:flex;align-items:end;gap:6px;margin-top:5px}.workflow-order-position input{width:78px;margin:0}
 .claim-workflow{display:grid;gap:6px;margin-top:10px}.claim-workflow textarea{min-height:72px}
+#promotion-form label[hidden]{display:none}
+#promotion-lists{margin-top:16px}
+#promotion-lists summary{cursor:pointer;color:var(--ac);font-weight:700}
 </style></head>
 <body>
 <header>
@@ -1390,38 +1393,76 @@ function promotionLocal(instant){
   const time=Date.parse(instant);
   return Number.isFinite(time)?new Date(time-5*3600000).toISOString().slice(0,16):'';
 }
+function promotionStatus(promo,now){
+  const start=Date.parse(promo.start),end=Date.parse(promo.end);
+  if(!Number.isFinite(start)||!(end>start)||end<=now)return 'Finalizado';
+  return start>now?'Programado':'Activo';
+}
+const promoDate=new Intl.DateTimeFormat('es-PE',{dateStyle:'medium',timeStyle:'short',timeZone:'America/Lima'});
+let promotionListTimer;
+function renderPromotionLists(view){
+  clearTimeout(promotionListTimer);
+  if(!view?.isConnected)return;
+  const now=Date.now(),active=[],upcoming=[],expired=[],times=[];
+  for(const p of P){
+    const promo=p.promotion;
+    if(!promo)continue;
+    const start=Date.parse(promo.start),end=Date.parse(promo.end),state=promotionStatus(promo,now);
+    times.push(start,end);
+    const row=`<article class="order-admin"><div class="admin-heading"><h3>${esc(p.n)}</h3><strong>${state}</strong></div>
+      <p><strong>${money(promo.price)}</strong> <s>${money(p.p)}</s>${p.paused?' · Producto pausado':''}</p>
+      <p class="mu">${Number.isFinite(start)&&Number.isFinite(end)?esc(promoDate.format(start)+' → '+promoDate.format(end)):'Horario inválido'}</p>
+      <button type="button" onclick="admPromotions(${p.id})">${state==='Finalizado'?'Volver a programar':'Editar descuento'}</button>
+      ${state==='Finalizado'?'':`<button type="button" onclick="changePromotion(${p.id},null)">Retirar descuento</button>`}</article>`;
+    (state==='Activo'?active:state==='Programado'?upcoming:expired).push({row,time:state==='Programado'?start:end});
+  }
+  const section=(name,rows)=>rows.length?`<h3>${name}</h3>${rows.sort((a,b)=>a.time-b.time).map(x=>x.row).join('')}`:'';
+  const expanded=view.querySelector('details')?.open;
+  view.innerHTML=section('Activos',active)+section('Programados',upcoming)+
+    (!active.length&&!upcoming.length?'<p class="mu">Todavía no hay descuentos activos ni programados.</p>':'')+
+    (expired.length?`<details ${expanded?'open':''}><summary>Finalizados (${expired.length})</summary>${expired.sort((a,b)=>b.time-a.time).map(x=>x.row).join('')}</details>`:'');
+  const next=Math.min(...times.filter(time=>time>now));
+  if(Number.isFinite(next))promotionListTimer=setTimeout(()=>renderPromotionLists(view),Math.min(next-now+50,2147483647));
+}
+function promotionStartMode(form){
+  const scheduled=form.elements.mode.value==='scheduled';
+  form.elements.start.disabled=!scheduled;
+  form.elements.start.closest('label').hidden=!scheduled;
+}
 function admPromotions(id){
   ADM.tab='promotions';
-  const selected=prod(id);
-  const promo=selected?.promotion;
-  const now=Date.now();
-  const scheduled=P.filter(p=>p.promotion).map(p=>{
-    const schedule=p.promotion;
-    const state=now<Date.parse(schedule.start)?'Programado':now<Date.parse(schedule.end)?'Activo':'Finalizado';
-    return `<article class="order-admin"><h3>${esc(p.n)}</h3><p>${money(schedule.price)} · ${state}</p>
-      <p class="mu">${promotionLocal(schedule.start).replace('T',' ')} → ${promotionLocal(schedule.end).replace('T',' ')}</p>
-      <button type="button" onclick="admPromotions(${p.id})">Editar descuento</button></article>`;
-  }).join('');
-  modal(`<h2>Descuentos programados</h2><p class="mu">Las fechas usan la hora de Perú. Puedes programar un descuento por producto.</p>
-    <label>Producto<select onchange="admPromotions(this.value)"><option value="">Elige un producto</option>${P.filter(p=>p.p>0).map(p=>`<option value="${p.id}" ${p===selected?'selected':''}>${esc(p.n)} · ${money(p.p)}</option>`).join('')}</select></label>
-    ${selected?`<form data-product="${selected.id}" onsubmit="savePromotion(event,this)">
-      <label>Precio promocional (S/)<input name="price" type="number" min=".01" max="${Math.max(.01,Math.round((selected.p-.01)*100)/100)}" step=".01" required value="${promo?.price??''}"></label>
-      <label>Inicio<input name="start" type="datetime-local" required value="${promotionLocal(promo?.start)}"></label>
-      <label>Fin<input name="end" type="datetime-local" required value="${promotionLocal(promo?.end)}"></label>
-      <div class="bar2"><button class="pri">Guardar descuento</button>${promo?`<button type="button" onclick="changePromotion(${selected.id},null)">Retirar descuento</button>`:''}</div>
+  const selected=prod(id),promo=selected?.promotion;
+  const state=promo?promotionStatus(promo,Date.now()):'';
+  const keepSchedule=state==='Activo'||state==='Programado';
+  modal(`<h2>Descuentos programados</h2><p class="mu">Hora de Perú. Al finalizar el descuento, vuelve el precio habitual.</p>
+    <label>Producto<select id="promotion-product" onchange="admPromotions(this.value);$('#promotion-product').focus()">
+      <option value="">Elige un producto</option>${P.filter(p=>p.p>.01).map(p=>`<option value="${p.id}" ${p===selected?'selected':''}>${esc(p.n)} · ${money(p.p)}</option>`).join('')}</select></label>
+    ${selected?`<form id="promotion-form" data-product="${selected.id}" onsubmit="savePromotion(event,this)">
+      <label>Precio promocional (S/)<input name="price" type="number" min=".01" max="${Math.round((selected.p-.01)*100)/100}" step=".01" required value="${promo?.price??''}"></label>
+      <label>Cuándo empieza<select name="mode" onchange="promotionStartMode(this.form)">
+        ${state==='Activo'?'<option value="original">Mantener inicio actual</option>':''}
+        <option value="now">Ahora</option><option value="scheduled" ${state==='Programado'?'selected':''}>Elegir fecha y hora</option>
+      </select></label>
+      <label>Inicio (hora de Perú)<input name="start" type="datetime-local" required value="${state==='Programado'?promotionLocal(promo.start):''}"></label>
+      <label>Fin (hora de Perú)<input name="end" type="datetime-local" required value="${keepSchedule?promotionLocal(promo.end):''}"></label>
+      <div class="bar2"><button class="pri">Guardar descuento</button></div>
     </form>`:''}
-    ${scheduled?`<h3>Promociones guardadas</h3>${scheduled}`:''}`);
+    <div id="promotion-lists" aria-live="polite"></div>`);
+  const form=$('#promotion-form');
+  if(form)promotionStartMode(form);
+  renderPromotionLists($('#promotion-lists'));
 }
 function savePromotion(event,form){
   event.preventDefault();
   const product=prod(form.dataset.product);
   if(!product)return;
-  const price=form.elements.price.valueAsNumber;
-  const start=new Date(form.elements.start.value+'-05:00');
-  const end=new Date(form.elements.end.value+'-05:00');
+  const price=form.elements.price.valueAsNumber,mode=form.elements.mode.value,now=Date.now();
+  const start=mode==='original'?Date.parse(product.promotion?.start):mode==='now'?now:Date.parse(form.elements.start.value+'-05:00');
+  const end=Date.parse(form.elements.end.value+'-05:00');
   if(!(price>0&&price<product.p))return toast('El descuento debe ser menor al precio habitual.');
-  if(!(end>start&&end.getTime()>Date.now()))return toast('El fin debe ser posterior al inicio y a la hora actual.');
-  changePromotion(product.id,{price,start:start.toISOString(),end:end.toISOString()});
+  if(mode==='scheduled'&&start<=now)return toast('Elige un inicio futuro o selecciona Ahora.');
+  if(!(end>start&&end>now))return toast('El fin debe ser posterior al inicio y a la hora actual.');
+  changePromotion(product.id,{price,start:new Date(start).toISOString(),end:new Date(end).toISOString()});
 }
 async function changePromotion(id,promotion){
   if(publishing)return;
