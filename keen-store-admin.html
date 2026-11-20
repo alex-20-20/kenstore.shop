@@ -238,6 +238,11 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .catalog-order-product img{width:30px;height:30px}
   .catalog-order-actions .move-label{display:none}
 }
+.workflow-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr));gap:9px;margin:12px 0}
+.workflow-summary button{text-align:left;padding:12px}.workflow-summary strong{display:block;font-size:1.3rem;color:var(--ac)}
+.workflow-order-position{grid-column:2/-1;font-size:.82rem}.workflow-order-position summary{cursor:pointer;color:var(--ac)}
+.workflow-order-position form{display:flex;align-items:end;gap:6px;margin-top:5px}.workflow-order-position input{width:78px;margin:0}
+.claim-workflow{display:grid;gap:6px;margin-top:10px}.claim-workflow textarea{min-height:72px}
 </style></head>
 <body>
 <header>
@@ -374,6 +379,17 @@ function admOrderProducts(category,sub){
   const matches=P.filter(p=>productPlacements(p).some(item=>item.category===category&&(!sub||item.subs.includes(sub))));
   return orderedCatalogProducts(matches,category,sub);
 }
+function orderPosition(index,count,handler){
+  if(count<2)return '';
+  return `<details class="workflow-order-position"><summary>Mover a posición…</summary>
+    <form onsubmit="event.preventDefault();${handler}(${index},this.elements.position.valueAsNumber-1-${index})">
+      <label>Posición<input name="position" type="number" min="1" max="${count}" required value="${index+1}"></label><button type="submit">Mover</button>
+    </form></details>`;
+}
+function moveListItem(items,index,next){
+  const [item]=items.splice(index,1);
+  items.splice(next,0,item);
+}
 function admCatalogOrder(){
   ADM.tab='catalog-order';
   const category=CATS.some(([key])=>key===ADM.orderCategory)?ADM.orderCategory:'all';
@@ -396,33 +412,34 @@ function admCatalogOrder(){
     <div class="catalog-order-actions">
       <button type="button" data-move="${i}:-1" aria-label="Subir ${esc(product.n)}" onclick="admMoveProduct(${i},-1)" ${i===0?'disabled':''}><span aria-hidden="true">↑</span><span class="move-label">Subir</span></button>
       <button type="button" data-move="${i}:1" aria-label="Bajar ${esc(product.n)}" onclick="admMoveProduct(${i},1)" ${i===products.length-1?'disabled':''}><span aria-hidden="true">↓</span><span class="move-label">Bajar</span></button>
-    </div></li>`).join('')}</ol>`:'<p class="mu">Aún no hay productos para ordenar.</p>'}`);
+    </div>${orderPosition(i,products.length,'admMoveProduct')}</li>`).join('')}</ol>`:'<p class="mu">Aún no hay productos para ordenar.</p>'}`);
 }
 async function admMoveProduct(index,step){
   const next=index+step;
   const category=ADM.orderCategory,sub=ADM.orderSub;
   const products=admOrderProducts(category,sub);
-  if(publishing||!products[index]||!products[next])return;
+  if(publishing||!step||!products[index]||!products[next])return;
   const scroll=window.scrollY;
   const previousSite=SITE;
   if(category==='all'&&!Array.isArray(SITE.catalogOrderBaseline)){
     SITE={...SITE,catalogOrderBaseline:P.map(p=>p.id)};
   }
-  [products[index],products[next]]=[products[next],products[index]];
+  moveListItem(products,index,next);
   if(category!=='all'){
     const key=catalogScopeKey(category,sub);
     SITE={...SITE,catalogOrders:{...SITE.catalogOrders,[key]:products.map(p=>p.id)}};
   }
   if(!await admSave()){
     SITE=previousSite;
-    if(category==='all')[P[index],P[next]]=[P[next],P[index]];
+    if(category==='all')moveListItem(P,next,index);
     return;
   }
   if(ADM.tab!=='catalog-order'||ADM.orderCategory!==category||ADM.orderSub!==sub)return;
   admCatalogOrder();
   window.scrollTo(0,scroll);
-  const button=$(`[data-move="${next}:${step}"]`);
-  (button.disabled?$(`[data-move="${next}:${-step}"]`):button).focus({preventScroll:true});
+  const direction=Math.sign(step);
+  const button=$(`[data-move="${next}:${direction}"]`);
+  (button.disabled?$(`[data-move="${next}:${-direction}"]`):button).focus({preventScroll:true});
   toast('Orden publicado');
 }
 function admTaxonomyOrder(){
@@ -443,18 +460,18 @@ function admTaxonomyOrder(){
       <div class="catalog-order-actions">${[[-1,'Subir','↑'],[1,'Bajar','↓']].map(([step,label,arrow])=>`
         <button type="button" data-taxonomy-move="${i}:${step}" aria-label="${label} ${esc(name)}" onclick="admMoveTaxonomy(${i},${step})" ${names[i+step]===undefined?'disabled':''}>
           <span aria-hidden="true">${arrow}</span><span class="move-label">${label}</span>
-        </button>`).join('')}</div></li>`).join('')}</ol>`:`<p class="mu">${category?'Esta categoría todavía no tiene subcategorías.':'Todavía no hay categorías para ordenar.'}</p>`}`);
+        </button>`).join('')}</div>${orderPosition(i,names.length,'admMoveTaxonomy')}</li>`).join('')}</ol>`:`<p class="mu">${category?'Esta categoría todavía no tiene subcategorías.':'Todavía no hay categorías para ordenar.'}</p>`}`);
 }
 async function admMoveTaxonomy(index,step){
   if(publishing)return;
   const category=ADM.taxonomyCategory;
   const next=index+step;
   const items=category?admSubs(category):CATS.filter(([key])=>key!=='all');
-  if(items[index]===undefined||items[next]===undefined)return;
+  if(!step||items[index]===undefined||items[next]===undefined)return;
   const scroll=window.scrollY;
   const previous=CATS.slice();
   const previousSubs=SUBS[category];
-  [items[index],items[next]]=[items[next],items[index]];
+  moveListItem(items,index,next);
   if(category)SUBS[category]=items;
   else{
     let position=0;
@@ -470,8 +487,9 @@ async function admMoveTaxonomy(index,step){
   if(ADM.tab==='taxonomy-order'&&ADM.taxonomyCategory===category){
     admTaxonomyOrder();
     window.scrollTo(0,scroll);
-    const button=$(`[data-taxonomy-move="${next}:${step}"]`);
-    (button.disabled?$(`[data-taxonomy-move="${next}:${-step}"]`):button).focus({preventScroll:true});
+    const direction=Math.sign(step);
+    const button=$(`[data-taxonomy-move="${next}:${direction}"]`);
+    (button.disabled?$(`[data-taxonomy-move="${next}:${-direction}"]`):button).focus({preventScroll:true});
   }
   toast('Orden publicado');
 }
@@ -482,7 +500,7 @@ function admList(){
     <div class="admin-filters">
       <label>Buscar producto<input type="search" id="product-query" value="${esc(filters.query||'')}" oninput="admFilterProducts()" placeholder="Nombre, categoría o tipo"></label>
       <label>Categoría<select id="product-category" onchange="admFilterProducts()"><option value="">Todas</option>${CATS.filter(([key])=>key!=='all').map(([key,label])=>`<option value="${esc(key)}"${key===filters.category?' selected':''}>${esc(label)}</option>`).join('')}</select></label>
-      <label>Disponibilidad<select id="product-stock" onchange="admFilterProducts()"><option value="">Todas</option><option value="in"${filters.stock==='in'?' selected':''}>Con stock</option><option value="out"${filters.stock==='out'?' selected':''}>Sin stock</option></select></label>
+      <label>Disponibilidad<select id="product-stock" onchange="admFilterProducts()"><option value="">Todas</option><option value="in"${filters.stock==='in'?' selected':''}>Con stock</option><option value="low"${filters.stock==='low'?' selected':''}>Stock bajo (1 a 3)</option><option value="out"${filters.stock==='out'?' selected':''}>Sin stock</option></select></label>
     </div>
     <p class="mu admin-count" id="product-count" aria-live="polite"></p><div id="product-results"></div>`);
   admFilterProducts();
@@ -491,14 +509,25 @@ function admFilterProducts(){
   const filters=ADM.productFilters={query:v('product-query'),category:v('product-category'),stock:v('product-stock')};
   const query=filters.query.trim().toLocaleLowerCase('es');
   const products=P.filter(p=>(!filters.category||productPlacements(p).some(item=>item.category===filters.category))
-    &&(!filters.stock||(filters.stock==='out')===(p.st===0))
+    &&(!filters.stock||(filters.stock==='low'?isLowStock(p):(filters.stock==='out')===(p.st===0)))
     &&[p.n,p.c,p.s,p.t].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(query));
   $('#product-count').textContent=products.length+' de '+P.length+' productos';
   const rows=products.map(p=>`<div class="ar"><img src="${esc(p.img)}" alt=""><div><b>${esc(p.n)}</b>
     <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${productSubcategories(p).length?' · '+esc(productSubcategories(p).join(' / ')):''}</small>
-    <small>${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+p.st}</small></div>
-    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
+    <small>${p.paused?'Pausado · ':''}${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+p.st}</small></div>
+    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
+}
+function isLowStock(p){return !p.paused&&p.st>0&&p.st<=3}
+async function admPauseProduct(id){
+  if(publishing)return;
+  const product=prod(id);
+  if(!product)return;
+  const index=P.indexOf(product);
+  P[index]={...product,paused:!product.paused};
+  if(!await admSave()){P[index]=product;return}
+  if(ADM.tab==='prod')admList();
+  toast(product.paused?'Producto reactivado':'Producto pausado');
 }
 async function admToggleStock(id){if(publishing)return;
   const product=prod(id);
@@ -713,11 +742,12 @@ function updateProductCardPreview(){
   const usdt=solesToUsdt(price);
   $('#card-preview-usdt').textContent=usdt>0?'≈ '+usdt.toFixed(2)+' USDT':'';
 }
-function admForm(id){
+function admForm(id,duplicate=false){
   ADM.tab='prod';
-  const p=id?prod(id):{},cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=id||0;
+  const source=id?prod(id):{};
+  const p=duplicate?{...source,n:source.n+' (copia)',paused:true}:source,cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=duplicate?0:id||0;ADM.paused=Boolean(p.paused);
   const description=productDescriptionFields(p);
-  modal(`<div class="admin-heading"><h2>${id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
+  modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
   <div class="product-editor"><fieldset><legend>Vista previa de la tarjeta</legend>
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
@@ -827,6 +857,7 @@ async function admGuardar(){if(publishing)return;
   const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
+  if(ADM.paused)o.paused=true;
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
   if(!old||old.descriptionSpec||Object.values(descriptionSpec).some(Boolean))o.descriptionSpec=descriptionSpec;
@@ -1145,7 +1176,7 @@ async function admTxtReset(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).fo
 const MENU=[
   ['General',[['res','📊','Resumen','admRes()']]],
   ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['cat','🗂️','Categorías','admCats()'],['taxonomy-order','↕️','Orden de categorías','admTaxonomyOrder()']]],
-  ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
+  ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['renewals','📅','Vencen pronto','admRenewals()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
@@ -1165,6 +1196,25 @@ const orderStates={
   pendiente:'Pendiente de verificación',aceptado:'Aceptado',en_proceso:'En preparación',
   entregado:'Entregado',rechazado:'Rechazado'
 };
+const claimStates={nuevo:'Nuevo',en_atencion:'En atención',resuelto:'Resuelto'};
+async function admClaimSave(event,form){
+  event.preventDefault();
+  const button=form.querySelector('button');
+  if(button.disabled)return;
+  button.disabled=true;
+  try{
+    const updated=await kenResult(adminClient.from('claims').update({
+      workflow_status:form.elements.status.value,internal_note:form.elements.note.value.trim()
+    }).eq('id',form.dataset.claim).select('id').single());
+    if(!updated)throw new Error('Reclamo no encontrado');
+    toast('Reclamo actualizado');
+  }catch{toast('No se pudo actualizar el reclamo.')}
+  finally{button.disabled=false}
+}
+function openRelatedOrder(id){
+  ADM.orderQuery=id;
+  admOrders();
+}
 async function admClaims(){
   ADM.tab='claims';
   modal('<h2>Reclamos</h2><p id="claims-loading">Cargando reclamos…</p>');
@@ -1179,17 +1229,64 @@ async function admClaims(){
       <p class="mu">${esc(new Date(c.date).toLocaleString('es-PE'))}</p>
       <p><b>${esc(c.name)}</b> · DNI / CE ${esc(c.doc)}</p>
       <p>${esc(c.wa)} · ${esc(c.email)}</p>
-      ${c.order?`<p>Orden ${esc(c.order)}</p>`:''}
+      ${c.order?`<p><button type="button" data-linked-order="${esc(c.order)}" onclick="openRelatedOrder(this.dataset.linkedOrder)">Ver pedido ${esc(c.order)}</button></p>`:''}
       <p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(c.detail)}</p>
+      <form class="claim-workflow" data-claim="${esc(c.id)}" onsubmit="admClaimSave(event,this)">
+        <label>Estado<select name="status">${Object.entries(claimStates).map(([key,label])=>`<option value="${key}" ${key===(c.workflow_status||'nuevo')?'selected':''}>${label}</option>`).join('')}</select></label>
+        <label>Nota interna<textarea name="note" maxlength="2000">${esc(c.internal_note||'')}</textarea></label>
+        <button type="submit">Guardar reclamo</button>
+      </form>
     </article>`).join(''):'<p class="mu">Aún no hay reclamos registrados.</p>'}
   </section>`);
 }
-async function admOrders(filter=ADM.orderFilter||''){
-  ADM.tab='orders';ADM.orderFilter=filter;
+async function loadAdminOrders(){
+  const orders=[];
+  for(let offset=0;;offset+=500){
+    const page=await kenResult(adminClient.from('orders').select('*').order('date',{ascending:false}).order('id').range(offset,offset+499));
+    orders.push(...page);
+    if(page.length<500)return orders;
+  }
+}
+const limaDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit'});
+const limaDate=new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',dateStyle:'medium'});
+function orderInScope(order,scope){
+  if(scope==='delivery')return ['aceptado','en_proceso'].includes(order.status);
+  if(scope==='today'||scope==='month'){
+    if(!order.paid_at||order.status==='rechazado')return false;
+    const size=scope==='today'?10:7;
+    return limaDay.format(new Date(order.paid_at)).slice(0,size)===limaDay.format(new Date()).slice(0,size);
+  }
+  return true;
+}
+function openOrderTask(scope){
+  ADM.orderQuery='';
+  admOrders(scope==='pending'?'pendiente':'',scope==='pending'?'':scope);
+}
+function renewalLink(order){
+  const phone=String(order.wa||'').replace(/\D/g,'');
+  if(!/^\d{8,15}$/.test(phone))return '';
+  const message=`Hola, ${order.name}. Tu acceso a ${order.pn} vence el ${limaDate.format(new Date(order.expires_at))}. ¿Deseas renovarlo? · Ken Store`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+async function admRenewals(){
+  ADM.tab='renewals';
+  modal('<h2>Vencen pronto</h2><p id="renewal-list">Cargando accesos…</p>');
+  const view=$('#renewal-list');
+  try{
+    const now=Date.now(),limit=now+7*86400000;
+    const orders=await loadAdminOrders();
+    if(!view.isConnected)return;
+    const upcoming=orders.filter(o=>o.status==='entregado'&&o.expires_at&&Date.parse(o.expires_at)>=now&&Date.parse(o.expires_at)<=limit).sort((a,b)=>Date.parse(a.expires_at)-Date.parse(b.expires_at));
+    modal(`<h2>Vencen pronto</h2><p class="mu">Accesos que vencen en los próximos 7 días.</p>${upcoming.map(o=>`<article class="order-admin"><h3>${esc(o.pn)}</h3><p>${esc(o.name)} · ${esc(o.id)}</p><p>Vence el ${limaDate.format(new Date(o.expires_at))}</p>
+      ${renewalLink(o)?`<a class="btn" href="${esc(renewalLink(o))}" target="_blank" rel="noopener noreferrer">Preparar mensaje de WhatsApp</a>`:''}</article>`).join('')||'<p>No hay vencimientos próximos.</p>'}`);
+  }catch{if(view.isConnected)view.textContent='No se pudieron cargar los vencimientos.'}
+}
+async function admOrders(filter=ADM.orderFilter||'',scope=''){
+  ADM.tab='orders';ADM.orderFilter=filter;ADM.orderScope=scope;
   modal('<h2>Pedidos</h2><p id="orders-loading">Cargando pedidos…</p>');
   const loading=$('#orders-loading');
   try{
-    const orders=await kenResult(adminClient.from('orders').select('*').order('date',{ascending:false}));
+    const orders=(await loadAdminOrders()).filter(o=>orderInScope(o,scope));
     if(!loading.isConnected)return;
     _renderOrders(orders);
   }catch(e){if(loading.isConnected)loading.textContent='No se pudieron cargar los pedidos.'}
@@ -1202,7 +1299,8 @@ function _renderOrders(orders){
   }
   const filters=[['','Todos',orders.length],...Object.entries(orderStates).map(([key,label])=>[key,key==='pendiente'?'Pendientes':label,counts[key]])];
   modal(`<section id="adm-orders" aria-labelledby="orders-title">
-    <div class="orders-title"><h2 id="orders-title">Pedidos</h2><button type="button" onclick="admOrders()">Actualizar</button></div>
+    <div class="orders-title"><h2 id="orders-title">Pedidos</h2><button type="button" onclick="admOrders(ADM.orderFilter,ADM.orderScope)">Actualizar</button></div>
+    ${ADM.orderScope?`<p class="mu">${({today:'Cobros de hoy',month:'Cobros de este mes',delivery:'Pedidos por entregar'})[ADM.orderScope]} <button type="button" onclick="admOrders('')">Ver todos los pedidos</button></p>`:''}
     <div class="orders-controls">
       <label class="orders-search" for="order-search">Buscar pedido<input id="order-search" type="search" placeholder="Número, cliente, producto o WhatsApp" value="${esc(ADM.orderQuery||'')}" oninput="admFilterOrders()"></label>
       <div class="order-filters" role="group" aria-label="Filtrar por estado">${filters.map(([key,label,count])=>`<button type="button" data-order-filter="${key}" aria-pressed="false" onclick="ADM.orderFilter=this.dataset.orderFilter;admFilterOrders()">${label} <span>${count}</span></button>`).join('')}</div>
@@ -1217,6 +1315,7 @@ function _renderOrders(orders){
           <div class="order-total"><strong>${money(o.price)}</strong><span class="order-status ${state}">${orderStates[state]}</span></div>
         </div>
         <div class="order-contact"><strong>${esc(o.name)}</strong>${phone.length>=8&&phone.length<=15?`<a href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer">WhatsApp · ${esc(o.wa)}</a>`:`<span>${esc(o.wa)}</span>`}</div>
+        ${o.activated_at?`<p class="mu">Activado el ${limaDate.format(new Date(o.activated_at))}${o.expires_at?` · Vence el ${limaDate.format(new Date(o.expires_at))}`:''}</p>`:''}
         ${o.extra?`<p class="order-extra">${esc(o.extra_label||'Dato del pedido')} · ${esc(o.extra)}</p>`:''}
         ${o.voucher?`<details><summary>Comprobante en WhatsApp</summary><p>${esc(o.voucher)}</p></details>`:''}
         <div class="order-edit">
@@ -1272,7 +1371,7 @@ async function admOrderSave(event,form){
     toast('Estado actualizado');
     if(form.isConnected){
       const scroll=window.scrollY;
-      await admOrders();
+      await admOrders(ADM.orderFilter,ADM.orderScope);
       if(ADM.tab==='orders')window.scrollTo(0,scroll);
     }
   }catch(e){toast('No se pudo actualizar el estado. Intenta de nuevo.')}
@@ -1285,11 +1384,26 @@ async function admPublishFirst(){
   if(catalogVersion||publishing)return;
   if(await admSave()){admRes();toast('Catálogo publicado')}
 }
+async function loadSalesSummary(view){
+  try{
+    const orders=await loadAdminOrders();
+    if(!view.isConnected)return;
+    const sum=scope=>orders.filter(o=>orderInScope(o,scope)).reduce((total,o)=>total+Number(o.price||0),0);
+    const cards=[
+      ['Cobrado hoy',money(sum('today')),"openOrderTask('today')"],
+      ['Cobrado este mes',money(sum('month')),"openOrderTask('month')"],
+      ['Por verificar',orders.filter(o=>o.status==='pendiente').length,"openOrderTask('pending')"],
+      ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"openOrderTask('delivery')"],
+      ['Stock bajo',P.filter(isLowStock).length,"ADM.productFilters={stock:'low'};admList()"]
+    ];
+    view.innerHTML=cards.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');
+  }catch{if(view.isConnected)view.textContent='No se pudo cargar el resumen de ventas.'}
+}
 function admRes(){ADM.tab='res';const ag=P.filter(p=>p.st===0).length,hid=(SITE.hide||[]).length;
-  modal(`<h2>📊 Resumen</h2>
+  modal(`<h2>📊 Resumen</h2><div id="sales-summary" class="workflow-summary">Cargando ventas…</div>
   ${catalogVersion?'':'<p class="mu">Publica el catálogo para que los clientes puedan registrar pedidos.</p><button class="pri" onclick="admPublishFirst()">Publicar catálogo</button>'}
   <div class="stat"><div><b>${P.length}</b><span>Productos</span></div><div><b>${ag}</b><span>Agotados</span></div><div><b>${CATS.length-1}</b><span>Categorías</span></div><div><b>${Object.keys(SITE.t).length}</b><span>Textos editados</span></div><div><b>${hid}</b><span>Secciones ocultas</span></div></div>
-  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`)}
+  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`);loadSalesSummary($('#sales-summary'))}
 function admSec(){const h=SITE.hide||[],a=SITE.ann||{};
   modal(`<h2>🧩 Secciones y avisos</h2><label>Secciones visibles</label>${SEC.map(([k,l])=>`<label style="font-weight:400"><input type="checkbox" id="h_${k}"${h.includes(k)?'':' checked'}>${l}</label>`).join('')}
   <label for="a_t">Barra de anuncio superior (vacío = sin barra)</label><input id="a_t" value="${esc(a.t||'')}" placeholder="🔥 Promo de la semana…"><label for="a_c">Color de la barra</label><input id="a_c" type="color" value="${a.c||'#1c1c1c'}">

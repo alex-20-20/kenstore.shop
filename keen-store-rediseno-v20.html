@@ -1575,6 +1575,7 @@ function orderedCatalogProducts(products,category,sub){
   return [...products].sort((a,b)=>(positions.get(String(a.id))??ids.length)-(positions.get(String(b.id))??ids.length));
 }
 function activeProductPlacements(product){
+  if(product.paused)return [];
   return productPlacements(product).flatMap(item=>{
     if(hiddenCatalogEntry(item.category))return [];
     const active=item.subs.filter(sub=>!hiddenCatalogEntry(item.category,sub));
