@@ -1750,10 +1750,10 @@ function grid(){
     const out=quantity===0, low=quantity>0&&quantity<=5, sale=hasCatalogDiscount(p);
     const plans=storePlans(product);
     const labels=[['type',p.t],['duration',plans.length?plans.length+' '+(plans.length===1?'plan':'planes'):accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
-    const stock=quantity==null?'<span class="stk">Disponible</span>':out?`<span class="stk out">${p.st===0?'Agotado':'Sin unidades ahora'}</span>`:low?`<span class="stk low">Quedan ${quantity}</span>`:`<span class="stk">Stock ${quantity}</span>`;
+    const stock=quantity==null?'<span class="stk">Disponible</span>':out?`<span class="stk out">${p.st===0?'Agotado':'Sin unidades ahora'}</span>`:low?`<span class="stk low">Quedan ${esc(quantity)}</span>`:`<span class="stk">Stock ${esc(quantity)}</span>`;
     const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
-    return `<article class="card${out?' sold':''}"><div class="im"><img src="${p.img}" alt="${esc(p.n)}" loading="lazy">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
+    return `<article class="card${out?' sold':''}"><div class="im"><img src="${esc(p.img)}" alt="${esc(p.n)}" loading="lazy">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(displayProductPlacement(p))}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
@@ -2062,7 +2062,7 @@ async function proceed(id,planId=null){
     resumeCheckout(quote,p);
     refreshAvailableStock();
   }catch(error){
-    toast(/KEN_OUT_OF_STOCK|KEN_UNAVAILABLE/.test(error.message)?'Sin unidades disponibles en este momento.':'No se pudo reservar el producto. Intenta de nuevo.');
+    toast(/KEN_RESERVATION_LIMIT/.test(error.message)?'Tienes 5 reservas vigentes. Puedes continuar desde Mis Compras o esperar a que venza una.':/KEN_OUT_OF_STOCK|KEN_UNAVAILABLE/.test(error.message)?'Sin unidades disponibles en este momento.':'No se pudo reservar el producto. Intenta de nuevo.');
   }finally{openingCheckout=false}
 }
 async function savePaymentQr(event,link){
@@ -2168,7 +2168,7 @@ async function send(id){
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
   const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nCorreo de la cuenta: ${o.email}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}${o.plan_name?'\nPlan: '+o.plan_name:''}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?(o.extraLabel||o.extra_label||'Dato de entrega')+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación${o.late_checkout?' (reserva vencida, revisión manual)':''}\n${o.price>0?'📎 Adjunto la captura de mi comprobante en este chat.':'Regalo de bienvenida (sin pago)'}`;
-  return 'https://wa.me/'+CFG.WA+'?text='+encodeURIComponent(t);
+  return 'https://wa.me/'+String(CFG.WA).replace(/\D/g,'')+'?text='+encodeURIComponent(t);
 }
 function doneM(o){ // Paso 4: notificación final
   playSuccessSound();
@@ -2188,7 +2188,7 @@ const stLbl=o=>({
 })[o.status]||'🟡 Pendiente de verificación';
 function supLink(o){
   const t=`Hola soporte de Ken Store, soy el usuario ${o.name} y necesito ayuda con mi compra:\n- Orden: ${o.id}\n- Producto: ${o.pn}\n- Fecha: ${fdate(o.date)}\n- Estado: ${stLbl(o).slice(2)}`;
-  return 'https://wa.me/'+CFG.WA+'?text='+encodeURIComponent(t);
+  return 'https://wa.me/'+String(CFG.WA).replace(/\D/g,'')+'?text='+encodeURIComponent(t);
 }
 async function mineM(){
   modal('<h2>🛍️ Mis Compras</h2><p id="purchase-loading">Cargando tus pedidos…</p>','big purchases');

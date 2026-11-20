@@ -541,7 +541,7 @@ function admFilterProducts(){
   $('#product-count').textContent=products.length+' de '+P.length+' productos';
   const rows=products.map(p=>`<div class="ar"><img src="${esc(p.img)}" alt=""><div><b>${esc(p.n)}</b>
     <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${productSubcategories(p).length?' · '+esc(productSubcategories(p).join(' / ')):''}</small>
-    <small>${p.paused?'Pausado · ':''}${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+p.st}</small></div>
+    <small>${p.paused?'Pausado · ':''}${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+esc(p.st)}</small></div>
     <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admMargin(${p.id})">Margen</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
 }
@@ -858,7 +858,7 @@ function admForm(id,duplicate=false){
   </fieldset></section><section class="editor-section"><h3>Precios, planes y stock</h3><fieldset aria-label="Precio y disponibilidad">
   <div id="base-product-price" class="product-price-row">
     <label for="pp"><span>Precio</span><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" aria-describedby="product-price-help" value="${p.p??''}"></label>
-    <label for="ppo"><span>P. anterior</span><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="product-price-help" value="${p.po??''}"></label>
+    <label for="ppo"><span>P. anterior</span><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="product-price-help" value="${esc(p.po??'')}"></label>
     <label for="pu"><span>USDT</span><input id="pu" type="text" readonly aria-describedby="product-price-help" value="${solesToUsdt(p.p)?.toFixed(2)??''}"></label>
     <small id="product-price-help" class="mu">Precios en soles · S/ 0 = gratis · USDT automático</small>
   </div>
@@ -866,7 +866,7 @@ function admForm(id,duplicate=false){
     <label for="pstock"><span>Disponibilidad</span><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
       <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
     </select></label>
-    <label for="pst"><span>Unidades (opcional)</span><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${p.st===0?p.previousStock??'':p.st??''}"${p.st===0?' disabled':''}></label>
+    <label for="pst"><span>Unidades (opcional)</span><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${esc(p.st===0?p.previousStock??'':p.st??'')}"${p.st===0?' disabled':''}></label>
   </div>
   </fieldset><fieldset><legend>Planes y precios</legend>
     <p class="mu">Los planes comparten el stock del producto. Los descuentos programados se aplican al primer plan.</p>
