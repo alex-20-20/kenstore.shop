@@ -209,6 +209,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 #ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:6px}
 #ps label{display:flex;align-items:center;gap:6px;min-height:42px;margin:0;padding:4px 8px;border:1px solid var(--stroke);border-radius:8px}
 #ps label input{flex:none;margin:0}
+ .product-extra-categories{margin-top:12px}
+.product-extra-categories summary{cursor:pointer;font-weight:700}
+.extra-sub-options{display:flex;flex-wrap:wrap;gap:4px 12px}
+.extra-sub-options label{display:flex;align-items:center;gap:4px;min-height:38px;margin:0}
+.extra-sub-options input{margin:0}
+.catalog-order-list{list-style:none;padding:0;display:grid;gap:6px}
+.catalog-order-list li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid var(--stroke);border-radius:8px}
 </style></head>
 <body>
 <header>
@@ -330,6 +337,27 @@ async function admExit(){
   try{await kenResult(adminClient.auth.signOut({scope:'local'}));location.reload()}
   catch(e){toast('No se pudo cerrar la sesión.')}
 }
+function admCatalogOrder(){
+  ADM.tab='catalog-order';
+  modal(`<h2>Orden del catálogo</h2><ol class="catalog-order-list">${P.map((product,i)=>`
+    <li><span>${i+1}. <strong>${esc(product.n)}</strong></span><div>
+      <button type="button" data-move="${i}:-1" aria-label="Subir ${esc(product.n)}" onclick="admMoveProduct(${i},-1)" ${i===0?'disabled':''}>↑ Subir</button>
+      <button type="button" data-move="${i}:1" aria-label="Bajar ${esc(product.n)}" onclick="admMoveProduct(${i},1)" ${i===P.length-1?'disabled':''}>↓ Bajar</button>
+    </div></li>`).join('')}</ol>`);
+}
+async function admMoveProduct(index,step){
+  const next=index+step;
+  if(publishing||!P[index]||!P[next])return;
+  const scroll=window.scrollY;
+  [P[index],P[next]]=[P[next],P[index]];
+  if(!await admSave()){[P[index],P[next]]=[P[next],P[index]];return}
+  if(ADM.tab!=='catalog-order')return;
+  admCatalogOrder();
+  window.scrollTo(0,scroll);
+  const button=$(`[data-move="${next}:${step}"]`);
+  (button.disabled?$(`[data-move="${next}:${-step}"]`):button).focus({preventScroll:true});
+  toast('Orden publicado');
+}
 function admList(){
   ADM.tab='prod';
   const filters=ADM.productFilters||{};
@@ -345,7 +373,7 @@ function admList(){
 function admFilterProducts(){
   const filters=ADM.productFilters={query:v('product-query'),category:v('product-category'),stock:v('product-stock')};
   const query=filters.query.trim().toLocaleLowerCase('es');
-  const products=P.filter(p=>(!filters.category||p.c===filters.category)
+  const products=P.filter(p=>(!filters.category||productPlacements(p).some(item=>item.category===filters.category))
     &&(!filters.stock||(filters.stock==='out')===(p.st===0))
     &&[p.n,p.c,p.s,p.t].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(query));
   $('#product-count').textContent=products.length+' de '+P.length+' productos';
@@ -463,12 +491,20 @@ function productSubcategories(product){
   const members=Array.isArray(product.subcategories)?product.subcategories:[product.s];
   return [...new Set(members.filter(name=>typeof name==='string'&&name.trim()))].slice(0,4);
 }
+function productPlacements(product){
+  return [{category:product.c,subs:productSubcategories(product)},...(Array.isArray(product.extraCategories)?product.extraCategories:[])];
+}
+function applyProductPlacements(product,placements){
+  product.c=placements[0].category;
+  setProductSubcategories(product,placements[0].subs);
+  product.extraCategories=placements.slice(1);
+}
 function setProductSubcategories(product,members){
   product.subcategories=members;
   product.s=members[0]||'';
 }
 function admSubs(c){
-  return [...new Set([...(SUBS[c]||[]),...P.filter(p=>p.c===c).flatMap(productSubcategories)])];
+  return [...new Set([...(SUBS[c]||[]),...P.flatMap(productPlacements).filter(p=>p.category===c).flatMap(p=>p.subs)])];
 }
 function admCheckedSubs(){
   return [...$('#ps').querySelectorAll('input:checked')].map(input=>input.value);
@@ -486,6 +522,23 @@ function admSubLimit(){
   const count=admCheckedSubs().length;
   for(const input of $('#ps').querySelectorAll('input'))input.disabled=count>=4&&!input.checked;
   $('#sub-selection-count').textContent=`${count} de 4 seleccionadas`;
+}
+function admExtraSubs(slot,selected=[]){
+  const options=$('#extra-subs-'+slot);
+  const category=v('extra-cat-'+slot);
+  options.innerHTML=category?admSubs(category).map(sub=>`<label><input type="checkbox" value="${esc(sub)}"${selected.includes(sub)?' checked':''}> ${esc(sub)}</label>`).join(''):'';
+  admExtraLimit(slot);
+}
+function admExtraLimit(slot){
+  const inputs=[...$('#extra-subs-'+slot).querySelectorAll('input')];
+  const total=inputs.filter(input=>input.checked).length;
+  for(const input of inputs)input.disabled=total>=4&&!input.checked;
+}
+function readExtraCategories(){
+  return [0,1,2].map(slot=>({
+    category:v('extra-cat-'+slot),
+    subs:[...$('#extra-subs-'+slot).querySelectorAll('input:checked')].map(input=>input.value)
+  })).filter(item=>item.category);
 }
 const typeOrderHelp={
   Perfil:'Se pide WhatsApp y el comprobante de pago.',
@@ -566,7 +619,7 @@ function admForm(id){
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
   <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset><fieldset><legend>Categoría y subcategoría</legend>
-  <label for="pc">Categoría</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
+  <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
   <div class="product-sub-options" aria-labelledby="product-subs-title">
     <strong id="product-subs-title">Subcategorías</strong>
@@ -574,6 +627,13 @@ function admForm(id){
     <div id="ps" onchange="admSubLimit()"></div>
     <label for="psn">Añadir una nueva subcategoría (opcional)</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
   </div>
+  <details class="product-extra-categories" ${p.extraCategories?.length?'open':''}>
+    <summary>Categorías adicionales (hasta 3)</summary>
+    ${[0,1,2].map(slot=>`<label for="extra-cat-${slot}">Categoría adicional ${slot+1}</label>
+      <select id="extra-cat-${slot}" onchange="admExtraSubs(${slot})"><option value="">Sin categoría adicional</option>
+      ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
+      <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div>`).join('')}
+  </details>
   </fieldset><fieldset><legend>Precio y disponibilidad</legend>
   <div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
   <div><label for="ppo">Precio anterior S/ (opcional)</label><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" value="${p.po??''}"></div></div>
@@ -600,6 +660,7 @@ function admForm(id){
   if(ADM.img)$('#pv').src=ADM.img;
   if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
   admCatSel(productSubcategories(p));
+  for(const slot of [0,1,2])admExtraSubs(slot,p.extraCategories?.[slot]?.subs||[]);
   admTypeFields();
   const editor=$('.product-editor');
   editor.addEventListener('input',updateProductCardPreview);
@@ -628,6 +689,9 @@ async function admGuardar(){if(publishing)return;
     if(!members.includes(existing))members.push(existing);
   }
   if(members.length>4)return toast('Selecciona hasta cuatro subcategorías.');
+  const extraCategories=readExtraCategories();
+  if(new Set([c,...extraCategories.map(item=>item.category)]).size!==extraCategories.length+1)return toast('Elige categorías distintas.');
+  if(extraCategories.some(item=>item.subs.length>4))return toast('Selecciona hasta cuatro subcategorías por categoría.');
   const s=members[0]||'';
   const old=ADM.id?prod(ADM.id):null,t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return toast('Escribe qué dato quieres pedir al cliente.');
@@ -644,7 +708,7 @@ async function admGuardar(){if(publishing)return;
   if(publishing)return;
   const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
-  const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,subcategories:members,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
+  const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
@@ -771,7 +835,7 @@ function admCats(){
   <div class="bar2"><button class="pri" onclick="admCatAdd()">Agregar categoría</button></div></fieldset>
   ${cs.map(entry=>{
     const [c,,emoji,iconKey=c]=entry,i=CATS.indexOf(entry),subs=admSubs(c);
-    const products=P.filter(p=>p.c===c), hidden=catalogHidden(c);
+    const products=P.filter(p=>productPlacements(p).some(item=>item.category===c)), hidden=catalogHidden(c);
     return `<section class="catalog-admin-card" aria-labelledby="cat_${i}">
       <div class="catalog-card-head"><div><h3 class="adm-cat-title" id="cat_${i}">${admCategoryIcon(iconKey,emoji)}${esc(c)}</h3>
       <p class="mu">${products.length} producto${products.length===1?'':'s'}</p></div>
@@ -842,11 +906,11 @@ function admCatEditSave(i){
     if(name===category)return;
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry[0]===category?[name,...entry.slice(1)]:entry);
     if(Object.hasOwn(SUBS,category)){SUBS[name]=SUBS[category];delete SUBS[category]}
-    P.filter(p=>p.c===category).forEach(p=>{p.c=name});
+    P.forEach(p=>{const memberships=productPlacements(p);if(memberships.some(item=>item.category===category))applyProductPlacements(p,memberships.map(item=>item.category===category?{...item,category:name}:item))});
   },'Categoría actualizada');
 }
 function admCatDel(i){
-  const [category]=CATS[i],used=P.some(p=>p.c===category);
+  const [category]=CATS[i],used=P.some(p=>productPlacements(p).every(item=>item.category===category));
   const targets=CATS.filter(([key])=>key!=='all'&&key!==category);
   if(used&&!targets.length)return toast('Crea otra categoría para mover los productos primero.');
   modal(`<h2>Eliminar categoría</h2><p>¿Eliminar <b>${esc(category)}</b> y sus subcategorías?</p>
@@ -854,10 +918,10 @@ function admCatDel(i){
     <div class="bar2"><button class="del" onclick="admCatDelSave(${i})">Eliminar categoría</button><button onclick="admCats()">Cancelar</button></div>`);
 }
 function admCatDelSave(i){
-  const [category]=CATS[i],destination=v('cat-target'),products=P.filter(p=>p.c===category);
-  if(products.length&&!CATS.some(([key])=>key===destination&&key!=='all'&&key!==category))return toast('Selecciona una categoría válida.');
+  const [category]=CATS[i],destination=v('cat-target'),products=P.filter(p=>productPlacements(p).some(item=>item.category===category));
+  if(products.some(p=>productPlacements(p).length===1)&&!CATS.some(([key])=>key===destination&&key!=='all'&&key!==category))return toast('Selecciona una categoría válida.');
   admCatalogChange(()=>{
-    products.forEach(p=>{p.c=destination;setProductSubcategories(p,[])});
+    products.forEach(p=>{const remaining=productPlacements(p).filter(item=>item.category!==category);applyProductPlacements(p,remaining.length?remaining:[{category:destination,subs:[]}])});
     CATS.splice(i,1);
     delete SUBS[category];
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category);
@@ -876,7 +940,7 @@ function admSubEditSave(i,j){
   admCatalogChange(()=>{
     SUBS[category]=subs.map(item=>item===sub?name:item);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).map(entry=>entry?.[0]===category&&entry[1]===sub?[category,name]:entry);
-    P.filter(p=>p.c===category&&productSubcategories(p).includes(sub)).forEach(p=>setProductSubcategories(p,productSubcategories(p).map(item=>item===sub?name:item)));
+    P.forEach(p=>{const placements=productPlacements(p);if(placements.some(item=>item.category===category&&item.subs.includes(sub)))applyProductPlacements(p,placements.map(item=>item.category===category?{...item,subs:item.subs.map(value=>value===sub?name:value)}:item))});
   },'Subcategoría actualizada');
 }
 function admSubDel(i,j){
@@ -889,7 +953,7 @@ function admSubDelSave(i,j){
   admCatalogChange(()=>{
     SUBS[category]=subs.filter(item=>item!==sub);
     SITE.hiddenCatalog=(Array.isArray(SITE.hiddenCatalog)?SITE.hiddenCatalog:[]).filter(entry=>entry[0]!==category||entry[1]!==sub);
-    P.filter(p=>p.c===category&&productSubcategories(p).includes(sub)).forEach(p=>setProductSubcategories(p,productSubcategories(p).filter(item=>item!==sub)));
+    P.forEach(p=>{const placements=productPlacements(p);if(placements.some(item=>item.category===category&&item.subs.includes(sub)))applyProductPlacements(p,placements.map(item=>item.category===category?{...item,subs:item.subs.filter(value=>value!==sub)}:item))});
   },'Subcategoría eliminada');
 }
 function admIO(){
@@ -948,7 +1012,7 @@ function admTxtSave(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r
 async function admTxtReset(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r=>delete SITE.t[r[0]]);if(await siteSave())admTextos(i)}
 const MENU=[
   ['General',[['res','📊','Resumen','admRes()']]],
-  ['Catálogo',[['prod','📦','Productos','admList()'],['cat','🗂️','Categorías','admCats()']]],
+  ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['cat','🗂️','Categorías','admCats()']]],
   ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
