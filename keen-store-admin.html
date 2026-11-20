@@ -246,6 +246,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 #promotion-form label[hidden]{display:none}
 #promotion-lists{margin-top:16px}
 #promotion-lists summary{cursor:pointer;color:var(--ac);font-weight:700}
+.plan-editor-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr));gap:7px;align-items:end;padding:10px;margin:8px 0;border:1px solid var(--stroke);border-radius:10px}
+.plan-editor-row label{margin:0}.plan-editor-row input,.plan-editor-row select{margin-bottom:0}.plan-editor-row small{display:block}
+#base-product-price[hidden]{display:none}
 </style></head>
 <body>
 <header>
@@ -733,17 +736,63 @@ function updateProductCardPreview(){
   const units={days:['día','días'],months:['mes','meses'],years:['año','años']};
   const duration=v('access-amount')!==''&&units[u]?`${n} ${units[u][n===1?0:1]}`:'';
   const benefit=cardBenefit({n:v('pn'),t:v('pt'),cardBenefit:v('card-benefit'),pills:v('ptg').split(',')});
-  $('#card-preview-tags').replaceChildren(...[v('pt'),duration,benefit].filter(Boolean).map(text=>{
+  const planRows=[...document.querySelectorAll('.plan-editor-row')];
+  const durationTag=planRows.length?planRows.length+(planRows.length===1?' plan':' planes'):duration;
+  $('#card-preview-tags').replaceChildren(...[v('pt'),durationTag,benefit].filter(Boolean).map(text=>{
     const tag=document.createElement('span');tag.textContent=text;return tag;
   }));
   const stock=v('pst');
   $('#card-preview-stock').textContent=v('pstock')==='out'?'Agotado':stock?(Number(stock)<=5?'Quedan ':'Stock ')+stock:'Disponible';
-  const price=v('pp'),previous=Number(v('ppo')),sale=price!==''&&previous>Number(price);
+  const mainPlan=planRows[0];
+  const price=mainPlan?.querySelector('[data-plan=price]').value??v('pp');
+  const previous=Number(mainPlan?.querySelector('[data-plan=previous]').value??v('ppo'));
+  const sale=price!==''&&previous>Number(price);
   $('#card-preview-price').textContent=price===''?'':money(price);
   $('#card-preview-previous').textContent=sale?money(previous):'';
   $('#card-preview-discount').textContent=sale?'-'+Math.round((1-Number(price)/previous)*100)+'%':'';
   const usdt=solesToUsdt(price);
   $('#card-preview-usdt').textContent=usdt>0?'≈ '+usdt.toFixed(2)+' USDT':'';
+}
+function planEditorRow(plan={}){
+  return `<div class="plan-editor-row" data-plan-id="${esc(plan.id||crypto.randomUUID())}">
+    <label>Nombre del plan<input data-plan="name" maxlength="60" value="${esc(plan.name||'')}" placeholder="Ej. 1 mes"></label>
+    <label>Precio S/<input data-plan="price" type="number" min=".01" step=".01" value="${esc(plan.price??'')}"><small class="mu" data-plan-usdt></small></label>
+    <label>Antes S/<input data-plan="previous" type="number" min=".01" step=".01" value="${esc(plan.previous??'')}"></label>
+    <label>Duración<input data-plan="amount" type="number" min="1" max="9999" step="1" value="${esc(plan.duration?.amount??'')}"></label>
+    <label>Unidad<select data-plan="unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}" ${unit===plan.duration?.unit?'selected':''}>${label}</option>`).join('')}</select></label>
+    <button type="button" onclick="this.closest('.plan-editor-row').remove();updatePlanEditor()">Quitar plan</button>
+  </div>`;
+}
+function updatePlanEditor(){
+  const rows=[...document.querySelectorAll('.plan-editor-row')];
+  $('#base-product-price').hidden=rows.length>0;
+  for(const row of rows){
+    const price=solesToUsdt(row.querySelector('[data-plan=price]').value);
+    row.querySelector('[data-plan-usdt]').textContent=price===null?'':price.toFixed(2)+' USDT';
+  }
+  updateProductCardPreview();
+}
+function addProductPlan(){
+  const list=$('#product-plans');
+  if(list.children.length>=12)return toast('Puedes agregar hasta 12 planes.');
+  list.insertAdjacentHTML('beforeend',planEditorRow());
+  updatePlanEditor();
+  list.lastElementChild.querySelector('input').focus();
+}
+function readProductPlans(){
+  const rows=[...document.querySelectorAll('.plan-editor-row')];
+  const plans=rows.map(row=>{
+    const field=key=>row.querySelector(`[data-plan="${key}"]`);
+    const name=field('name').value.trim(),price=field('price').valueAsNumber;
+    const previous=field('previous').value===''?null:field('previous').valueAsNumber;
+    const amount=field('amount').valueAsNumber,unit=field('unit').value;
+    if(!name||!(price>0)||!field('price').checkValidity()||solesToUsdt(price)===null||
+       (previous!==null&&(!(previous>price)||!field('previous').checkValidity()))||
+       !Number.isInteger(amount)||!field('amount').checkValidity())throw new Error('Completa el nombre, precio y duración de cada plan. El precio anterior debe ser mayor.');
+    return {id:row.dataset.planId,name,price,previous,duration:{amount,unit}};
+  });
+  if(new Set(plans.map(p=>p.name.toLocaleLowerCase('es'))).size!==plans.length)throw new Error('Usa un nombre distinto para cada plan.');
+  return plans;
 }
 function admForm(id,duplicate=false){
   ADM.tab='prod';
@@ -786,13 +835,17 @@ function admForm(id,duplicate=false){
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div>`).join('')}
   </details>
   </fieldset><fieldset><legend>Precio y disponibilidad</legend>
-  <div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
+  <div id="base-product-price"><div class="g2"><div><label for="pp">Precio S/ (0 = gratis)</label><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" value="${p.p??''}"></div>
   <div><label for="ppo">Precio anterior S/ (opcional)</label><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" value="${p.po??''}"></div></div>
-  <div class="g2"><div><label for="pu">Precio USDT (automático)</label><input id="pu" type="text" readonly aria-describedby="usdt-rate" value="${solesToUsdt(p.p)?.toFixed(2)??''}"><small id="usdt-rate" class="mu">S/ 10 = 3.15 USDT</small></div>
+  <div class="g2"><div><label for="pu">Precio USDT (automático)</label><input id="pu" type="text" readonly aria-describedby="usdt-rate" value="${solesToUsdt(p.p)?.toFixed(2)??''}"><small id="usdt-rate" class="mu">S/ 10 = 3.15 USDT</small></div></div></div><div>
   <div><label for="pstock">Disponibilidad</label><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
     <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
   </select>
   <label for="pst">Unidades disponibles (opcional)</label><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${p.st===0?p.previousStock??'':p.st??''}"${p.st===0?' disabled':''}></div></div>
+  </fieldset><fieldset><legend>Planes y precios</legend>
+    <p class="mu">Los planes comparten el stock del producto. Los descuentos programados se aplican al primer plan.</p>
+    <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
+    <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
   </fieldset><fieldset><legend>Imagen</legend>
   <img id="pv" class="pv" alt="Vista previa">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
@@ -817,6 +870,7 @@ function admForm(id,duplicate=false){
   editor.addEventListener('input',updateProductCardPreview);
   editor.addEventListener('change',updateProductCardPreview);
   updateProductCardPreview();
+  updatePlanEditor();
 }
 async function admGuardar(){if(publishing)return;
   const imageInput=$('#pfile');
@@ -826,11 +880,13 @@ async function admGuardar(){if(publishing)return;
   if(c=='__new__'){c=v('pcn').trim();if(!c)return toast('Escribe el nombre de la nueva categoría.');
     if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
     const ex=CATS.find(x=>x[0].toLowerCase()==c.toLowerCase());if(ex)c=ex[0]}
-  const priceField=$('#pp'),u=solesToUsdt(priceField.value);
-  if(u===null||!priceField.checkValidity())return toast('Ingresa un precio válido con hasta dos decimales (0 = gratis).');
-  const price=Number(priceField.value);
+  let plans;
+  try{plans=readProductPlans()}catch(error){return toast(error.message)}
+  const priceField=$('#pp'),u=solesToUsdt(plans[0]?.price??priceField.value);
+  if(!plans.length&&(u===null||!priceField.checkValidity()))return toast('Ingresa un precio válido con hasta dos decimales (0 = gratis).');
+  const price=plans[0]?.price??Number(priceField.value);
   const num=(i)=>{const t=v(i).trim();if(t==='')return null;const x=parseFloat(t);return isNaN(x)||x<0?NaN:x};
-  const po=num('ppo');if(Number.isNaN(po))return toast('Revisa el precio anterior.');
+  const po=plans.length?plans[0].previous:num('ppo');if(Number.isNaN(po))return toast('Revisa el precio anterior.');
   const outOfStock=v('pstock')==='out',stt=v('pst').trim(),st=outOfStock?0:stt===''?null:Number(stt);
   if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return toast('Ingresa una cantidad entera mayor a cero.');
   const members=admCheckedSubs();
@@ -865,6 +921,7 @@ async function admGuardar(){if(publishing)return;
     if(Date.parse(old.promotion.end)>Date.now()&&old.promotion.price>=price)return toast('Ajusta o retira el descuento programado antes de reducir el precio habitual.');
     o.promotion=old.promotion;
   }
+  if(plans.length)o.plans=plans;
   if(ADM.paused)o.paused=true;
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
@@ -1305,7 +1362,7 @@ async function admRenewals(){
     const orders=await loadAdminOrders();
     if(!view.isConnected)return;
     const upcoming=orders.filter(o=>o.status==='entregado'&&o.expires_at&&Date.parse(o.expires_at)>=now&&Date.parse(o.expires_at)<=limit).sort((a,b)=>Date.parse(a.expires_at)-Date.parse(b.expires_at));
-    modal(`<h2>Vencen pronto</h2><p class="mu">Accesos que vencen en los próximos 7 días.</p>${upcoming.map(o=>`<article class="order-admin"><h3>${esc(o.pn)}</h3><p>${esc(o.name)} · ${esc(o.id)}</p><p>Vence el ${limaDate.format(new Date(o.expires_at))}</p>
+    modal(`<h2>Vencen pronto</h2><p class="mu">Accesos que vencen en los próximos 7 días.</p>${upcoming.map(o=>`<article class="order-admin"><h3>${esc(o.pn)}${o.plan_name?' · '+esc(o.plan_name):''}</h3><p>${esc(o.name)} · ${esc(o.id)}</p><p>Vence el ${limaDate.format(new Date(o.expires_at))}</p>
       ${renewalLink(o)?`<a class="btn" href="${esc(renewalLink(o))}" target="_blank" rel="noopener noreferrer">Preparar mensaje de WhatsApp</a>`:''}</article>`).join('')||'<p>No hay vencimientos próximos.</p>'}`);
   }catch{if(view.isConnected)view.textContent='No se pudieron cargar los vencimientos.'}
 }
@@ -1325,7 +1382,7 @@ async function admDelivery(){
       const phone=String(o.wa||'').replace(/\D/g,'');
       const message=encodeURIComponent(`Hola, ${o.name}. Te escribo de Ken Store por tu pedido ${o.id} de ${o.pn}.`);
       return `<form class="order-admin" data-order="${esc(o.id)}" onsubmit="admOrderSave(event,this)">
-        <h3>${esc(o.pn)}</h3><p>${esc(o.name)} · ${esc(o.id)}</p>
+        <h3>${esc(o.pn)}${o.plan_name?' · '+esc(o.plan_name):''}</h3><p>${esc(o.name)} · ${esc(o.id)}</p>
         ${o.extra?`<p class="order-extra"><strong>${esc(o.extra_label||'Dato del pedido')}</strong> · ${esc(o.extra)}</p>
           <button type="button" data-copy="${esc(o.extra)}" onclick="copyDeliveryData(this)">Copiar dato</button>`:''}
         ${/^\d{8,15}$/.test(phone)?`<a class="btn" href="https://wa.me/${phone}?text=${message}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>`:''}
@@ -1542,9 +1599,9 @@ function _renderOrders(orders,holds){
     <div class="order-list">${orders.map(o=>{
       const state=Object.hasOwn(orderStates,o.status)?o.status:'pendiente';
       const phone=String(o.wa||'').replace(/\D/g,'');
-      return `<form class="order-admin" data-order="${esc(o.id)}" data-saved-state="${state}" data-order-search="${esc([o.id,o.name,o.pn,o.email,o.wa,o.extra,phone].join(' '))}" onsubmit="admOrderSave(event,this)">
+      return `<form class="order-admin" data-order="${esc(o.id)}" data-saved-state="${state}" data-order-search="${esc([o.id,o.name,o.pn,o.plan_name,o.email,o.wa,o.extra,phone].join(' '))}" onsubmit="admOrderSave(event,this)">
         <div class="order-head">
-          <div><small>${esc(o.id)}</small><h3>${esc(o.pn)}</h3><p class="order-date">${esc(new Date(o.date).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'}))}</p></div>
+          <div><small>${esc(o.id)}</small><h3>${esc(o.pn)}${o.plan_name?' · '+esc(o.plan_name):''}</h3><p class="order-date">${esc(new Date(o.date).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'}))}</p></div>
           <div class="order-total"><strong>${money(o.price)}</strong><span class="order-status ${state}">${orderStates[state]}</span></div>
         </div>
         <div class="order-contact"><strong>${esc(o.name)}</strong>${phone.length>=8&&phone.length<=15?`<a href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer">WhatsApp · ${esc(o.wa)}</a>`:`<span>${esc(o.wa)}</span>`}</div>

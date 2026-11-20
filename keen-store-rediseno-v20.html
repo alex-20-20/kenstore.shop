@@ -1117,6 +1117,11 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
  #subs.bars button{min-height:27px;padding:3px 7px;font-size:.7rem}
 }
 #checkout-payment[hidden],#late-checkout-confirm[hidden]{display:none}
+.store-plan-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:7px;margin:10px 0}
+.store-plan-options button{text-align:left;min-height:55px;padding:8px;border-radius:10px;background:var(--surface);color:var(--ln);overflow-wrap:anywhere}
+.store-plan-options button[aria-pressed=true]{background:var(--ac);color:#fff;--rc:var(--ac)}
+.store-plan-options strong,.store-plan-options small{display:block}
+.store-plan-summary{margin:10px 0;padding:10px;border:1px solid var(--stroke);border-radius:10px;background:var(--canvas)}
 </style>
 </head>
 <body>
@@ -1695,7 +1700,8 @@ function grid(){
     const offer=activeScheduledOffer(product,now),p=pricedProduct(product,now);
     const quantity=p.st===0?0:availableStock[p.id]??p.st;
     const out=quantity===0, low=quantity>0&&quantity<=5, sale=hasCatalogDiscount(p);
-    const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
+    const plans=storePlans(product);
+    const labels=[['type',p.t],['duration',plans.length?plans.length+' '+(plans.length===1?'plan':'planes'):accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
     const stock=quantity==null?'<span class="stk">Disponible</span>':out?`<span class="stk out">${p.st===0?'Agotado':'Sin unidades ahora'}</span>`:low?`<span class="stk low">Quedan ${quantity}</span>`:`<span class="stk">Stock ${quantity}</span>`;
     const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
@@ -1705,7 +1711,7 @@ function grid(){
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
 
       <div class="pr"><div class="pp"><div class="pl"><b>${money(p.p)}</b>${sale?`<span class="old">${money(p.po)}</span>`:''}</div>${p.u?`<span class="usd">≈ ${Number(p.u).toFixed(2)} USDT</span>`:''}</div>
-      <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
+      <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':plans.length?'Ver planes':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
   refreshOfferCountdowns();
 }
 function selectCatalogFilter(category,sub,row){
@@ -1954,15 +1960,39 @@ function resumeCheckout(quote,product){
   if(checkoutProduct.p===0||checkoutMillisLeft()===0)confirmM(product.id);
   else payM(product.id);
 }
-async function proceed(id){
+function storePlans(product){
+  return Array.isArray(product.plans)?product.plans:[];
+}
+function planPrice(product,index,now=Date.now()){
+  const plan=storePlans(product)[index];
+  return index===0?pricedProduct({...product,p:plan.price,po:plan.previous},now).p:plan.price;
+}
+function chooseProductPlan(product,index=0){
+  const plans=storePlans(product),plan=plans[index],now=Date.now();
+  if(!plan)return;
+  const price=planPrice(product,index,now);
+  const previous=index===0&&price<plan.price?plan.price:plan.previous;
+  modal(`<h2>${esc(product.n)}</h2><div class="store-plan-options" role="group" aria-label="Planes disponibles">
+    ${plans.map((item,i)=>`<button type="button" aria-pressed="${i===index}" data-plan-option="${i}"><strong>${esc(item.name)}</strong><small>${money(planPrice(product,i,now))}</small></button>`).join('')}
+    </div><div class="store-plan-summary"><strong>${esc(plan.name)}</strong><p>${money(price)}${previous>price?` · <s>${money(previous)}</s>`:''} · ≈ ${(Math.round(price*31.5)/100).toFixed(2)} USDT</p><p class="mu">${esc(accessDurationLabel(plan.duration))} de acceso</p></div>
+    <button class="pri w" id="continue-product-plan">Continuar al pago →</button>`);
+  for(const button of document.querySelectorAll('[data-plan-option]'))button.onclick=()=>{
+    const next=Number(button.dataset.planOption);
+    chooseProductPlan(product,next);
+    document.querySelector(`[data-plan-option="${next}"]`)?.focus({preventScroll:true});
+  };
+  $('#continue-product-plan').onclick=()=>proceed(product.id,plan.id);
+}
+async function proceed(id,planId=null){
   if(openingCheckout)return;
   openingCheckout=true;
   try{
     if(!await publishedCatalog)return toast('El catálogo aún no está disponible para pedidos.');
     const p=prod(id);
     if(!visibleProduct(p)||p.st===0)return toast('Este producto no está disponible.');
+    if(!planId&&storePlans(p).length){chooseProductPlan(p);return}
     if(p.p===0&&await API.hasOrder(id))return toast('Ya reclamaste este regalo.');
-    const quote=await kenResult(storeClient.rpc('ken_reserve_checkout',{product:id}));
+    const quote=await kenResult(storeClient.rpc('ken_reserve_product_plan',{product:id,selected_plan:planId}));
     resumeCheckout(quote,p);
     refreshAvailableStock();
   }catch(error){
@@ -2003,7 +2033,7 @@ async function copyPaymentNumber(){
 }
 function payM(id){ // Paso 2: método de pago
   const p=checkoutProduct;
-  modal(`<h2>Método de pago</h2><div class="sum"><b>${esc(p.n)}</b><b>${money(p.p)}</b></div>
+  modal(`<h2>Método de pago</h2><div class="sum"><b>${esc(p.n)}${p.planName?' · '+esc(p.planName):''}</b><b>${money(p.p)}</b></div>
   <p class="mu" id="checkout-clock"></p><div class="payment-layout" id="checkout-payment"><div>
   <div class="qr"><img src="${CFG.QR?esc(CFG.QR):qrPh}" alt="Código QR de pago"></div>
   ${CFG.QR?`<div class="pay-qr-action"><a class="btn" href="${esc(CFG.QR)}" download="qr-ken-store" target="_blank" rel="noopener" onclick="savePaymentQr(event,this)">Guardar QR</a></div>`:''}
@@ -2030,7 +2060,7 @@ function orderField(product){
 }
 function confirmM(id){ // Paso 3: formulario de confirmación
   const p=checkoutProduct,free=p.p===0,field=orderField(p);
-  modal(`<h2>${free?'Reclama tu regalo':'Confirma tu pedido'}</h2><div class="sum"><span>${esc(p.n)}</span><b>${money(p.p)}</b></div>
+  modal(`<h2>${free?'Reclama tu regalo':'Confirma tu pedido'}</h2><div class="sum"><span>${esc(p.n)}${p.planName?' · '+esc(p.planName):''}</span><b>${money(p.p)}</b></div>
   ${p.t?`<p class="mu">Tipo de producto: ${esc(p.t)}</p>`:''}
   <label for="cn">Nombre</label><input id="cn" value="${esc(S.user.name)}" readonly>
   <label for="cw">Tu número de WhatsApp</label><p class="form-rule" id="cw-rule">9 dígitos que empiecen con 9. Puedes incluir el +51.</p><input id="cw" type="tel" inputmode="tel" placeholder="Ej: 912 345 678" autocomplete="tel" aria-describedby="cw-rule">
@@ -2071,7 +2101,7 @@ async function send(id){
   S.busy=false;doneM(o);refreshAvailableStock();
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
-  const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nCorreo de la cuenta: ${o.email}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?(o.extraLabel||o.extra_label||'Dato de entrega')+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación${o.late_checkout?' (reserva vencida, revisión manual)':''}\n${o.price>0?'📎 Adjunto la captura de mi comprobante en este chat.':'Regalo de bienvenida (sin pago)'}`;
+  const t=`🛒 *NUEVO PEDIDO – Ken Store*\nN.º de orden: ${o.id}\nCliente: ${o.name}\nCorreo de la cuenta: ${o.email}\nWhatsApp: ${o.wa}\nProducto: ${o.pn}${o.plan_name?'\nPlan: '+o.plan_name:''}\nCategoría: ${o.cat}${o.sub?' / '+o.sub:''}\nMonto: ${money(o.price)}\n${o.extra?(o.extraLabel||o.extra_label||'Dato de entrega')+': '+o.extra+'\n':''}Fecha: ${fdate(o.date)}\nEstado: Pendiente de verificación${o.late_checkout?' (reserva vencida, revisión manual)':''}\n${o.price>0?'📎 Adjunto la captura de mi comprobante en este chat.':'Regalo de bienvenida (sin pago)'}`;
   return 'https://wa.me/'+CFG.WA+'?text='+encodeURIComponent(t);
 }
 function doneM(o){ // Paso 4: notificación final
@@ -2105,10 +2135,10 @@ async function mineM(){
   const recoverable=holds.filter(hold=>(hold.product||prod(hold.product_id))&&(!hold.unavailable||Number(hold.price)>0));
   const recovery=recoverable.length?`<h3>Pagos por continuar</h3>${recoverable.map((hold,index)=>{
     const expired=hold.unavailable||Date.parse(hold.expires_at)<=Date.parse(hold.server_time);
-    return `<div class="oc"><div class="bd"><b>${esc((hold.product||prod(hold.product_id)).n)}</b><span>${money(hold.price)} · ${hold.unavailable?'Producto retirado':expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
+    return `<div class="oc"><div class="bd"><b>${esc((hold.product||prod(hold.product_id)).n)}${hold.product?.planName?' · '+esc(hold.product.planName):''}</b><span>${money(hold.price)} · ${hold.unavailable?'Producto retirado':expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
   }).join('')}`:'';
   modal(`<h2>🛍️ Mis Compras</h2>`+recovery+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
-   <b>${esc(o.pn)}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
+   <b>${esc(o.pn)}${o.plan_name?' · '+esc(o.plan_name):''}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
    <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extra_label)}: ${esc(o.extra)}</span>`:''}
    <span class="st">${stLbl(o)}</span>${o.status=='rechazado'&&o.reason?`<span class="mu">Motivo: ${esc(o.reason)}</span>`:''}
    <a class="btn purchase-support" target="_blank" rel="noopener" href="${o.status==='pendiente'&&o.price>0?waLink(o):supLink(o)}">${o.status==='pendiente'&&o.price>0?'Adjuntar comprobante en WhatsApp':'Soporte por WhatsApp'}</a></div></div>`}).join(''):'<p class="mu">Aún no tienes compras. Elige un producto del catálogo para empezar.</p>'),'big purchases');
