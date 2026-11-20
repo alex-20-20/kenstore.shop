@@ -1093,12 +1093,13 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .det .detail-benefits{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 9px;padding:0;margin:8px 0;list-style:none;font-size:.8rem}
 .det .detail-benefits li{margin:0;line-height:1.3;overflow-wrap:anywhere}
 @media(max-width:390px){.det .detail-benefits{column-gap:5px;font-size:.76rem}}
-#grid .card .pills{display:flex;flex-wrap:nowrap;align-items:center;gap:3px;min-width:0}
+#grid .card .pills{display:flex;flex-wrap:nowrap;align-items:center;gap:3px;min-width:0;container-type:inline-size}
 #grid .card .pills .product-tag{display:block;max-width:100%;min-width:0;padding:3px 6px;border:1px solid transparent;border-radius:6px;font-size:clamp(.59rem,1.7vw,.72rem);font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #grid .card .pills .product-tag--type{background:var(--soft);border-color:color-mix(in srgb,var(--mu) 22%,var(--soft));color:var(--ln)}
 #grid .card .pills .product-tag--duration{background:color-mix(in srgb,var(--ac) 8%,var(--bl));border-color:color-mix(in srgb,var(--ac) 25%,var(--soft));color:var(--ac)}
 #grid .card .pills .product-tag--benefit{background:var(--bl);border-color:var(--soft);color:var(--ln)}
 @media(max-width:420px){#grid .card .pills .product-tag{padding:3px 4px}}
+@container (max-width:150px){#grid .card .pills .product-tag{padding:3px 3px;font-size:.59rem}}
 </style>
 </head>
 <body>
