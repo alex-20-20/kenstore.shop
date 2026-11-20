@@ -2428,7 +2428,7 @@ siteMenu.addEventListener('click',e=>{
   }
   siteMenu.close();
 });
-/* Personalización guardada desde keen-store-admin.html */
+/* Personalización del catálogo */
 const rt=t=>t.split(/\n\s*\n/).map(b=>/^#\s/.test(b)?`<h3>${esc(b.slice(2))}</h3>`:`<p>${esc(b).replace(/\n/g,'<br>')}</p>`).join('');
 function applyStoreAppearance(){const fm=t=>esc(t).replace(/\*([^*]+)\*/g,'<span>$1</span>').replace(/\n/g,'<br>');
   document.querySelectorAll('[data-ed]').forEach(e=>{const t=(SITE.t||{})[e.dataset.ed];if(t){const text=['k18','k21'].includes(e.dataset.ed)?t.replace(/sube tu voucher/gi,'envía tu comprobante por WhatsApp').replace(/subes tu voucher/gi,'envías tu comprobante por WhatsApp'):t;e.innerHTML=fm(e.dataset.ed==='k10'?text.replace(/^💬\s*/,''):text)}});
