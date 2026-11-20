@@ -515,7 +515,7 @@ function admFilterProducts(){
   const rows=products.map(p=>`<div class="ar"><img src="${esc(p.img)}" alt=""><div><b>${esc(p.n)}</b>
     <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${productSubcategories(p).length?' · '+esc(productSubcategories(p).join(' / ')):''}</small>
     <small>${p.paused?'Pausado · ':''}${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+p.st}</small></div>
-    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
+    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock ↔':'Con stock ↔'}</button><button onclick="admForm(${p.id})">✏️ Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admMargin(${p.id})">Margen</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">🗑️ Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
 }
 function isLowStock(p){return !p.paused&&p.st>0&&p.st<=3}
@@ -856,8 +856,12 @@ async function admGuardar(){if(publishing)return;
   if(publishing)return;
   const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
-  const o={id:ADM.id||Math.max(0,...P.map(x=>x.id))+1,n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
+  const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
+  if(old?.promotion){
+    if(Date.parse(old.promotion.end)>Date.now()&&old.promotion.price>=price)return toast('Ajusta o retira el descuento programado antes de reducir el precio habitual.');
+    o.promotion=old.promotion;
+  }
   if(ADM.paused)o.paused=true;
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
@@ -1176,8 +1180,8 @@ function admTxtSave(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r
 async function admTxtReset(i){if(publishing)return;REG.filter(r=>r[1]==GR[i]).forEach(r=>delete SITE.t[r[0]]);if(await siteSave())admTextos(i)}
 const MENU=[
   ['General',[['res','📊','Resumen','admRes()']]],
-  ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['cat','🗂️','Categorías','admCats()'],['taxonomy-order','↕️','Orden de categorías','admTaxonomyOrder()']]],
-  ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['renewals','📅','Vencen pronto','admRenewals()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
+  ['Catálogo',[['prod','📦','Productos','admList()'],['catalog-order','↕️','Orden del catálogo','admCatalogOrder()'],['promotions','🏷️','Descuentos programados','admPromotions()'],['history','🕘','Historial de productos','admProductHistory()'],['cat','🗂️','Categorías','admCats()'],['taxonomy-order','↕️','Orden de categorías','admTaxonomyOrder()']]],
+  ['Ventas',[['orders','🧾','Pedidos','admOrders()'],['delivery','📦','Bandeja de entregas','admDelivery()'],['renewals','📅','Vencen pronto','admRenewals()'],['claims','📖','Reclamos','admClaims()'],['pay','💳','Pagos y contacto',"admCfg('pay')"]]],
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
@@ -1282,6 +1286,156 @@ async function admRenewals(){
       ${renewalLink(o)?`<a class="btn" href="${esc(renewalLink(o))}" target="_blank" rel="noopener noreferrer">Preparar mensaje de WhatsApp</a>`:''}</article>`).join('')||'<p>No hay vencimientos próximos.</p>'}`);
   }catch{if(view.isConnected)view.textContent='No se pudieron cargar los vencimientos.'}
 }
+async function copyDeliveryData(button){
+  try{await navigator.clipboard.writeText(button.dataset.copy);toast('Dato copiado')}
+  catch{toast('Selecciona el dato para copiarlo manualmente.')}
+}
+async function admDelivery(){
+  ADM.tab='delivery';
+  modal('<h2>Bandeja de entregas</h2><p id="delivery-list">Cargando entregas…</p>');
+  const view=$('#delivery-list');
+  try{
+    const orders=(await loadAdminOrders()).filter(o=>orderInScope(o,'delivery')).reverse();
+    if(!view.isConnected)return;
+    modal(`<div class="admin-heading"><h2>Bandeja de entregas</h2><button onclick="admDelivery()">Actualizar</button></div>
+      <p class="mu">${orders.length} pendientes de entrega</p>${orders.map(o=>{
+      const phone=String(o.wa||'').replace(/\D/g,'');
+      const message=encodeURIComponent(`Hola, ${o.name}. Te escribo de Ken Store por tu pedido ${o.id} de ${o.pn}.`);
+      return `<form class="order-admin" data-order="${esc(o.id)}" onsubmit="admOrderSave(event,this)">
+        <h3>${esc(o.pn)}</h3><p>${esc(o.name)} · ${esc(o.id)}</p>
+        ${o.extra?`<p class="order-extra"><strong>${esc(o.extra_label||'Dato del pedido')}</strong> · ${esc(o.extra)}</p>
+          <button type="button" data-copy="${esc(o.extra)}" onclick="copyDeliveryData(this)">Copiar dato</button>`:''}
+        ${/^\d{8,15}$/.test(phone)?`<a class="btn" href="https://wa.me/${phone}?text=${message}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a>`:''}
+        <button type="submit" value="deliver" class="pri">Marcar como entregado</button></form>`;
+      }).join('')||'<p>No hay pedidos por entregar.</p>'}`);
+  }catch{if(view.isConnected)view.textContent='No se pudieron cargar las entregas.'}
+}
+function updateMargin(form){
+  const price=form.elements.sale.valueAsNumber;
+  const cost=form.elements.cost.valueAsNumber;
+  const rate=form.elements.fee_percent.valueAsNumber;
+  const fixed=form.elements.fixed_fee.valueAsNumber;
+  const result=form.querySelector('output');
+  if(![price,cost,rate,fixed].every(Number.isFinite)||!form.checkValidity()){result.textContent='Completa los importes para calcular el margen.';return}
+  const margin=price-cost-Math.round(price*rate)/100-fixed;
+  const soles=new Intl.NumberFormat('es-PE',{style:'currency',currency:'PEN'});
+  result.textContent='Margen estimado: '+soles.format(margin)+(price>0?' · '+(100*margin/price).toFixed(1)+' %':'');
+}
+async function admMargin(id){
+  const product=prod(id);
+  if(!product)return;
+  modal('<h2>Margen por producto</h2><p id="margin-loading">Cargando costos…</p>');
+  const loading=$('#margin-loading');
+  try{
+    const row=await kenResult(adminClient.from('ken_product_costs').select('*').eq('product_id',id).maybeSingle());
+    if(!loading.isConnected)return;
+    const promo=product.promotion,now=Date.now();
+    const sale=promo&&now>=Date.parse(promo.start)&&now<Date.parse(promo.end)?promo.price:product.p;
+    modal(`<h2>Margen por producto</h2><p>${esc(product.n)} · Datos privados</p>
+      <form id="margin-form" data-product="${id}" oninput="updateMargin(this)" onsubmit="saveMargin(event,this)">
+        <label>Precio de venta para calcular (S/)<input name="sale" type="number" min="0" step=".01" required value="${sale}"></label>
+        <label>Costo del acceso (S/)<input name="cost" type="number" min="0" max="9999999999.99" step=".01" required value="${row?.cost??''}"></label>
+        <label>Comisión (%)<input name="fee_percent" type="number" min="0" max="100" step=".01" required value="${row?.fee_percent??0}"></label>
+        <label>Comisión fija (S/)<input name="fixed_fee" type="number" min="0" max="9999999999.99" step=".01" required value="${row?.fixed_fee??0}"></label>
+        <p><output aria-live="polite"></output></p><div class="bar2"><button class="pri">Guardar costos</button><button type="button" onclick="admList()">Volver a productos</button></div>
+      </form>`);
+    updateMargin($('#margin-form'));
+  }catch{if(loading.isConnected)loading.textContent='No se pudieron cargar los costos.'}
+}
+async function saveMargin(event,form){
+  event.preventDefault();
+  const button=form.querySelector('button');
+  if(button.disabled)return;
+  button.disabled=true;
+  const amount=name=>form.elements[name].valueAsNumber;
+  try{
+    await kenResult(adminClient.from('ken_product_costs').upsert({product_id:Number(form.dataset.product),cost:amount('cost'),fee_percent:amount('fee_percent'),fixed_fee:amount('fixed_fee')}));
+    toast('Costos guardados');
+  }catch{toast('No se pudieron guardar los costos.')}
+  finally{button.disabled=false}
+}
+let historyBefore;
+async function admProductHistory(more=false){
+  ADM.tab='history';
+  if(!more){
+    historyBefore=null;
+    modal('<h2>Historial de productos</h2><div id="product-history" aria-live="polite"></div><button id="history-more" onclick="admProductHistory(true)">Cargar más</button>');
+  }
+  const list=$('#product-history'),button=$('#history-more');
+  if(!list||button.disabled)return;
+  button.disabled=true;
+  try{
+    let query=adminClient.from('ken_product_history').select('*').order('id',{ascending:false}).limit(30);
+    if(historyBefore!==null)query=query.lt('id',historyBefore);
+    const rows=await kenResult(query);
+    if(!list.isConnected)return;
+    if(rows.length)historyBefore=rows.at(-1).id;
+    const summary=value=>{
+      if(!value)return '—';
+      const stock=value.st==null?'Stock ilimitado':'Stock '+value.st;
+      const promotion=value.promotion?` · Promo ${money(value.promotion.price)} (${promotionLocal(value.promotion.start)} → ${promotionLocal(value.promotion.end)})`:'';
+      return `${money(value.p)}${value.po>value.p?' (antes '+money(value.po)+')':''} · ${stock} · ${value.paused?'Pausado':'Visible'}${promotion}`;
+    };
+    list.insertAdjacentHTML('beforeend',rows.map(row=>{
+      const before=row.before_value,after=row.after_value;
+      return `<article class="order-admin"><h3>${esc(after?.n||before?.n)} · ${!before?'Creado':!after?'Eliminado':'Editado'}</h3>
+      <p class="mu">${esc(new Date(row.changed_at).toLocaleString('es-PE',{timeZone:'America/Lima'}))}</p>
+      <p><strong>Antes</strong> · ${esc(summary(before))}</p><p><strong>Después</strong> · ${esc(summary(after))}</p></article>`;
+    }).join('')||(!more?'<p>Aún no hay cambios registrados.</p>':''));
+    button.hidden=rows.length<30;
+  }catch{toast('No se pudo cargar el historial.')}
+  finally{button.disabled=false}
+}
+function promotionLocal(instant){
+  const time=Date.parse(instant);
+  return Number.isFinite(time)?new Date(time-5*3600000).toISOString().slice(0,16):'';
+}
+function admPromotions(id){
+  ADM.tab='promotions';
+  const selected=prod(id);
+  const promo=selected?.promotion;
+  const now=Date.now();
+  const scheduled=P.filter(p=>p.promotion).map(p=>{
+    const schedule=p.promotion;
+    const state=now<Date.parse(schedule.start)?'Programado':now<Date.parse(schedule.end)?'Activo':'Finalizado';
+    return `<article class="order-admin"><h3>${esc(p.n)}</h3><p>${money(schedule.price)} · ${state}</p>
+      <p class="mu">${promotionLocal(schedule.start).replace('T',' ')} → ${promotionLocal(schedule.end).replace('T',' ')}</p>
+      <button type="button" onclick="admPromotions(${p.id})">Editar descuento</button></article>`;
+  }).join('');
+  modal(`<h2>Descuentos programados</h2><p class="mu">Las fechas usan la hora de Perú. Puedes programar un descuento por producto.</p>
+    <label>Producto<select onchange="admPromotions(this.value)"><option value="">Elige un producto</option>${P.filter(p=>p.p>0).map(p=>`<option value="${p.id}" ${p===selected?'selected':''}>${esc(p.n)} · ${money(p.p)}</option>`).join('')}</select></label>
+    ${selected?`<form data-product="${selected.id}" onsubmit="savePromotion(event,this)">
+      <label>Precio promocional (S/)<input name="price" type="number" min=".01" max="${Math.max(.01,Math.round((selected.p-.01)*100)/100)}" step=".01" required value="${promo?.price??''}"></label>
+      <label>Inicio<input name="start" type="datetime-local" required value="${promotionLocal(promo?.start)}"></label>
+      <label>Fin<input name="end" type="datetime-local" required value="${promotionLocal(promo?.end)}"></label>
+      <div class="bar2"><button class="pri">Guardar descuento</button>${promo?`<button type="button" onclick="changePromotion(${selected.id},null)">Retirar descuento</button>`:''}</div>
+    </form>`:''}
+    ${scheduled?`<h3>Promociones guardadas</h3>${scheduled}`:''}`);
+}
+function savePromotion(event,form){
+  event.preventDefault();
+  const product=prod(form.dataset.product);
+  if(!product)return;
+  const price=form.elements.price.valueAsNumber;
+  const start=new Date(form.elements.start.value+'-05:00');
+  const end=new Date(form.elements.end.value+'-05:00');
+  if(!(price>0&&price<product.p))return toast('El descuento debe ser menor al precio habitual.');
+  if(!(end>start&&end.getTime()>Date.now()))return toast('El fin debe ser posterior al inicio y a la hora actual.');
+  changePromotion(product.id,{price,start:start.toISOString(),end:end.toISOString()});
+}
+async function changePromotion(id,promotion){
+  if(publishing)return;
+  const product=prod(id);
+  if(!product)return;
+  const index=P.indexOf(product);
+  const changed={...product};
+  if(promotion)changed.promotion=promotion;
+  else delete changed.promotion;
+  P[index]=changed;
+  if(!await admSave()){P[index]=product;return}
+  if(ADM.tab==='promotions')admPromotions(id);
+  toast(promotion?'Descuento guardado':'Descuento retirado');
+}
 async function admOrders(filter=ADM.orderFilter||'',scope=''){
   ADM.tab='orders';ADM.orderFilter=filter;ADM.orderScope=scope;
   modal('<h2>Pedidos</h2><p id="orders-loading">Cargando pedidos…</p>');
@@ -1355,7 +1509,7 @@ function admFilterOrders(){
 async function admOrderSave(event,form){
   event.preventDefault();
   if(!ADM.ok||form.getAttribute('aria-busy'))return;
-  const status=event.submitter?.value==='accept'?'aceptado':form.elements.status.value;
+  const status=event.submitter?.value==='accept'?'aceptado':event.submitter?.value==='deliver'?'entregado':form.elements.status.value;
   if(!Object.hasOwn(orderStates,status))return;
   const reason=status==='rechazado'?form.elements.reason.value.trim():'';
   form.setAttribute('aria-busy','true');
@@ -1372,7 +1526,8 @@ async function admOrderSave(event,form){
     toast('Estado actualizado');
     if(form.isConnected){
       const scroll=window.scrollY;
-      await admOrders(ADM.orderFilter,ADM.orderScope);
+      if(ADM.tab==='delivery')await admDelivery();
+      else await admOrders(ADM.orderFilter,ADM.orderScope);
       if(ADM.tab==='orders')window.scrollTo(0,scroll);
     }
   }catch(e){toast('No se pudo actualizar el estado. Intenta de nuevo.')}
@@ -1395,7 +1550,7 @@ async function loadSalesSummary(view){
       ['Cobrado hoy',salesMoney.format(sum('today')),"openOrderTask('today')"],
       ['Cobrado este mes',salesMoney.format(sum('month')),"openOrderTask('month')"],
       ['Por verificar',orders.filter(o=>o.status==='pendiente').length,"openOrderTask('pending')"],
-      ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"openOrderTask('delivery')"],
+      ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"admDelivery()"],
       ['Stock bajo',P.filter(isLowStock).length,"ADM.productFilters={stock:'low'};admList()"]
     ];
     view.innerHTML=cards.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');

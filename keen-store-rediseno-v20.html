@@ -1608,9 +1608,22 @@ function tabs(){
   const subButton=sub=>`<button type="button" data-s="${esc(sub)}" class="${S.sub===sub?'on':''}" aria-pressed="${S.sub===sub}">${esc(sub||'Todos')}</button>`;
   renderCatalogRow(row,subButton(''),sb.map(subButton).join(''));
 }
+function pricedProduct(product,now=Date.now()){
+  const offer=product.promotion;
+  if(!offer||!(offer.price>0&&offer.price<product.p&&now>=Date.parse(offer.start)&&now<Date.parse(offer.end)))return product;
+  return {...product,p:offer.price,po:product.p,u:Math.round(offer.price*31.5)/100};
+}
+let promotionTimer;
+function refreshAtPromotionBoundary(){
+  clearTimeout(promotionTimer);
+  const now=Date.now();
+  const next=Math.min(...P.flatMap(p=>p.promotion?[Date.parse(p.promotion.start),Date.parse(p.promotion.end)]:[]).filter(time=>time>now));
+  if(Number.isFinite(next))promotionTimer=setTimeout(()=>{grid();refreshAtPromotionBoundary()},Math.min(2147483647,next-now+50));
+}
+let checkoutProduct;
 function grid(){
   const matches=P.filter(p=>activeProductPlacements(p).some(item=>(S.cat==='all'||item.category===S.cat)&&(!S.sub||item.subs.includes(S.sub))));
-  const L=orderedCatalogProducts(matches,S.cat,S.sub);
+  const L=orderedCatalogProducts(matches,S.cat,S.sub).map(product=>pricedProduct(product));
   $('#grid').innerHTML=L.map(p=>{
     const out=p.st===0, low=p.st>0&&p.st<=5, sale=p.po&&p.po>p.p;
     const labels=[['type',p.t],['duration',accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
@@ -1836,7 +1849,8 @@ async function proceed(id){
   if(!await publishedCatalog)return toast('El catálogo aún no está disponible para pedidos. Intenta de nuevo.');
   const p=prod(id);
   if(!visibleProduct(p)||p.st===0)return toast('Este producto no está disponible.');
-  if(p.p===0){ // producto gratis: sin pago
+  checkoutProduct=pricedProduct(p);
+  if(checkoutProduct.p===0){ // producto gratis: sin pago
     try{if(await API.hasOrder(id))return toast('Ya reclamaste este regalo.')}
     catch(e){return toast('No se pudieron consultar tus pedidos. Intenta de nuevo.')}
     confirmM(id)}else payM(id)}
@@ -1874,7 +1888,7 @@ async function copyPaymentNumber(){
   toast('Número copiado');
 }
 function payM(id){ // Paso 2: método de pago
-  const p=prod(id);
+  const p=checkoutProduct;
   modal(`<h2>Método de pago</h2><div class="sum"><b>${esc(p.n)}</b><b>${money(p.p)}</b></div>
   <div class="payment-layout"><div>
   <div class="qr"><img src="${CFG.QR?esc(CFG.QR):qrPh}" alt="Código QR de pago"></div>
@@ -1913,7 +1927,7 @@ function orderField(product){
   }
 }
 function confirmM(id){ // Paso 3: formulario de confirmación
-  const p=prod(id),free=p.p===0,field=orderField(p);
+  const p=checkoutProduct,free=p.p===0,field=orderField(p);
   modal(`<h2>${free?'Reclama tu regalo':'Confirma tu pedido'}</h2><div class="sum"><span>${esc(p.n)}</span><b>${money(p.p)}</b></div>
   ${p.t?`<p class="mu">Tipo de producto: ${esc(p.t)}</p>`:''}
   <label for="cn">Nombre</label><input id="cn" value="${esc(S.user.name)}" readonly>
@@ -1932,11 +1946,11 @@ function playSuccessSound(){play1UpSound()}
 async function send(id){
   const button=$('#sb');
   if(S.busy||!button.checkFields())return;
-  const p=prod(id),free=p.p===0,field=orderField(p),w=normPhone(v('cw')),x=field?v('cx').trim():'',f=free?null:$('#cv').files[0];
+  const p=checkoutProduct,free=p.p===0,field=orderField(p),w=normPhone(v('cw')),x=field?v('cx').trim():'',f=free?null:$('#cv').files[0];
   S.busy=true;button.setSubmitting(true);
   let o;
   try{o=await API.createOrder({pid:p.id,pn:p.n,cat:p.c,sub:p.s,price:p.p,extra:x,extraLabel:field?.l||'',wa:w,voucher:f?f.name:'',name:S.user.name,email:S.user.email})}
-  catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Revisa tu sesión e inténtalo de nuevo.')}
+  catch(e){S.busy=false;button.setSubmitting(false);return button.showFormError('No se pudo registrar el pedido. Si ya pagaste y el precio cambió, conserva tu comprobante y contacta a soporte.')}
   S.busy=false;doneM(o);
 }
 function waLink(o){ // Mensaje con el pedido detallado hacia el WhatsApp del administrador
@@ -2136,7 +2150,7 @@ async function loadPublishedCatalog(){
   Object.assign(CFG,SITE.cfg||{});
   updateWhatsAppGroup();
   applyStoreAppearance();
-  tabs();grid();showMaintenance(SITE.maint);
+  tabs();grid();refreshAtPromotionBoundary();showMaintenance(SITE.maint);
   return true;
 }
 
