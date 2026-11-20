@@ -1115,6 +1115,11 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .catalog-tab-scroll{display:flex;flex:1;min-width:0;gap:8px;align-items:center;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none;padding-block:3px}
 .catalog-tab-scroll::-webkit-scrollbar{display:none}
 .catalog-tab-scroll button{flex:none;white-space:nowrap}
+@media(max-width:820px){
+ #subs.bars{gap:4px;padding-block:0 5px}
+ #subs .catalog-tab-scroll{gap:4px;padding-block:1px}
+ #subs.bars button{min-height:27px;padding:3px 7px;font-size:.7rem}
+}
 </style>
 </head>
 <body>
@@ -1691,8 +1696,28 @@ function grid(){
       <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
   refreshOfferCountdowns();
 }
-$('#tabs').onclick=e=>{const k=e.target.closest('button[data-k]')?.dataset.k;if(!k)return;playCursorSound();S.cat=k;S.sub='';tabs();grid()};
-$('#subs').onclick=e=>{if(e.target.dataset.s===undefined)return;playSubSound();S.sub=e.target.dataset.s;tabs();grid()};
+function selectCatalogFilter(category,sub,row){
+  S.cat=category;
+  S.sub=sub;
+  tabs();
+  grid();
+  row.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
+  const catalog=$('#catalogo');
+  const top=window.scrollY+catalog.getBoundingClientRect().top+parseFloat(getComputedStyle(catalog).paddingTop)-catalogHeader.offsetHeight;
+  window.scrollTo({top,behavior:'instant'});
+}
+$('#tabs').onclick=event=>{
+  const button=event.target.closest('button[data-k]');
+  if(!button)return;
+  playCursorSound();
+  selectCatalogFilter(button.dataset.k,'',event.currentTarget);
+};
+$('#subs').onclick=event=>{
+  const button=event.target.closest('button[data-s]');
+  if(!button)return;
+  playSubSound();
+  selectCatalogFilter(S.cat,button.dataset.s,event.currentTarget);
+};
 $('#grid').onclick=e=>{if($('#mr').firstChild||S.closing)return;const b=e.target.dataset.b;if(b)buy(+b)};
 
 /* ===== MODALES ===== */
