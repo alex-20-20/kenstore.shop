@@ -46,7 +46,12 @@ export default async function handler(req, res) {
       headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify({ status, reason: status === 'rechazado' ? reason.trim() : '' })
     });
-    if (!update.ok) throw new Error('Supabase rechazó la actualización.');
+    if (!update.ok) {
+      const error = await update.json().catch(() => null);
+      if (error?.message === 'KEN_OUT_OF_STOCK') return res.status(409).json({ code: 'OUT_OF_STOCK' });
+      if (error?.message === 'KEN_UNAVAILABLE') return res.status(409).json({ code: 'PRODUCT_REMOVED' });
+      throw new Error('Supabase rechazó la actualización.');
+    }
     const rows = await update.json();
     if (rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado.' });
     return res.status(200).json({ ok: true });
