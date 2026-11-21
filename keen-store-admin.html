@@ -324,6 +324,23 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .lay.nav-open>.nv h4{margin-top:2px;padding-block:0}
   .lay.nav-open{gap:5px}
 }
+
+@media(max-width:520px){
+  .adm:has(>#product-results){padding:12px}
+  .adm:has(>#product-results)>.admin-heading{gap:8px;margin-bottom:7px}
+  .adm:has(>#product-results)>.admin-heading h2{font-size:1.1rem}
+  .adm:has(>#product-results)>.admin-heading button{font-size:.8rem;padding:5px 9px}
+  .adm:has(>#product-results)>.admin-filters{gap:5px 8px;padding:7px;margin-bottom:5px}
+  .adm:has(>#product-results)>.admin-filters label{font-size:.73rem}
+  .adm:has(>#product-results)>.admin-filters :is(input,select){margin:2px 0 0;padding:6px 8px;min-height:36px}
+  #product-count{margin:6px 0;font-size:.75rem}
+  #product-results .ar{grid-template-columns:48px minmax(0,1fr);gap:5px 8px;padding:6px;margin:0 0 6px}
+  #product-results .ar>img{width:48px;height:38px}
+  #product-results .ar b{font-size:.85rem}
+  #product-results .ar small{font-size:.72rem;line-height:1.2}
+  #product-results .ab{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  #product-results .ab button{min-width:0;min-height:44px;padding:3px 1px;font-size:.7rem;line-height:1.1;overflow-wrap:break-word}
+}
 </style></head>
 <body>
 <header>
