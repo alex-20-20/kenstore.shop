@@ -381,6 +381,12 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .promotion-options button{display:flex;justify-content:space-between;align-items:center;gap:6px;text-align:left;padding:4px 8px;font-size:.8rem}
 .promotion-options b{white-space:nowrap}
 @media(max-width:520px){.adm:has(.promotion-picker){padding:11px}.adm:has(.promotion-picker)>h2{font-size:1.06rem;margin:0 0 5px}.adm:has(.promotion-picker)>p.mu{font-size:.8rem;margin:0 0 5px}.promotion-picker summary{min-height:44px;line-height:26px;font-size:.82rem}}
+@media(max-width:520px){
+  .adm:has(>#product-history){padding:11px}
+  #product-history .order-admin{padding:7px 9px;margin:0 0 5px;box-shadow:none}
+  #product-history .order-admin h3{margin:0 0 2px;font-size:.9rem;line-height:1.18}
+  #product-history .order-admin p{margin:2px 0;font-size:.76rem;line-height:1.2}
+}
 </style></head>
 <body>
 <header>
@@ -1608,7 +1614,7 @@ async function admProductHistory(more=false){
       const before=row.before_value,after=row.after_value;
       return `<article class="order-admin"><h3>${esc(after?.n||before?.n)} · ${!before?'Creado':!after?'Eliminado':'Editado'}</h3>
       <p class="mu">${esc(new Date(row.changed_at).toLocaleString('es-PE',{timeZone:'America/Lima'}))}</p>
-      <p><strong>Antes</strong> · ${esc(summary(before))}</p><p><strong>Después</strong> · ${esc(summary(after))}</p></article>`;
+      ${before?`<p><strong>Antes</strong> · ${esc(summary(before))}</p>`:''}${after?`<p><strong>Después</strong> · ${esc(summary(after))}</p>`:''}</article>`;
     }).join('')||(!more?'<p>Aún no hay cambios registrados.</p>':''));
     button.hidden=rows.length<30;
   }catch{toast('No se pudo cargar el historial.')}
