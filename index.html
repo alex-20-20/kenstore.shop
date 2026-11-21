@@ -1170,18 +1170,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   .catalog-placeholder-photo,.catalog-placeholder-line{animation:catalog-placeholder-shift 1.6s ease-in-out infinite}
 }
 @keyframes catalog-placeholder-shift{from{background-position:100% 0}to{background-position:0 0}}
-#install-catalog{width:100%;min-height:44px;margin:10px 0;color:var(--ac);font-weight:700}
-#install-catalog[hidden]{display:none}
 
-.catalog-install-banner{display:none}
-@media(max-width:760px){
-  .catalog-install-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--paper,#faf8f3);border-bottom:1px solid #e0d7c8}
-  .catalog-install-banner[hidden]{display:none}
-  .catalog-install-banner img{width:32px;height:32px;border-radius:8px}
-  .catalog-install-banner strong{flex:1;font-size:.88rem}
-  .catalog-install-banner button{min-height:44px;padding:0 9px;font-size:.8rem}
-  .catalog-install-banner .install-dismiss{min-width:44px;font-size:1.1rem}
-}
 </style>
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -1205,18 +1194,11 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   <dialog id="site-menu" aria-labelledby="site-menu-title">
     <div class="site-menu-head"><span id="site-menu-title" class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span><button class="site-menu-close" type="button" aria-label="Cerrar menú" autofocus>×</button></div>
     <nav id="site-menu-links" aria-label="Navegación de la tienda"></nav>
-    <button id="install-catalog" type="button">Instalar catálogo</button>
     <button id="site-menu-logout" type="button" hidden>Cerrar sesión</button>
   </dialog>
   <div id="nav"></div>
   <div id="um" role="menu"></div>
 </header>
-<div class="catalog-install-banner" id="catalog-install-banner" hidden>
-  <img src="/ken-admin-192.png" alt="" width="32" height="32">
-  <strong>Instala Ken Store</strong>
-  <button class="pri" id="install-catalog-top" type="button">Instalar</button>
-  <button class="install-dismiss" id="dismiss-catalog-install" type="button" aria-label="Cerrar sugerencia de instalación">×</button>
-</div>
 
 <section class="hero" id="inicio">
   <div class="hero-copy">
@@ -2486,39 +2468,6 @@ async function loadPublishedCatalog(){
   set('t-cl1','cloud',cl);set('t-cl2','cloud',cl);
   set('t-a1','shield');set('t-a2','bolt');set('t-ph','phone');set('t-a3','tv',{C:'#ff5a5f'});set('t-a4','gift');
 })();
-let catalogInstallPrompt;
-const catalogInstallButton=$('#install-catalog');
-const catalogStandalone=matchMedia('(display-mode: standalone)');
-const catalogInstallBanner=$('#catalog-install-banner');
-const catalogIsInstalled=catalogStandalone.matches||navigator.standalone===true;
-catalogInstallButton.hidden=catalogIsInstalled;
-catalogInstallBanner.hidden=catalogIsInstalled||sessionStorage.getItem('ken-install-dismissed')==='1';
-$('#dismiss-catalog-install').addEventListener('click',()=>{
-  catalogInstallBanner.hidden=true;
-  sessionStorage.setItem('ken-install-dismissed','1');
-});
-window.addEventListener('beforeinstallprompt',event=>{
-  event.preventDefault();
-  catalogInstallPrompt=event;
-});
-window.addEventListener('appinstalled',()=>{
-  catalogInstallPrompt=null;
-  catalogInstallButton.hidden=true;
-  catalogInstallBanner.hidden=true;
-});
-async function installCatalog(){
-  $('#site-menu').close();
-  if(catalogInstallPrompt){
-    const prompt=catalogInstallPrompt;
-    catalogInstallPrompt=null;
-    try{await prompt.prompt();return}catch{}
-  }
-  modal(`<h2>Instalar Ken Store</h2>
-    <p><b>Android:</b> abre el menú ⋮ del navegador y toca <b>Instalar aplicación</b> o <b>Añadir a pantalla de inicio</b>.</p>
-    <p><b>iPhone:</b> abre la tienda en Safari, toca <b>Compartir</b> y elige <b>Añadir a pantalla de inicio</b>.</p>`);
-}
-catalogInstallButton.addEventListener('click',installCatalog);
-$('#install-catalog-top').addEventListener('click',installCatalog);
 const siteMenu=$('#site-menu'),siteMenuToggle=$('#site-menu-toggle');
 siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
