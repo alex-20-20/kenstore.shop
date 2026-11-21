@@ -307,6 +307,16 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm-summary .adm-summary-actions>*{min-height:44px;padding:6px;font-size:.78rem;line-height:1.2}
   .adm-summary .summary-card-label{display:block}
 }
+
+@media(max-width:759px){
+  .lay.nav-open{gap:8px}
+  .lay.nav-open>.nv{gap:4px 6px;padding:7px;max-height:62dvh;overflow-y:auto;align-content:start;overscroll-behavior-y:contain}
+  .lay.nav-open>.nv h4{margin:4px 0 0;padding:2px 4px;font-size:.67rem;line-height:1.1}
+  .lay.nav-open>.nv h4:first-child{margin-top:0}
+  .lay.nav-open>.nv button{min-width:0;min-height:44px;padding:4px 7px;font-size:.76rem;line-height:1.15;overflow-wrap:break-word}
+  .lay.nav-open>.nv .admin-nav-icon{display:none}
+  .lay.nav-open>.nv button.on{box-shadow:none}
+}
 </style></head>
 <body>
 <header>
@@ -1339,7 +1349,7 @@ const MENU=[
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
-const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}">${ic} ${l}</button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
+const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}"><span class="admin-nav-icon" aria-hidden="true">${ic}</span> <span>${l}</span></button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
 async function admMaintenance(){if(publishing)return;
   const previous=SITE,active=!SITE.maint;
   const message=SITE.maint||SITE.maintMessage||'Volvemos pronto.';
