@@ -270,6 +270,29 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .editor-actions{grid-column:1/-1;padding:8px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -5px 12px #1c1c1c08}
 .product-editor .extra-category-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:6px}
 @media(max-width:860px){.product-editor{grid-template-columns:minmax(0,1fr)}}
+
+/* Resumen administrativo */
+.adm-summary h2{margin-bottom:14px}
+.adm-summary h3{font-size:.96rem;margin:12px 0 6px}
+.adm-summary-groups{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:12px}
+.adm-summary .workflow-summary,.adm-summary .stat{margin:0}
+.adm-summary-metrics{display:grid;grid-template-columns:repeat(var(--summary-cols),minmax(0,1fr));gap:8px}
+.adm-summary .adm-summary-sales{--summary-cols:2}
+.adm-summary .adm-summary-tasks{--summary-cols:3}
+.adm-summary .adm-summary-catalog{grid-template-columns:repeat(5,minmax(0,1fr))}
+.adm-summary .adm-summary-metrics button{min-width:0;min-height:65px;text-align:left;padding:8px 10px}
+.adm-summary .adm-summary-metrics strong{font-size:1.14rem}
+.adm-summary .adm-summary-catalog b{font-size:1.2rem}
+.adm-summary .adm-summary-catalog span{display:block;overflow-wrap:anywhere}
+.adm-summary .adm-summary-actions{margin-top:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.adm-summary .adm-summary-actions>*{display:grid;place-items:center;min-width:0;text-align:center}
+@media(max-width:660px){
+  .adm-summary-groups{grid-template-columns:1fr;gap:0}
+  .adm-summary .adm-summary-catalog{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .adm-summary .adm-summary-catalog>*{grid-column:span 2}
+  .adm-summary .adm-summary-catalog>*:nth-last-child(-n+2){grid-column:span 3}
+  .adm-summary .adm-summary-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style></head>
 <body>
 <header>
@@ -1739,14 +1762,18 @@ async function loadSalesSummary(view){
       ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"admDelivery()"],
       ['Stock bajo',P.filter(isLowStock).length,"ADM.productFilters={stock:'low'};admList()"]
     ];
-    view.innerHTML=cards.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');
+    const render=items=>items.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');
+    view.innerHTML=`<div class="adm-summary-groups">
+      <section><h3>Cobros</h3><div class="workflow-summary adm-summary-metrics adm-summary-sales">${render(cards.slice(0,2))}</div></section>
+      <section><h3>Tareas</h3><div class="workflow-summary adm-summary-metrics adm-summary-tasks">${render(cards.slice(2))}</div></section>
+    </div>`;
   }catch{if(view.isConnected)view.textContent='No se pudo cargar el resumen de ventas.'}
 }
 function admRes(){ADM.tab='res';const ag=P.filter(p=>p.st===0).length,hid=(SITE.hide||[]).length;
-  modal(`<h2>📊 Resumen</h2><div id="sales-summary" class="workflow-summary">Cargando ventas…</div>
+  modal(`<div class="adm-summary"><h2>Resumen</h2><div id="sales-summary">Cargando ventas…</div>
   ${catalogVersion?'':'<p class="mu">Publica el catálogo para que los clientes puedan registrar pedidos.</p><button class="pri" onclick="admPublishFirst()">Publicar catálogo</button>'}
-  <div class="stat"><div><b>${P.length}</b><span>Productos</span></div><div><b>${ag}</b><span>Agotados</span></div><div><b>${CATS.length-1}</b><span>Categorías</span></div><div><b>${Object.keys(SITE.t).length}</b><span>Textos editados</span></div><div><b>${hid}</b><span>Secciones ocultas</span></div></div>
-  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`);loadSalesSummary($('#sales-summary'))}
+  <h3>Catálogo</h3><div class="stat adm-summary-catalog"><div><b>${P.length}</b><span>Productos</span></div><div><b>${ag}</b><span>Agotados</span></div><div><b>${CATS.length-1}</b><span>Categorías</span></div><div><b>${Object.keys(SITE.t).length}</b><span>Textos editados</span></div><div><b>${hid}</b><span>Secciones ocultas</span></div></div>
+  <div class="bar2 adm-summary-actions"><button class="pri" onclick="admForm()">Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div></div>`);loadSalesSummary($('#sales-summary'))}
 function admSec(){const h=SITE.hide||[],a=SITE.ann||{};
   modal(`<h2>🧩 Secciones y avisos</h2><label>Secciones visibles</label>${SEC.map(([k,l])=>`<label style="font-weight:400"><input type="checkbox" id="h_${k}"${h.includes(k)?'':' checked'}>${l}</label>`).join('')}
   <label for="a_t">Barra de anuncio superior (vacío = sin barra)</label><input id="a_t" value="${esc(a.t||'')}" placeholder="🔥 Promo de la semana…"><label for="a_c">Color de la barra</label><input id="a_c" type="color" value="${a.c||'#1c1c1c'}">
