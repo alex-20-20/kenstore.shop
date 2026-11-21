@@ -4,7 +4,7 @@ const path = require('node:path');
 const output = 'public';
 const assets = [
   'index.html', 'keen-store-admin.html', 'keen-store-rediseno-v20.html',
-  'kenstore-data.js', 'ken-catalog.webmanifest', 'ken-admin.webmanifest', 'ken-admin-sw.js',
+  'kenstore-data.js', 'ken-catalog.webmanifest', 'ken-catalog-dragon-192.png', 'ken-catalog-dragon-512.png', 'ken-admin.webmanifest', 'ken-admin-sw.js',
   'ken-admin-192.png', 'ken-admin-512.png'
 ];
 fs.mkdirSync(output, { recursive: true });
