@@ -361,10 +361,18 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm:has(#order-category) .catalog-order-actions{gap:2px}
   .adm:has(#order-category) .catalog-order-actions button{padding:0}
   .adm:has(#order-category) .workflow-order-position:not([open]){grid-column:4}
-  .adm:has(#order-category) .workflow-order-position:not([open]) summary{display:grid;place-items:center;min-height:44px;border:1px solid var(--stroke);border-radius:8px;background:var(--surface)}
-  .adm:has(#order-category) .workflow-order-position:not([open]) summary::-webkit-details-marker{display:none}
-  .adm:has(#order-category) .workflow-order-position:not([open]) .catalog-order-position-long{display:none}
-  .adm:has(#order-category) .workflow-order-position:not([open]) .catalog-order-position-short{display:inline}
+  .adm:has(#order-category) .workflow-order-position summary{display:grid;place-items:center;min-height:44px;border:1px solid var(--stroke);border-radius:8px;background:var(--surface)}
+  .adm:has(#order-category) .workflow-order-position summary::-webkit-details-marker{display:none}
+  .adm:has(#order-category) .workflow-order-position .catalog-order-position-long{display:none}
+  .adm:has(#order-category) .workflow-order-position .catalog-order-position-short{display:inline}
+}
+@media(max-width:520px){
+  .adm:has(#order-category) .workflow-order-position[open]{display:contents}
+  .adm:has(#order-category) .workflow-order-position[open] summary{grid-column:4;grid-row:1}
+  .adm:has(#order-category) .workflow-order-position form{grid-column:2/-1;justify-content:end;align-items:center;gap:4px;margin:0}
+  .adm:has(#order-category) .workflow-order-position form label{display:flex;align-items:center;gap:4px;margin:0;font-size:.72rem}
+  .adm:has(#order-category) .workflow-order-position form input{width:58px;min-height:36px;padding:3px 5px}
+  .adm:has(#order-category) .workflow-order-position form button{padding:4px 9px;font-size:.75rem}
 }
 </style></head>
 <body>
