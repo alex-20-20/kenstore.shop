@@ -542,7 +542,7 @@ function admFilterProducts(){
   const rows=products.map(p=>`<div class="ar"><img src="${esc(p.img)}" alt=""><div><b>${esc(p.n)}</b>
     <small>${p.t?esc(p.t)+' · ':''}${esc(p.c)}${productSubcategories(p).length?' · '+esc(productSubcategories(p).join(' / ')):''}</small>
     <small>${p.paused?'Pausado · ':''}${money(p.p)} · ${p.st==null?'Stock ilimitado':p.st===0?'Agotado':'Stock '+esc(p.st)}</small></div>
-    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock':'Con stock'}</button><button onclick="admForm(${p.id})">Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admMargin(${p.id})">Margen</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">Eliminar</button></div></div>`).join('');
+    <div class="ab"><button id="stock-${p.id}" type="button" class="stock-toggle" aria-pressed="${p.st!==0}" onclick="admToggleStock(${p.id})">${p.st===0?'Sin stock':'Con stock'}</button><button onclick="admForm(${p.id})">Editar</button><button onclick="admForm(${p.id},true)">Duplicar</button><button onclick="admPauseProduct(${p.id})">${p.paused?'Reactivar':'Pausar'}</button><button class="del" onclick="admDel(${p.id})">Eliminar</button></div></div>`).join('');
   $('#product-results').innerHTML=rows||'<p class="mu">No hay productos que coincidan.</p>';
 }
 function isLowStock(p){return !p.paused&&p.st>0&&p.st<=3}
