@@ -397,6 +397,12 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .catalog-admin-card :is(.catalog-card-actions,.catalog-sub-row) button{min-width:0;min-height:44px;padding:3px 5px;font-size:.72rem;line-height:1.12}
   .catalog-admin-card :is(.catalog-card-actions,.catalog-sub-row) button{min-height:30px;padding-block:2px}
 }
+.catalog-admin-card>summary{cursor:pointer;list-style:none;flex-wrap:nowrap;gap:6px}
+.catalog-admin-card>summary::-webkit-details-marker{display:none}
+.catalog-admin-card>summary>div{flex:1;min-width:0}
+.catalog-admin-card>summary p{margin:2px 0 0}
+.catalog-admin-card>summary::after{content:'▸';color:var(--ac);margin-inline:3px}
+.catalog-admin-card[open]>summary::after{content:'▾'}
 </style></head>
 <body>
 <header>
@@ -1202,6 +1208,7 @@ function admCatalogToggle(i,j){
       : [...entries,sub===undefined?[category]:[category,sub]];
   },label+(hidden?' activada':' desactivada'),true);
 }
+const openCatalogCategories=new Set();
 function admCats(){
   ADM.tab='cat';
   const cs=CATS.filter(c=>c[0]!='all');
@@ -1213,10 +1220,10 @@ function admCats(){
   ${cs.map(entry=>{
     const [c,,emoji,iconKey=c]=entry,i=CATS.indexOf(entry),subs=admSubs(c);
     const products=P.filter(p=>productPlacements(p).some(item=>item.category===c)), hidden=catalogHidden(c);
-    return `<section class="catalog-admin-card" aria-labelledby="cat_${i}">
-      <div class="catalog-card-head"><div><h3 class="adm-cat-title" id="cat_${i}">${admCategoryIcon(iconKey,emoji)}${esc(c)}</h3>
+    return `<details class="catalog-admin-card" data-category="${esc(c)}"${openCatalogCategories.has(c)?' open':''} ontoggle="this.open?openCatalogCategories.add(this.dataset.category):openCatalogCategories.delete(this.dataset.category)">
+      <summary class="catalog-card-head"><div><h3 class="adm-cat-title" id="cat_${i}">${admCategoryIcon(iconKey,emoji)}${esc(c)}</h3>
       <p class="mu">${products.length} producto${products.length===1?'':'s'}</p></div>
-      <span class="catalog-status${hidden?' off':''}">${hidden?'Desactivada':'Activa'}</span></div>
+      <span class="catalog-status${hidden?' off':''}">${hidden?'Desactivada':'Activa'}</span></summary>
       <div class="catalog-card-actions"><button type="button" class="catalog-toggle" aria-label="${hidden?'Activar':'Desactivar'} categoría ${esc(c)}" aria-pressed="${!hidden}" onclick="admCatalogToggle(${i})">${hidden?'Activar':'Desactivar'}</button><button type="button" onclick="admCatEdit(${i})">Editar categoría</button><button type="button" class="del" onclick="admCatDel(${i})">Eliminar categoría</button></div>
       ${subs.length?`<ul class="adm-sub-list" aria-label="Subcategorías de ${esc(c)}">${subs.map((sub,j)=>{
         const ownHidden=catalogHidden(c,sub);
@@ -1227,7 +1234,7 @@ function admCats(){
         <input id="ns_${i}" maxlength="40" placeholder="Ej: Spotify" required>
         <div class="bar2"><button type="submit" class="pri">Agregar subcategoría</button></div>
       </form>
-    </section>`;
+    </details>`;
   }).join('')||'<p class="mu">Sin categorías.</p>'}
   <div class="bar2"><button onclick="admList()">Volver a productos</button></div>`,'adm');
 }
