@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="manifest" href="/ken-catalog.webmanifest">
+<link rel="apple-touch-icon" href="/ken-admin-192.png">
+<meta name="theme-color" content="#b3261e">
 <link rel="icon" href="/ken-admin-192.png" type="image/png">
 <link rel="preconnect" href="https://gnophtajdfjnnuqgengd.supabase.co" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1167,6 +1170,8 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   .catalog-placeholder-photo,.catalog-placeholder-line{animation:catalog-placeholder-shift 1.6s ease-in-out infinite}
 }
 @keyframes catalog-placeholder-shift{from{background-position:100% 0}to{background-position:0 0}}
+#install-catalog{width:100%;min-height:44px;margin:10px 0;color:var(--ac);font-weight:700}
+#install-catalog[hidden]{display:none}
 </style>
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -1190,6 +1195,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   <dialog id="site-menu" aria-labelledby="site-menu-title">
     <div class="site-menu-head"><span id="site-menu-title" class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span><button class="site-menu-close" type="button" aria-label="Cerrar menú" autofocus>×</button></div>
     <nav id="site-menu-links" aria-label="Navegación de la tienda"></nav>
+    <button id="install-catalog" type="button">Instalar catálogo</button>
     <button id="site-menu-logout" type="button" hidden>Cerrar sesión</button>
   </dialog>
   <div id="nav"></div>
@@ -2464,6 +2470,29 @@ async function loadPublishedCatalog(){
   set('t-cl1','cloud',cl);set('t-cl2','cloud',cl);
   set('t-a1','shield');set('t-a2','bolt');set('t-ph','phone');set('t-a3','tv',{C:'#ff5a5f'});set('t-a4','gift');
 })();
+let catalogInstallPrompt;
+const catalogInstallButton=$('#install-catalog');
+const catalogStandalone=matchMedia('(display-mode: standalone)');
+catalogInstallButton.hidden=catalogStandalone.matches||navigator.standalone===true;
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();
+  catalogInstallPrompt=event;
+});
+window.addEventListener('appinstalled',()=>{
+  catalogInstallPrompt=null;
+  catalogInstallButton.hidden=true;
+});
+catalogInstallButton.addEventListener('click',async()=>{
+  $('#site-menu').close();
+  if(catalogInstallPrompt){
+    const prompt=catalogInstallPrompt;
+    catalogInstallPrompt=null;
+    try{await prompt.prompt();return}catch{}
+  }
+  modal(`<h2>Instalar Ken Store</h2>
+    <p><b>Android:</b> abre el menú ⋮ del navegador y toca <b>Instalar aplicación</b> o <b>Añadir a pantalla de inicio</b>.</p>
+    <p><b>iPhone:</b> abre la tienda en Safari, toca <b>Compartir</b> y elige <b>Añadir a pantalla de inicio</b>.</p>`);
+});
 const siteMenu=$('#site-menu'),siteMenuToggle=$('#site-menu-toggle');
 siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
