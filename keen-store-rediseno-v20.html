@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="kenstore-data.js?v=product-card"></script>
 <script>
-const returnToStoreStart=!new URLSearchParams(location.search).has('pagina')&&performance.getEntriesByType('navigation')[0]?.type==='reload';
+const returnToStoreStart=performance.getEntriesByType('navigation')[0]?.type==='reload';
 if(returnToStoreStart){
   history.scrollRestoration='manual';
   if(location.hash&&!new URLSearchParams(location.hash.slice(1)).has('access_token')){
@@ -2378,7 +2378,7 @@ async function loadPublishedCatalog(){
   updateWhatsAppGroup();
   applyStoreAppearance();
   tabs();grid();refreshAvailableStock();refreshAtPromotionBoundary();showMaintenance(SITE.maint);
-  if(new URLSearchParams(location.search).has('pagina'))scrollToCatalog();
+  if(!returnToStoreStart&&new URLSearchParams(location.search).has('pagina'))scrollToCatalog();
   return true;
 }
 
