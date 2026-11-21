@@ -374,6 +374,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm:has(#order-category) .workflow-order-position form input{width:58px;min-height:36px;padding:3px 5px}
   .adm:has(#order-category) .workflow-order-position form button{padding:4px 9px;font-size:.75rem}
 }
+.promotion-picker{margin:6px 0 10px}
+.promotion-picker summary{cursor:pointer;border:1px solid var(--stroke);border-radius:8px;padding:8px;background:var(--surface);font-weight:700}
+.promotion-picker label{margin:6px 0 2px;font-size:.8rem}
+.promotion-options{display:grid;gap:3px}
+.promotion-options button{display:flex;justify-content:space-between;align-items:center;gap:6px;text-align:left;padding:4px 8px;font-size:.8rem}
+.promotion-options b{white-space:nowrap}
+@media(max-width:520px){.adm:has(.promotion-picker){padding:11px}.adm:has(.promotion-picker)>h2{font-size:1.06rem;margin:0 0 5px}.adm:has(.promotion-picker)>p.mu{font-size:.8rem;margin:0 0 5px}.promotion-picker summary{min-height:44px;line-height:26px;font-size:.82rem}}
 </style></head>
 <body>
 <header>
@@ -1653,8 +1660,11 @@ function admPromotions(id){
   const state=promo?promotionStatus(promo,Date.now()):'';
   const keepSchedule=state==='Activo'||state==='Programado';
   modal(`<h2>Descuentos programados</h2><p class="mu">Hora de Perú. Al finalizar el descuento, vuelve el precio habitual.</p>
-    <label>Producto<select id="promotion-product" onchange="admPromotions(this.value);$('#promotion-product').focus()">
-      <option value="">Elige un producto</option>${P.filter(p=>p.p>.01).map(p=>`<option value="${p.id}" ${p===selected?'selected':''}>${esc(p.n)} · ${money(p.p)}</option>`).join('')}</select></label>
+    <details class="promotion-picker">
+      <summary id="promotion-product">${selected?esc(selected.n)+' · '+money(selected.p):'Elige un producto'}</summary>
+      <label>Buscar producto<input type="search" id="promotion-query" placeholder="Escribe un nombre"></label>
+      <div class="promotion-options" id="promotion-options" aria-live="polite"></div>
+    </details>
     ${selected?`<form id="promotion-form" data-product="${selected.id}" onsubmit="savePromotion(event,this)">
       <label>Precio promocional (S/)<input name="price" type="number" min=".01" max="${Math.round((selected.p-.01)*100)/100}" step=".01" required value="${promo?.price??''}"></label>
       <label>Cuándo empieza<select name="mode" onchange="promotionStartMode(this.form)">
@@ -1666,6 +1676,19 @@ function admPromotions(id){
       <div class="bar2"><button class="pri">Guardar descuento</button></div>
     </form>`:''}
     <div id="promotion-lists" aria-live="polite"></div>`);
+  const input=$('#promotion-query'), options=$('#promotion-options');
+  function showProducts(){
+    const query=input.value.trim().toLocaleLowerCase('es');
+    const matches=P.filter(p=>p.p>.01&&p.n.toLocaleLowerCase('es').includes(query));
+    options.innerHTML=matches.slice(0,5).map(p=>`<button type="button" data-product="${esc(p.id)}"><span>${esc(p.n)}</span><b>${money(p.p)}</b></button>`).join('')
+      +(matches.length>5?'<small class="mu">Escribe más para acotar los resultados.</small>':matches.length?'':'<small class="mu">No se encontraron productos.</small>');
+  }
+  input.addEventListener('input',showProducts);
+  options.addEventListener('click',event=>{
+    const button=event.target.closest('button[data-product]');
+    if(button){admPromotions(button.dataset.product);$('#promotion-product').focus({preventScroll:true})}
+  });
+  showProducts();
   const form=$('#promotion-form');
   if(form)promotionStartMode(form);
   renderPromotionLists($('#promotion-lists'));
