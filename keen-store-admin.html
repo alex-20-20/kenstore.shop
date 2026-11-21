@@ -353,7 +353,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm:has(#order-category) .catalog-order-filters label{font-size:.74rem}
   .adm:has(#order-category) .catalog-order-filters select{margin-top:2px;min-height:36px;padding-block:4px}
   .adm:has(#order-category) .catalog-order-list{margin-top:6px;gap:4px}
-  .adm:has(#order-category) .catalog-order-list li{grid-template-columns:25px minmax(0,1fr) auto 44px;gap:3px;padding:2px 4px;border-radius:8px}
+  .adm:has(#order-category) .catalog-order-list li{position:relative;grid-template-columns:25px minmax(0,1fr) auto 44px;gap:3px;padding:2px 4px;border-radius:8px}
   .adm:has(#order-category) .catalog-order-rank{min-height:26px;font-size:.75rem}
   .adm:has(#order-category) .catalog-order-product{gap:4px}
   .adm:has(#order-category) .catalog-order-product img{width:25px;height:25px}
@@ -367,9 +367,9 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm:has(#order-category) .workflow-order-position .catalog-order-position-short{display:inline}
 }
 @media(max-width:520px){
-  .adm:has(#order-category) .workflow-order-position[open]{display:contents}
-  .adm:has(#order-category) .workflow-order-position[open] summary{grid-column:4;grid-row:1}
-  .adm:has(#order-category) .workflow-order-position form{grid-column:2/-1;justify-content:end;align-items:center;gap:4px;margin:0}
+  .adm:has(#order-category) .workflow-order-position[open]{grid-column:1/-1;min-width:0}
+  .adm:has(#order-category) .workflow-order-position[open] summary{position:absolute;top:2px;right:4px;width:44px}
+  .adm:has(#order-category) .workflow-order-position form{justify-content:end;align-items:center;gap:4px;margin:0}
   .adm:has(#order-category) .workflow-order-position form label{display:flex;align-items:center;gap:4px;margin:0;font-size:.72rem}
   .adm:has(#order-category) .workflow-order-position form input{width:58px;min-height:36px;padding:3px 5px}
   .adm:has(#order-category) .workflow-order-position form button{padding:4px 9px;font-size:.75rem}
