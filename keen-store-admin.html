@@ -387,6 +387,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   #product-history .order-admin h3{margin:0 0 2px;font-size:.9rem;line-height:1.18}
   #product-history .order-admin p{margin:2px 0;font-size:.76rem;line-height:1.2}
 }
+@media(max-width:520px){
+  .catalog-admin-card{padding:8px;margin:8px 0}
+  .catalog-card-head h3{margin:0;font-size:1rem}
+  .catalog-admin-card .catalog-card-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:6px 0}
+  .catalog-admin-card .catalog-sub-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:4px;padding:3px 0!important}
+  .catalog-admin-card .catalog-sub-main{display:grid;justify-items:start;min-width:0;gap:2px;font-size:.78rem}
+  .catalog-admin-card .catalog-status{padding:2px 5px;font-size:.65rem;line-height:1.15}
+  .catalog-admin-card :is(.catalog-card-actions,.catalog-sub-row) button{min-width:0;min-height:44px;padding:3px 5px;font-size:.72rem;line-height:1.12}
+}
 </style></head>
 <body>
 <header>
