@@ -1742,11 +1742,32 @@ async function loadSalesSummary(view){
     view.innerHTML=cards.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');
   }catch{if(view.isConnected)view.textContent='No se pudo cargar el resumen de ventas.'}
 }
+async function loadCatalogAnalytics(view){
+  try{
+    const {session}=await kenResult(adminClient.auth.getSession());
+    if(!session)throw new Error('Sesión requerida.');
+    const response=await fetch('/api/catalog-analytics',{headers:{Authorization:'Bearer '+session.access_token}});
+    if(!response.ok)throw new Error('Visitas no disponibles.');
+    const data=await response.json();
+    if(!view.isConnected)return;
+    if(!data.configured){view.textContent='Pendiente de conectar con Vercel Analytics.';return}
+    const number=new Intl.NumberFormat('es-PE');
+    view.replaceChildren(...[['Visitantes',data.visitors],['Páginas vistas',data.pageviews]].map(([label,value])=>{
+      const card=document.createElement('div');
+      const total=document.createElement('b');
+      const caption=document.createElement('span');
+      total.textContent=number.format(value);
+      caption.textContent=label;
+      card.append(total,caption);
+      return card;
+    }));
+  }catch{if(view.isConnected)view.textContent='No se pudieron cargar las visitas.'}
+}
 function admRes(){ADM.tab='res';const ag=P.filter(p=>p.st===0).length,hid=(SITE.hide||[]).length;
-  modal(`<h2>📊 Resumen</h2><div id="sales-summary" class="workflow-summary">Cargando ventas…</div>
+  modal(`<h2>📊 Resumen</h2><div id="sales-summary" class="workflow-summary">Cargando ventas…</div><h3>Visitas del catálogo</h3><div id="catalog-analytics" class="stat" role="status">Cargando visitas…</div>
   ${catalogVersion?'':'<p class="mu">Publica el catálogo para que los clientes puedan registrar pedidos.</p><button class="pri" onclick="admPublishFirst()">Publicar catálogo</button>'}
   <div class="stat"><div><b>${P.length}</b><span>Productos</span></div><div><b>${ag}</b><span>Agotados</span></div><div><b>${CATS.length-1}</b><span>Categorías</span></div><div><b>${Object.keys(SITE.t).length}</b><span>Textos editados</span></div><div><b>${hid}</b><span>Secciones ocultas</span></div></div>
-  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`);loadSalesSummary($('#sales-summary'))}
+  <div class="bar2"><button class="pri" onclick="admForm()">➕ Nuevo producto</button><button onclick="admOrders('pendiente')">Pedidos pendientes</button><button onclick="admCats()">Editar categorías</button><a class="btn" href="${esc(CFG.CATALOGO)}">Ver tienda</a></div>`);loadSalesSummary($('#sales-summary'));loadCatalogAnalytics($('#catalog-analytics'))}
 function admSec(){const h=SITE.hide||[],a=SITE.ann||{};
   modal(`<h2>🧩 Secciones y avisos</h2><label>Secciones visibles</label>${SEC.map(([k,l])=>`<label style="font-weight:400"><input type="checkbox" id="h_${k}"${h.includes(k)?'':' checked'}>${l}</label>`).join('')}
   <label for="a_t">Barra de anuncio superior (vacío = sin barra)</label><input id="a_t" value="${esc(a.t||'')}" placeholder="🔥 Promo de la semana…"><label for="a_c">Color de la barra</label><input id="a_c" type="color" value="${a.c||'#1c1c1c'}">
