@@ -1151,6 +1151,22 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   .order-stamp::after,.offer-label.ken-offer-entered,#inicio .dragon::before,#inicio .dragon::after{animation:none}
   .order-stamp::after{display:none}
 }
+
+/* Espacio reservado durante la carga del catálogo */
+.catalog-image-pending,.catalog-placeholder-photo,.catalog-placeholder-line{
+  background:linear-gradient(105deg,#eee5d4 25%,#f8f2e7 50%,#eee5d4 75%);
+  background-size:220% 100%;
+}
+.catalog-placeholder-photo{aspect-ratio:4/3;border-bottom:2px solid #e4d9c6}
+.catalog-placeholder-copy{display:grid;gap:10px;padding:14px}
+.catalog-placeholder-line{height:14px;border-radius:5px}
+.catalog-placeholder-line:first-child{width:60%}
+.catalog-placeholder-line:nth-child(3){width:42%;height:20px}
+.catalog-placeholder-line:last-child{height:32px;border-radius:20px}
+@media(prefers-reduced-motion:no-preference){
+  .catalog-placeholder-photo,.catalog-placeholder-line{animation:catalog-placeholder-shift 1.6s ease-in-out infinite}
+}
+@keyframes catalog-placeholder-shift{from{background-position:100% 0}to{background-position:0 0}}
 </style>
 </head>
 <body>
@@ -1769,6 +1785,14 @@ const offerVisibility=new IntersectionObserver(entries=>{
     entry.target.classList.add('ken-offer-entered');
   }
 });
+function showCatalogLoading(){
+  const container=$('#grid');
+  container.setAttribute('aria-busy','true');
+  container.innerHTML=`<div class="card catalog-placeholder" aria-hidden="true">
+    <div class="catalog-placeholder-photo"></div><div class="catalog-placeholder-copy">
+    <span class="catalog-placeholder-line"></span><span class="catalog-placeholder-line"></span>
+    <span class="catalog-placeholder-line"></span><span class="catalog-placeholder-line"></span></div></div>`.repeat(6);
+}
 function grid(animate=false){
   offerVisibility.disconnect();
   const container=$('#grid');
@@ -1787,13 +1811,19 @@ function grid(animate=false){
     const stock=quantity==null?'<span class="stk">Disponible</span>':out?`<span class="stk out">${p.st===0?'Agotado':'Sin unidades ahora'}</span>`:low?`<span class="stk low">Quedan ${esc(quantity)}</span>`:`<span class="stk">Stock ${esc(quantity)}</span>`;
     const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
-    return `<article class="card${out?' sold':''}"><div class="im"><img src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<6?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
+    return `<article class="card${out?' sold':''}"><div class="im"><img class="catalog-image-pending" src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<6?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(displayProductPlacement(p))}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
 
       <div class="pr"><div class="pp"><div class="pl"><b>${money(p.p)}</b>${sale?`<span class="old">${money(p.po)}</span>`:''}</div>${p.u?`<span class="usd">≈ ${Number(p.u).toFixed(2)} USDT</span>`:''}</div>
       <button class="pri" data-b="${p.id}" ${out?'disabled':''}>${out?'Agotado':plans.length?'Ver planes':p.c=='Regalos'?'Reclamar':'Comprar'}</button></div></div></article>`}).join('')||'<p class="mu">No hay productos en esta sección todavía.</p>';
+  container.querySelectorAll('.catalog-image-pending').forEach(image=>{
+    const finish=()=>image.classList.remove('catalog-image-pending');
+    if(image.complete)finish();
+    else{image.addEventListener('load',finish,{once:true});image.addEventListener('error',finish,{once:true});}
+  });
+  container.removeAttribute('aria-busy');
   container.querySelectorAll('.offer-label').forEach(label=>offerVisibility.observe(label));
   if(animate&&!catalogMotion.matches){
     container.animate([{opacity:.55},{opacity:1}],{duration:170,easing:"ease-out"});
@@ -2484,7 +2514,8 @@ function applyStoreAppearance(){const fm=t=>esc(t).replace(/\*([^*]+)\*/g,'<span
   }
   if(SITE.ann?.t){const banner=document.createElement('div');banner.textContent=SITE.ann.t;banner.style.cssText='text-align:center;padding:.5rem;color:white';banner.style.backgroundColor=SITE.ann.c||'#1c1c1c';document.body.prepend(banner)}
 }
-nav();tabs();grid();
+nav();tabs();
+if(storeClient)showCatalogLoading();else grid();
 const serviceDragon=$('#ldd').cloneNode(true);
 serviceDragon.removeAttribute('id');
 serviceDragon.classList.add('service-dragon');
@@ -2504,7 +2535,11 @@ function showMaintenance(message){
   if(!maintenanceNotice.open)maintenanceNotice.showModal();
 }
 showMaintenance(SITE.maint);
-const publishedCatalog=loadPublishedCatalog().catch(()=>toast('No se pudo actualizar el catálogo.'));
+const catalogFallback=setTimeout(()=>{if($('#grid').hasAttribute('aria-busy'))grid()},5000);
+const publishedCatalog=loadPublishedCatalog().catch(()=>{toast('No se pudo actualizar el catálogo.');return false}).finally(()=>{
+  clearTimeout(catalogFallback);
+  if($('#grid').hasAttribute('aria-busy'))grid();
+});
 (function loadStore(){
   const loader=$('#ld'),track=loader.querySelector('.bw'),percent=$('#pc');
   const assets=[$('#inicio .dragon .dr')];
