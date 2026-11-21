@@ -1,4 +1,5 @@
 {
+  "buildCommand": "node build-analytics.cjs",
   "headers": [
     {
       "source": "/(.*)",
