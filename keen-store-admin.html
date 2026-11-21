@@ -832,7 +832,7 @@ function admForm(id,duplicate=false){
   <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
   </div>
   <section class="editor-section"><h3>Descripción en la tienda</h3><fieldset aria-label="Descripción en la tienda">
-  <label for="desc-access">Qué recibe el cliente</label><input id="desc-access" maxlength="70" value="${esc(description.access)}" placeholder="Ej. 1 perfil privado">
+  <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="3" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
   <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
   <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
   <label for="ptg">Beneficios (separados por comas)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
