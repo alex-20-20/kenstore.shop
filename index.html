@@ -1171,6 +1171,8 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
 }
 @keyframes catalog-placeholder-shift{from{background-position:100% 0}to{background-position:0 0}}
 
+#install-catalog{width:100%;min-height:44px;margin:10px 0;color:var(--ac);font-weight:700}
+#install-catalog[hidden]{display:none}
 </style>
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
@@ -1194,6 +1196,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   <dialog id="site-menu" aria-labelledby="site-menu-title">
     <div class="site-menu-head"><span id="site-menu-title" class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span><button class="site-menu-close" type="button" aria-label="Cerrar menú" autofocus>×</button></div>
     <nav id="site-menu-links" aria-label="Navegación de la tienda"></nav>
+    <button id="install-catalog" type="button">Instalar catálogo</button>
     <button id="site-menu-logout" type="button" hidden>Cerrar sesión</button>
   </dialog>
   <div id="nav"></div>
@@ -2468,6 +2471,22 @@ async function loadPublishedCatalog(){
   set('t-cl1','cloud',cl);set('t-cl2','cloud',cl);
   set('t-a1','shield');set('t-a2','bolt');set('t-ph','phone');set('t-a3','tv',{C:'#ff5a5f'});set('t-a4','gift');
 })();
+const installCatalogButton=$('#install-catalog');
+let installCatalogPrompt;
+installCatalogButton.hidden=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+window.addEventListener('beforeinstallprompt',event=>{installCatalogPrompt=event});
+window.addEventListener('appinstalled',()=>{installCatalogPrompt=null;installCatalogButton.hidden=true});
+installCatalogButton.addEventListener('click',async()=>{
+  $('#site-menu').close();
+  if(installCatalogPrompt){
+    const install=installCatalogPrompt;
+    installCatalogPrompt=null;
+    try{await install.prompt();return}catch{}
+  }
+  modal(`<h2>Instalar Ken Store</h2>
+    <p><b>Android:</b> abre el menú ⋮ de Chrome y elige <b>Instalar aplicación</b> o <b>Añadir a pantalla de inicio</b>.</p>
+    <p><b>iPhone:</b> en Safari, toca <b>Compartir → Añadir a pantalla de inicio</b>.</p>`);
+});
 const siteMenu=$('#site-menu'),siteMenuToggle=$('#site-menu-toggle');
 siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
