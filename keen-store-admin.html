@@ -839,7 +839,7 @@ function admForm(id,duplicate=false){
   <label for="card-benefit">Beneficio en la tarjeta (opcional)</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
   <small class="mu">Si lo dejas vacío, se elige automáticamente de los beneficios.</small>
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
-  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="2" maxlength="160" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="4" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset></section><section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
