@@ -293,6 +293,20 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .adm-summary .adm-summary-catalog>*:nth-last-child(-n+2){grid-column:span 3}
   .adm-summary .adm-summary-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+@media(max-width:520px){
+  .adm-summary h2{margin:0 0 10px;font-size:1.2rem}
+  .adm-summary h3{margin:9px 0 5px;font-size:.82rem}
+  .adm-summary .adm-summary-metrics,.adm-summary .adm-summary-catalog{gap:6px}
+  .adm-summary .adm-summary-metrics button{min-height:48px;padding:6px 8px;font-size:.75rem;line-height:1.15}
+  .adm-summary .adm-summary-metrics strong{margin-bottom:3px;font-size:1.07rem;line-height:1.2}
+  .adm-summary .adm-summary-catalog div{min-height:47px;padding:6px 8px;box-shadow:none}
+  .adm-summary .adm-summary-catalog b{font-size:1.06rem}
+  .adm-summary .adm-summary-catalog span{font-size:.72rem;line-height:1.2}
+  .adm-summary .adm-summary-actions{margin-top:10px;gap:6px}
+  .adm-summary .adm-summary-actions>*{min-height:44px;padding:6px;font-size:.78rem;line-height:1.2}
+  .adm-summary .summary-card-label{display:block}
+}
 </style></head>
 <body>
 <header>
@@ -1762,7 +1776,7 @@ async function loadSalesSummary(view){
       ['Por entregar',orders.filter(o=>orderInScope(o,'delivery')).length,"admDelivery()"],
       ['Stock bajo',P.filter(isLowStock).length,"ADM.productFilters={stock:'low'};admList()"]
     ];
-    const render=items=>items.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong>${label}</button>`).join('');
+    const render=items=>items.map(([label,value,action])=>`<button type="button" onclick="${action}"><strong>${value}</strong><span class="summary-card-label">${label}</span></button>`).join('');
     view.innerHTML=`<div class="adm-summary-groups">
       <section><h3>Cobros</h3><div class="workflow-summary adm-summary-metrics adm-summary-sales">${render(cards.slice(0,2))}</div></section>
       <section><h3>Tareas</h3><div class="workflow-summary adm-summary-metrics adm-summary-tasks">${render(cards.slice(2))}</div></section>
