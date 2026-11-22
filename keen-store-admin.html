@@ -837,21 +837,7 @@ async function uploadStoreImage(input,kind){
   }
 }
 function admPick(){
-  prepareStoreImage($('#pfile'),$('#pv'),v('pfit'),'product',()=>{$('#pfurl').value='';updateProductCardPreview()});
-}
-function admUrl(){
-  const value=v('pfurl').trim(),input=$('#pfile');
-  if(!value||input.disabled)return;
-  let url;
-  try{url=new URL(value)}catch{return toast('Ingresa una URL de imagen válida.')}
-  if(url.protocol!=='https:')return toast('Usa una URL de imagen HTTPS.');
-  input.imageRequest=null;
-  input.storageDraft=null;
-  input.removeAttribute('aria-busy');
-  input.value='';
-  clearImagePreview();
-  ADM.img=url.href;
-  $('#pv').src=ADM.img;
+  prepareStoreImage($('#pfile'),$('#pv'),'cover','product',updateProductCardPreview);
 }
 function productSubcategories(product){
   const members=Array.isArray(product.subcategories)?product.subcategories:[product.s];
@@ -1073,9 +1059,6 @@ function admForm(id,duplicate=false){
   </fieldset></details><section class="editor-section"><h3>Imagen</h3><fieldset aria-label="Imagen">
   <img id="pv" class="pv" alt="Vista previa">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
-  <div class="g2"><div><label for="pfit">Ajuste</label><select id="pfit"><option value="cover">Rellenar (recorta)</option><option value="contain">Mostrar completa</option></select></div>
-  <div><label for="pfurl">O pega una URL</label><input id="pfurl" placeholder="https://" onchange="admUrl()"></div></div>
-  <p class="mu" style="font-size:.78rem">Formato 4:3 · Máximo 150 KB</p>
   </fieldset></section><section class="editor-section"><h3>Datos del pedido</h3><fieldset aria-label="Tipo de producto y datos del pedido">
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
   <p id="type-order-help" class="mu" hidden></p>
