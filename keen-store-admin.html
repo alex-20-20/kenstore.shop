@@ -281,7 +281,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .product-editor :is(.editor-name,.editor-section) label{margin-top:3px;font-size:.75rem}
   .product-editor :is(input:not([type=checkbox]),select,textarea){min-width:0;min-height:36px;padding:5px 7px;margin-top:2px;font-size:16px}
   .product-editor .editor-section .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
-  .product-editor .editor-actions{gap:5px;padding-top:5px}
+  .product-editor .product-sub-options{margin-top:6px}
+  .product-editor .product-sub-heading{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:2px}
+  .product-editor .product-sub-heading p{margin:0;font-size:.72rem}
+  .product-editor #ps label{margin:0}
+  .product-editor .extra-category-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .product-editor .extra-category-fields select{padding-inline:5px;font-size:.8rem}
+  .product-editor .editor-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;padding-top:5px}
   .product-editor .editor-actions button{min-height:34px;padding:4px 9px;font-size:.8rem}
 }
 
@@ -875,8 +881,8 @@ function admCatSel(selected=[]){
   const subs=isNew?[]:admSubs(v('pc'));
   const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
   $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,subs.length)},(_,index)=>`
-    <label for="product-sub-${index}">Subcategoría ${index+1}<select id="product-sub-${index}">
-      <option value="">Sin subcategoría</option>
+    <label for="product-sub-${index}"><select id="product-sub-${index}" aria-label="Subcategoría ${index+1}">
+      <option value="">—</option>
       ${subs.map(name=>`<option value="${esc(name)}"${members[index]===name?' selected':''}>${esc(name)}</option>`).join('')}
     </select></label>`).join(''):'<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
   $('#psn').value='';
@@ -1030,14 +1036,14 @@ function admForm(id,duplicate=false){
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
   <div class="product-sub-options" aria-labelledby="product-subs-title">
-    <strong id="product-subs-title">Subcategorías</strong>
-    <p id="sub-selection-count" class="mu" aria-live="polite"></p>
+    <div class="product-sub-heading"><strong id="product-subs-title">Subcategorías</strong>
+    <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
     <div id="ps" onchange="admSubLimit()"></div>
     <label for="psn">Nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
   </div>
   <div class="product-extra-categories"><strong>Categorías adicionales (hasta 3)</strong><div class="extra-category-fields">
-    ${[0,1,2].map(slot=>`<div><label for="extra-cat-${slot}">Opción ${slot+1}</label>
-      <select id="extra-cat-${slot}" onchange="admExtraSubs(${slot})"><option value="">Sin categoría</option>
+    ${[0,1,2].map(slot=>`<div>
+      <select id="extra-cat-${slot}" aria-label="Categoría adicional ${slot+1}" onchange="admExtraSubs(${slot})"><option value="">—</option>
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div></div>`).join('')}
   </div></div>
