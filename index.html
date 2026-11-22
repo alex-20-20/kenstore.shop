@@ -2564,8 +2564,26 @@ new IntersectionObserver(([entry])=>{
 },{threshold:0.5}).observe(serviceRunway);
 const maintenanceNotice=$('#maintenance-notice');
 maintenanceNotice.addEventListener('cancel',event=>event.preventDefault());
+let maintenanceAdminClient,maintenanceAdminVerified=false,maintenanceAuthRevision=0;
+function watchMaintenanceAdmin(){
+  maintenanceAdminClient=kenClient(true);
+  maintenanceAdminClient?.auth.onAuthStateChange((_event,session)=>{
+    const revision=++maintenanceAuthRevision;
+    maintenanceAdminVerified=false;
+    if(!session){showMaintenance(SITE.maint);return}
+    setTimeout(async()=>{
+      const verified=await maintenanceAdminClient.auth.getUser().then(({data,error})=>
+        !error&&Boolean(data?.user?.email_confirmed_at)&&data.user.app_metadata?.kenstore_admin===true
+      ).catch(()=>false);
+      if(revision!==maintenanceAuthRevision)return;
+      maintenanceAdminVerified=verified;
+      showMaintenance(SITE.maint);
+    },0);
+  });
+}
 function showMaintenance(message){
-  if(!message){if(maintenanceNotice.open)maintenanceNotice.close();return}
+  if(message&&!maintenanceAdminClient)watchMaintenanceAdmin();
+  if(!message||maintenanceAdminVerified){if(maintenanceNotice.open)maintenanceNotice.close();return}
   const dragon=maintenanceNotice.querySelector('.maintenance-dragon');
   if(!dragon.firstElementChild)dragon.append($('#inicio .dragon .dr').cloneNode());
   $('#maintenance-message').textContent=message;
