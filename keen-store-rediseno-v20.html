@@ -2388,10 +2388,21 @@ function formattedProductDetail(product){
     ${delivery.map(line=>`<p class="detail-delivery">${format(line)}</p>`).join('')}
     ${warnings.map(line=>`<p class="detail-rule">${format(line)}</p>`).join('')}</div>`;
 }
+function productDownloadButton(product){
+  if(!product.downloadUrl)return '';
+  try{
+    const url=new URL(product.downloadUrl);
+    if(url.protocol==='https:'&&!url.username&&!url.password){
+      return `<p class="detail-delivery"><a class="pri" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Descargar</a></p>`;
+    }
+  }catch{}
+  return '';
+}
 function infoM(id){
   const p=prod(id);if(!p)return;
   const formatted=structuredProductDetail(p)||formattedProductDetail(p);
-  if(formatted){modal(formatted);return}
+  const download=productDownloadButton(p);
+  if(formatted){modal(formatted.replace(/<\/div>$/,()=>download+'</div>'));return}
   const availability=p.st==null?'Disponible':p.st===0?'Agotado':p.st<=5?`Quedan ${p.st}`:`Stock ${p.st}`;
   const details=productDetailSections(p.i||p.d);
   const duration=accessDurationLabel(p.accessDuration)
@@ -2409,7 +2420,7 @@ function infoM(id){
     ${intro?`<p class="detail-intro">${esc(intro)}</p>`:''}
     ${tags.length?`<ul class="detail-tags" aria-label="Características">${tags.map(tag=>`<li>${esc(tag)}</li>`).join('')}</ul>`:''}
     <p class="detail-delivery">${esc(delivery)}${field?` · ${esc(field.l)}`:''}</p>
-    ${rule?`<p class="detail-rule">${esc(rule)}</p>`:''}</div>`);
+    ${rule?`<p class="detail-rule">${esc(rule)}</p>`:''}${download}</div>`);
 }
 $('#grid').addEventListener('click',e=>{const t=e.target.closest('[data-i]');if(t)infoM(+t.dataset.i)});
 function updateWhatsAppGroup(){

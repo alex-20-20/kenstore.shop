@@ -1024,6 +1024,7 @@ function admForm(id,duplicate=false){
   <label for="card-benefit">Beneficio destacado</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
   <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="3" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-download">Link de descarga (opcional y público)</label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…">
   </fieldset></section><section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
@@ -1125,6 +1126,15 @@ async function admGuardar(){if(publishing)return;
   if(!durationInput.checkValidity()||(hasDuration&&(!Number.isSafeInteger(amount)||!Object.hasOwn(ACCESS_UNITS,unit)))){
     return productEditorError('Escribe una duración válida en días, meses o años.','#access-amount');
   }
+  const downloadValue=v('desc-download').trim();
+  let downloadUrl='';
+  if(downloadValue){
+    try{
+      const url=new URL(downloadValue);
+      if(url.protocol==='https:'&&!url.username&&!url.password)downloadUrl=url.href;
+    }catch{}
+    if(!downloadUrl)return productEditorError('Ingresa un enlace HTTPS válido.','#desc-download');
+  }
   try{
     const imageUrl=await uploadStoreImage(imageInput,'product');
     if(!imageInput.isConnected)return;
@@ -1144,6 +1154,8 @@ async function admGuardar(){if(publishing)return;
   if(outOfStock&&old)o.previousStock=old.st===0?old.previousStock??null:old.st;
   if(old?.i)o.i=old.i;
   if(!old||old.descriptionSpec||Object.values(descriptionSpec).some(Boolean))o.descriptionSpec=descriptionSpec;
+  if(downloadUrl)o.downloadUrl=downloadUrl;
+  else delete o.downloadUrl;
   if(t)o.t=t;
   if(hasDuration)o.accessDuration={amount,unit};
   const benefit=v('card-benefit').trim();
