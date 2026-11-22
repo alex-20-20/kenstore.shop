@@ -900,7 +900,9 @@ function readExtraCategories(){
     subs:[...$('#extra-subs-'+slot).querySelectorAll('input:checked')].map(input=>input.value)
   })).filter(item=>item.category);
 }
+const playerIdOrderField={l:'ID de jugador',ph:'Ej: 123456789'};
 const typeOrderHelp={
+  playerId:'Se pide el ID del jugador para realizar la recarga.',
   Perfil:'Se pide WhatsApp y el comprobante de pago.',
   'Cuenta completa':'Se pide WhatsApp y el comprobante de pago.',
   'Invitación':'Se pide un correo para enviar la invitación.',
@@ -1062,7 +1064,7 @@ function admForm(id,duplicate=false){
   <img id="pv" class="pv" alt="Vista previa">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
   </fieldset></section><section class="editor-section"><h3>Datos del pedido</h3><fieldset aria-label="Tipo de producto y datos del pedido">
-  <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
+  <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option><option value="playerId"${!p.t&&p.x?.l===playerIdOrderField.l&&p.x?.ph===playerIdOrderField.ph?' selected':''}>Recarga por ID de jugador</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
   <p id="type-order-help" class="mu" hidden></p>
   <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
   <div id="pxfields"${p.x?.l?'':' hidden'}>
@@ -1114,7 +1116,7 @@ async function admGuardar(){if(publishing)return;
   if(new Set([c,...extraCategories.map(item=>item.category)]).size!==extraCategories.length+1)return toast('Elige categorías distintas.');
   if(extraCategories.some(item=>item.subs.length>4))return toast('Selecciona hasta cuatro subcategorías por categoría.');
   const s=members[0]||'';
-  const old=ADM.id?prod(ADM.id):null,t=v('pt'),askExtra=!t&&$('#pxon').checked,xl=v('pxl').trim();
+  const old=ADM.id?prod(ADM.id):null,type=v('pt'),byPlayerId=type==='playerId',t=byPlayerId?'':type,askExtra=!type&&$('#pxon').checked,xl=v('pxl').trim();
   if(askExtra&&!xl)return productEditorError('Escribe qué dato quieres pedir al cliente.','#pxl');
   const durationInput=$('#access-amount'),amount=durationInput.valueAsNumber,unit=v('access-unit');
   const hasDuration=durationInput.value!=='';
@@ -1130,7 +1132,7 @@ async function admGuardar(){if(publishing)return;
   const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
-    img:ADM.img||tile('gift','#e6dcff'),x:askExtra?{l:xl,ph:v('pxp').trim()}:null};
+    img:ADM.img||tile('gift','#e6dcff'),x:byPlayerId?{...playerIdOrderField}:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(old?.promotion){
     if(Date.parse(old.promotion.end)>Date.now()&&old.promotion.price>=price)return toast('Ajusta o retira el descuento programado antes de reducir el precio habitual.');
     o.promotion=old.promotion;
