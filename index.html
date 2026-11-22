@@ -2404,7 +2404,7 @@ function productDownloadButton(product){
   try{
     const url=new URL(product.downloadUrl);
     if(url.protocol==='https:'&&!url.username&&!url.password){
-      return `<p class="detail-delivery"><a class="pri" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Descargar</a></p>`;
+      return `<p class="detail-delivery"><a class="pri" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${esc(String(product.downloadLabel||'').trim()||'Descargar')}</a></p>`;
     }
   }catch{}
   return '';
