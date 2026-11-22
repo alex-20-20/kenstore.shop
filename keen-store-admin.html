@@ -270,6 +270,20 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .editor-actions{grid-column:1/-1;padding:8px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -5px 12px #1c1c1c08}
 .product-editor .extra-category-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:6px}
 @media(max-width:860px){.product-editor{grid-template-columns:minmax(0,1fr)}}
+.product-editor .editor-section>summary{padding:8px 11px;color:var(--ac);font-weight:700;font-size:.92rem;cursor:pointer}
+.product-editor .editor-section[open]>summary{border-bottom:1px solid var(--stroke)}
+@media(max-width:520px){
+  .adm:has(>.product-editor){padding:10px}
+  .adm:has(>.product-editor)>.admin-heading{margin-bottom:6px}
+  .product-editor,.product-editor .editor-column{gap:6px}
+  .product-editor .editor-name,.product-editor .editor-section>fieldset{padding:5px 8px 7px}
+  .product-editor .editor-section :is(h3,summary){padding:5px 8px;font-size:.85rem}
+  .product-editor :is(.editor-name,.editor-section) label{margin-top:3px;font-size:.75rem}
+  .product-editor :is(input:not([type=checkbox]),select,textarea){min-width:0;min-height:36px;padding:5px 7px;margin-top:2px;font-size:16px}
+  .product-editor .editor-section .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .product-editor .editor-actions{gap:5px;padding-top:5px}
+  .product-editor .editor-actions button{min-height:34px;padding:4px 9px;font-size:.8rem}
+}
 
 /* Resumen administrativo */
 .adm-summary h2{margin-bottom:14px}
@@ -999,20 +1013,19 @@ function admForm(id,duplicate=false){
   const source=id?prod(id):{};
   const p=duplicate?{...source,n:source.n+' (copia)',paused:true}:source,cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=duplicate?0:id||0;ADM.paused=Boolean(p.paused);
   const description=productDescriptionFields(p);
-  modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2><button type="button" onclick="admList()">Volver a productos</button></div>
+  modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2></div>
   ${duplicate?'<p class="mu">La copia se guardará pausada. Puedes reactivarla desde Productos.</p>':''}
 <div class="product-editor"><div class="editor-column">  <div class="editor-name">
   <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
   </div>
   <section class="editor-section"><h3>Descripción en la tienda</h3><fieldset aria-label="Descripción en la tienda">
-  <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="3" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
-  <div class="g2"><div><label for="access-amount">Duración del acceso (opcional)</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
+  <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="2" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
+  <div class="g2"><div><label for="access-amount">Duración</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
   <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
   <label for="ptg">Beneficios (separados por comas)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
-  <label for="card-benefit">Beneficio en la tarjeta (opcional)</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
-  <small class="mu">Si lo dejas vacío, se elige automáticamente de los beneficios.</small>
+  <label for="card-benefit">Beneficio destacado</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
-  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="4" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="3" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   </fieldset></section><section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
@@ -1020,10 +1033,10 @@ function admForm(id,duplicate=false){
     <strong id="product-subs-title">Subcategorías</strong>
     <p id="sub-selection-count" class="mu" aria-live="polite"></p>
     <div id="ps" onchange="admSubLimit()"></div>
-    <label for="psn">Añadir una nueva subcategoría (opcional)</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
+    <label for="psn">Nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
   </div>
   <div class="product-extra-categories"><strong>Categorías adicionales (hasta 3)</strong><div class="extra-category-fields">
-    ${[0,1,2].map(slot=>`<div><label for="extra-cat-${slot}">Categoría adicional ${slot+1}</label>
+    ${[0,1,2].map(slot=>`<div><label for="extra-cat-${slot}">Opción ${slot+1}</label>
       <select id="extra-cat-${slot}" onchange="admExtraSubs(${slot})"><option value="">Sin categoría</option>
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div></div>`).join('')}
@@ -1041,23 +1054,23 @@ function admForm(id,duplicate=false){
     </select></label>
     <label for="pst"><span>Unidades (opcional)</span><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${esc(p.st===0?p.previousStock??'':p.st??'')}"${p.st===0?' disabled':''}></label>
   </div>
-  </fieldset><fieldset><legend>Planes y precios</legend>
-    <p class="mu">Los planes comparten el stock del producto. Los descuentos programados se aplican al primer plan.</p>
+  </fieldset><fieldset><legend>Planes</legend>
+    <p class="mu">Stock compartido. Las ofertas se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
     <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
-  </fieldset></section></div><div class="editor-column"><section class="editor-section"><h3>Vista previa de la tarjeta</h3><fieldset aria-label="Vista previa de la tarjeta">
+  </fieldset></section></div><div class="editor-column"><details class="editor-section"><summary>Vista previa de la tarjeta</summary><fieldset aria-label="Vista previa de la tarjeta">
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
       <p id="card-preview-category" class="preview-category"></p><p id="card-preview-name" class="preview-name"></p>
       <div id="card-preview-tags" class="preview-tags"></div>
       <div class="preview-prices"><strong id="card-preview-price"></strong><s id="card-preview-previous"></s><small id="card-preview-usdt"></small></div></div></article>
-  </fieldset></section><section class="editor-section"><h3>Imagen</h3><fieldset aria-label="Imagen">
+  </fieldset></details><section class="editor-section"><h3>Imagen</h3><fieldset aria-label="Imagen">
   <img id="pv" class="pv" alt="Vista previa">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
   <div class="g2"><div><label for="pfit">Ajuste</label><select id="pfit"><option value="cover">Rellenar (recorta)</option><option value="contain">Mostrar completa</option></select></div>
   <div><label for="pfurl">O pega una URL</label><input id="pfurl" placeholder="https://" onchange="admUrl()"></div></div>
-  <p class="mu" style="font-size:.78rem">La foto se ajusta a 4:3 y se comprime a menos de 150 KB. Al guardar se sube a Supabase Storage.</p>
-  </fieldset></section><section class="editor-section"><h3>Tipo de producto y entrega</h3><fieldset aria-label="Tipo de producto y datos del pedido">
+  <p class="mu" style="font-size:.78rem">Formato 4:3 · Máximo 150 KB</p>
+  </fieldset></section><section class="editor-section"><h3>Datos del pedido</h3><fieldset aria-label="Tipo de producto y datos del pedido">
   <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
   <p id="type-order-help" class="mu" hidden></p>
   <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
