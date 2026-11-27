@@ -835,8 +835,8 @@ async function uploadStoreImage(input,kind){
       const bitmap=await createImageBitmap(image);
       try{
         if(bitmap.width>=640){
-          const stem='product/card-'+imageId;
-          for(const width of [400,640]){
+          const stem='product/card2-'+imageId;
+          for(const width of [224,400,640]){
             const canvas=document.createElement('canvas');
             canvas.width=width;canvas.height=Math.max(1,Math.round(bitmap.height*width/bitmap.width));
             canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
