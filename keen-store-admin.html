@@ -826,10 +826,28 @@ async function uploadStoreImage(input,kind){
   const ext=extensions[image.type];
   if(!ext||image.size>MAX_STORE_IMAGE_BYTES)throw new Error('Imagen inválida.');
   const bucket=adminClient.storage.from('kenstore-media');
-  const path=kind+'/'+crypto.randomUUID()+'.'+ext;
+  const imageId=crypto.randomUUID();
+  let path=kind+'/'+imageId+'.'+ext;
   input.disabled=true;
   input.setAttribute('aria-busy','true');
   try{
+    if(kind==='product'&&ext==='webp'&&typeof createImageBitmap==='function'){
+      const bitmap=await createImageBitmap(image);
+      try{
+        if(bitmap.width>=640){
+          const stem='product/card-'+imageId;
+          for(const width of [400,640]){
+            const canvas=document.createElement('canvas');
+            canvas.width=width;canvas.height=Math.max(1,Math.round(bitmap.height*width/bitmap.width));
+            canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
+            const thumb=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.78));
+            if(!thumb)throw new Error('No se pudo preparar la miniatura.');
+            await kenResult(bucket.upload(stem+'-'+width+'.webp',thumb,{contentType:'image/webp',cacheControl:'31536000'}));
+          }
+          path=stem+'.webp';
+        }
+      }finally{bitmap.close()}
+    }
     await kenResult(bucket.upload(path,image,{contentType:image.type,cacheControl:'31536000',upsert:false}));
     input.storageDraft=null;
     return bucket.getPublicUrl(path).data.publicUrl;

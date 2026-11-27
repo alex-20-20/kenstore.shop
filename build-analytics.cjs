@@ -10,6 +10,8 @@ const assets = [
 fs.mkdirSync(output, { recursive: true });
 for (const name of assets) fs.copyFileSync(name, path.join(output, name));
 
+fs.cpSync('store-assets', path.join(output, 'store-assets'), { recursive: true });
+
 const home = path.join(output, 'index.html');
 const placeholder = '<!-- vercel-web-analytics -->';
 const html = fs.readFileSync(home, 'utf8');

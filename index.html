@@ -3,6 +3,7 @@
 <head>
 <link rel="manifest" href="/ken-catalog.webmanifest">
 <link rel="apple-touch-icon" href="/ken-catalog-dragon-front-192.png">
+<link rel="preload" href="store-assets/ken-pixel.woff" as="font" type="font/woff" crossorigin>
 <meta name="theme-color" content="#b3261e">
 <link rel="icon" href="/ken-catalog-dragon-front-192.png" type="image/png">
 <link rel="preconnect" href="https://gnophtajdfjnnuqgengd.supabase.co" crossorigin>
@@ -23,7 +24,7 @@ if(returnToStoreStart){
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
 <style>
-@font-face{font-family:"Ken Pixel Legible";src:url(data:font/woff;base64,d09GRgABAAAAAAR8AAoAAAAACqgAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAABPUy8yAAABZAAAADEAAABgRRBEL2NtYXAAAAGwAAAAaQAAAIwCdgNRZ2x5ZgAAAjwAAAFrAAAGrNwrRZxoZWFkAAAA9AAAADYAAAA2L61lLGhoZWEAAAEsAAAAHwAAACQFcAHIaG10eAAAAZgAAAAXAAAAPB/+AnZsb2NhAAACHAAAACAAAAAgC5QNDm1heHAAAAFMAAAAGAAAACAAHgA6bmFtZQAAA6gAAAB/AAAA21Zus0Nwb3N0AAAEKAAAAFMAAACwElf4BAABAAAAAQAAyw0mKF8PPPUAAwPoAAAAAOckESwAAAAA5yQRLAAt/zgCIQK8AAAAAwACAAAAAAAAeJxjYGRgYFb4b8HAwBTBoMugwaTIwMiACvgBO5sCPgB4nGNgZGBg4GewYOBjAAEmMIkEAAiwAFl4nGNgZlJinMDAysDCQBgwInPs7e3tGRgYDBgKmRX+WzAwMCswnEBTr8DAAACxIgTFAAAAeJxjimBgYPJk0CUGMzZCMIwNANS0B5AAeJxFzEEKQWEAReHvvd8AozeQLIM1UDKSNVAmSmY2YmCgLMLAwMg+rOWqV547OadOXdQoGCmqlj1nTDSKvpmFpZW1jZ29g6NTgql5V7b/kg955Z1nHuSWe665tN9jvzWdURmoDb+LpBu4AAAAAAAAAAAvAFMAkwDPASQBZQGyAegCNQJ3AqUC0gMiA1Z4nLVUTU6EMBh9H2aCjqiLSePChSEuZmGJi4boUZx9D8BR8D7OvgfgKLpF0xY6BdoyLiSBhs376/c95KiArMw+cYEc17jDDvd4AHZ1yTa1YPniLdkHtX2hlDSPktRm7zLwABuNTkf68tADyBqR941GVJI4tXOcbUTlI56wXyKK4b+shTmFOSe6ifeFJC7Nf98QD1sYBFyh+nnLyomPkd+xj2z2LJ0ax2z5zLexHjXx3K3v+zbp+xkvEHiNKZj6txlMT5O6p2r8GmmFVLLvlJSpZJzUbSKh/ZrCU1bznCZpxZPSWRWrWa3mNFcVy8dXlhwcq+zSKgtks5pLWEF0av4lhYralRSKWAP8YYfJ25aUGjravYnMSXKNYdqODuG2Wzad7aaK+FB1uu1iF57CDuEKxmrBqhNybNGAmzNaYHGr/p7Pdz80XUq5xdeNePZ4S2nnO+DczPd4q5bd968VfGvezkH1XZwQv3pcg8gAeJxVisEKgzAQBSe2pHgpeGqPoXfrh0SK9QeKwhICSw6C4OcXQ0rxHZbZYQDLC8M+Q5PvvooLTWHLjTsnzLnG8KArXHHlXdjy5OMluSFuoq6XEGeVUcKq0+IlZV1sWzQeIeEYiGwIiqNHCERmFGHM34oy8ev/9bFtj/UXwqYlpAB4nH3JOQ6AMBBD0XFYwp6rTJSBiBqJu9DQcX+KuI6bpy+Lk/qCCBwatOjQw2PAiAkzFqzYEPz3PqqWige1zKZ7LGZqN39qxqZ2sq9iUhp/3nUeTAA=) format("woff");font-style:normal;font-weight:400 900;font-display:swap;unicode-range:U+0030,U+0031,U+0043,U+0044,U+0047,U+0049,U+004F,U+0051,U+0063,U+0064,U+0067,U+006C,U+006F,U+0071}
+@font-face{font-family:"Ken Pixel Legible";src:url(store-assets/ken-pixel.woff) format("woff");font-style:normal;font-weight:400 900;font-display:swap;unicode-range:U+0030,U+0031,U+0043,U+0044,U+0047,U+0049,U+004F,U+0051,U+0063,U+0064,U+0067,U+006C,U+006F,U+0071}
 :root{--bg:#fff;--soft:#f3f5fb;--ln:#1c1c1c;--ac:#ff4f8b;--ac2:#d92a69;--cy:#0e9fc0;--tx:#1c1c1c;--mu:#6a6055;--ok:#1f9d57;--wr:#b45309;--brand-font:"Ken Pixel Legible","Pixelify Sans","Courier New",monospace;--px:"Trebuchet MS",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth}
@@ -1231,9 +1232,9 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
       <span class="service-tile" title="ChatGPT"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="ChatGPT" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Claude"><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Claude_AI_logo.svg" alt="Claude" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Spotify"><img src="https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg" alt="Spotify" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" title="YouTube"><img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_(2017).svg" alt="YouTube" width="29" height="29" decoding="async"></span>
+      <span class="service-tile" title="YouTube"><img src="store-assets/youtube.svg" alt="YouTube" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Prime Video"><img src="https://upload.wikimedia.org/wikipedia/commons/9/90/Prime_Video_logo_(2024).svg" alt="Prime Video" width="29" height="29" decoding="async"></span>
-      <span class="service-tile" title="Max"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b3/HBO_Max_(2025).svg" alt="Max" width="29" height="29" decoding="async"></span>
+      <span class="service-tile" title="Max"><img src="store-assets/hbo-max.svg" alt="Max" width="29" height="29" decoding="async"></span>
       <span class="service-tile" title="Paramount Plus"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Paramount_Plus.svg" alt="Paramount Plus" width="29" height="29" decoding="async"></span>
       <span class="service-tether" aria-hidden="true"></span>
     </div>
@@ -1317,6 +1318,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="store-assets/product-thumbs.js"></script>
 <script src="kenstore-data.js?v=product-card"></script>
 <script>
 /* ===== CONFIGURACIÓN (cambia estos datos) ===== */
@@ -1607,7 +1609,7 @@ function categoryPixelImage(index){
     const artwork=index%10===0?categoryPixelArtwork(pixelShapes[index/10]):drawCategoryPixel(distinctPixelSymbols[index]||legacyCategoryEmojis[index]);
     categoryPixelCache.set(index,artwork);
   }
-  return `<img class="category-pixel" src="${categoryPixelCache.get(index)}" alt="">`;
+  return `<img width="16" height="16" class="category-pixel" src="${categoryPixelCache.get(index)}" alt="">`;
 }
 function drawCategoryPixel(emoji){
   const canvas=document.createElement('canvas');
@@ -1677,7 +1679,7 @@ function tabs(){
   if(S.cat!=='all'&&!catalogHasProducts(S.cat)){S.cat='all';S.sub=''}
   if(S.sub&&!catalogHasProducts(S.cat,S.sub))S.sub='';
 
-  const buttons=CATS.filter(([key])=>key==='all'||catalogHasProducts(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
+  const buttons=CATS.filter(([key])=>key==='all'||catalogHasProducts(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img width="16" height="16" src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
   renderCatalogRow($('#tabs'),buttons.find(([key])=>key==='all')?.[1]||'',buttons.filter(([key])=>key!=='all').map(([,html])=>html).join(''));
   const sb=(SUBS[S.cat]||[]).filter(sub=>catalogHasProducts(S.cat,sub));
   const row=$('#subs');
@@ -1817,6 +1819,18 @@ function showCatalogLoading(){
     <span class="catalog-placeholder-line"></span><span class="catalog-placeholder-line"></span>
     <span class="catalog-placeholder-line"></span><span class="catalog-placeholder-line"></span></div></div>`.repeat(6);
 }
+function cardImageSources(src){
+  const prefix=SUPA_URL+'/storage/v1/object/public/kenstore-media/';
+  if(typeof src!=='string'||!src.startsWith(prefix))return '';
+  const path=src.slice(prefix.length);
+  let variants=typeof storeThumbnailPaths==='undefined'?null:storeThumbnailPaths[path];
+  if(/^product\/card-[a-f0-9-]+\.webp$/.test(path)){
+    variants={400:src.replace('.webp','-400.webp'),640:src.replace('.webp','-640.webp')};
+  }
+  if(!variants||!Object.keys(variants).length)return '';
+  const candidates=Object.entries(variants).map(([width,url])=>esc(url)+' '+width+'w');
+  return ' sizes="(max-width:820px) 46vw, 16vw" srcset="'+candidates.join(', ')+'" onerror="this.onerror=null;this.removeAttribute(&quot;srcset&quot;)"';
+}
 function catalogStockLabel(product,quantity){
   if(quantity==null)return 'Disponible';
   if(quantity===0)return product.st===0?'Agotado':'Sin unidades ahora';
@@ -1841,7 +1855,7 @@ function grid(animate=false){
     const stock=`<span class="stk${out?' out':low?' low':''}">${esc(catalogStockLabel(p,quantity))}</span>`;
     const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
-    return `<article class="card${out?' sold':''}"><div class="im"><img class="catalog-image-pending" src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<firstRow?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
+    return `<article class="card${out?' sold':''}"><div class="im"><img width="400" height="300" class="catalog-image-pending"${cardImageSources(p.img)} src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<firstRow?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(displayProductPlacement(p))}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
