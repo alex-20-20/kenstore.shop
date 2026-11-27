@@ -1180,7 +1180,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   </div>
 </dialog>
 
-<div id="ld"><div class="bw"><div id="ldd" class="ldd" aria-hidden="true"><div class="dbob"><img class="dt" alt="" src="store-assets/dragon-a18dd1b86448e3da.webp"><img class="db" alt="" src="store-assets/dragon-c6ef0dde4a557043.webp"><img class="dw" alt="" src="store-assets/dragon-cbb9af8b9a1541ab.webp"><i class="deye"></i><i class="df f1"></i><i class="df f2"></i><i class="df f3"></i></div></div><div class="bar"><i id="bi"></i></div></div><div id="pc">0%</div></div>
+<div id="ld"><div class="bw"><div id="ldd" class="ldd" aria-hidden="true"><div class="dbob"><img class="dt" alt="" aria-hidden="true" src="store-assets/dragon-a18dd1b86448e3da.webp"><img class="db" alt="" aria-hidden="true" src="store-assets/dragon-c6ef0dde4a557043.webp"><img class="dw" alt="" aria-hidden="true" src="store-assets/dragon-cbb9af8b9a1541ab.webp"><i class="deye"></i><i class="df f1"></i><i class="df f2"></i><i class="df f3"></i></div></div><div class="bar"><i id="bi"></i></div></div><div id="pc">0%</div></div>
 
 <header>
   <div class="brand"><button class="site-menu-toggle" id="site-menu-toggle" type="button" aria-label="Menú de navegación" aria-controls="site-menu" aria-expanded="false"><span></span><span></span><span></span></button><span class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span></div>
@@ -1198,7 +1198,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
     <h1 data-ed="k5">Tu mundo <span data-ed="k7">digital</span><br>al instante</h1>
     <p data-ed="k8">Streaming, juegos y más. Recibe tu acceso por WhatsApp.</p>
   </div>
-  <div class="dragon" aria-hidden="true"><img class="dr" width="640" height="614" alt="" src="store-assets/dragon-98bafdd8bcbbdcc8.webp"></div>
+  <div class="dragon" aria-hidden="true"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp"></div>
   <div class="cta"><a class="btn pri big" href="#catalogo" data-ed="k9">Ver catálogo <span class="catalog-cta-arrow" aria-hidden="true">→</span></a><a class="btn ok big gp" id="gp" target="_blank" rel="noopener" data-ed="k10">Grupo de WhatsApp</a></div>
 </section>
 
@@ -1209,9 +1209,9 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   <div><dt>Soporte</dt><dd>24/7</dd></div>
 </dl>
 <div class="seals">
-  <div class="seal"><img id="s-shield" alt=""><span data-ed="k2">Compra Segura</span></div>
-  <div class="seal"><img id="s-bolt" alt=""><span data-ed="k3">Entrega rápida</span></div>
-  <div class="seal"><img id="s-check" alt=""><span data-ed="k4">Garantía Total</span></div>
+  <div class="seal"><img id="s-shield" alt="" aria-hidden="true"><span data-ed="k2">Compra Segura</span></div>
+  <div class="seal"><img id="s-bolt" alt="" aria-hidden="true"><span data-ed="k3">Entrega rápida</span></div>
+  <div class="seal"><img id="s-check" alt="" aria-hidden="true"><span data-ed="k4">Garantía Total</span></div>
 </div>
 <section class="service-flight" aria-label="Íconos de servicios">
   <div class="service-runway">
@@ -1262,9 +1262,9 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
       <div class="chips"><span data-ed="k22">Atención por WhatsApp</span><span data-ed="k23">Pago con QR / Yape</span><span data-ed="k24">Soporte con tu N.º de orden</span></div>
     </div>
     <div class="scene s2" aria-hidden="true">
-      <img class="sp cl1" id="t-cl1" alt="" style="left:6%;top:14px"><img class="sp cl2" id="t-cl2" alt="" style="top:60px">
-      <img class="sp a1 fl" id="t-a1" alt=""><img class="sp a2 fl" id="t-a2" alt="">
-      <img class="sp ph" id="t-ph" alt=""><img class="sp a3" id="t-a3" alt=""><img class="sp a4" id="t-a4" alt="">
+      <img class="sp cl1" id="t-cl1" alt="" aria-hidden="true" style="left:6%;top:14px"><img class="sp cl2" id="t-cl2" alt="" aria-hidden="true" style="top:60px">
+      <img class="sp a1 fl" id="t-a1" alt="" aria-hidden="true"><img class="sp a2 fl" id="t-a2" alt="" aria-hidden="true">
+      <img class="sp ph" id="t-ph" alt="" aria-hidden="true"><img class="sp a3" id="t-a3" alt="" aria-hidden="true"><img class="sp a4" id="t-a4" alt="" aria-hidden="true">
       <div class="gr"></div>
     </div>
   </div>
@@ -1597,7 +1597,7 @@ function categoryPixelImage(index){
     const artwork=index%10===0?categoryPixelArtwork(pixelShapes[index/10]):drawCategoryPixel(distinctPixelSymbols[index]||legacyCategoryEmojis[index]);
     categoryPixelCache.set(index,artwork);
   }
-  return `<img width="16" height="16" class="category-pixel" src="${categoryPixelCache.get(index)}" alt="">`;
+  return `<img width="16" height="16" class="category-pixel" src="${categoryPixelCache.get(index)}" alt="" aria-hidden="true">`;
 }
 function drawCategoryPixel(emoji){
   const canvas=document.createElement('canvas');
@@ -1667,7 +1667,7 @@ function tabs(){
   if(S.cat!=='all'&&!catalogHasProducts(S.cat)){S.cat='all';S.sub=''}
   if(S.sub&&!catalogHasProducts(S.cat,S.sub))S.sub='';
 
-  const buttons=CATS.filter(([key])=>key==='all'||catalogHasProducts(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img width="16" height="16" src="${spr(...CICON[iconKey])}" alt="">`:'')}${esc(l)}</button>`]);
+  const buttons=CATS.filter(([key])=>key==='all'||catalogHasProducts(key)).map(([k,l,emoji,iconKey=k])=>[k,`<button type="button" data-k="${esc(k)}" class="${S.cat===k?'on':''}" aria-pressed="${S.cat===k}">${chosenCategoryPixel(emoji)||(Object.hasOwn(CICON,iconKey)?`<img width="16" height="16" src="${spr(...CICON[iconKey])}" alt="" aria-hidden="true">`:'')}${esc(l)}</button>`]);
   renderCatalogRow($('#tabs'),buttons.find(([key])=>key==='all')?.[1]||'',buttons.filter(([key])=>key!=='all').map(([,html])=>html).join(''));
   const sb=(SUBS[S.cat]||[]).filter(sub=>catalogHasProducts(S.cat,sub));
   const row=$('#subs');
@@ -2277,7 +2277,7 @@ function doneM(o){ // Paso 4: notificación final
   <p>${o.late_checkout?'Pedido enviado a revisión manual. Adjunta tu comprobante en WhatsApp.':o.price>0?'Estado: pendiente de verificación.':'Te contactaremos por WhatsApp para la entrega.'}</p>
   ${o.price>0?`<p class="warn" style="margin-top:12px">📎 <b>Importante:</b> al abrir WhatsApp, adjunta la captura de tu voucher en el chat para que podamos verificar tu pago.</p>`:''}
   <div class="order-actions">
-    <a class="btn pri order-primary" target="_blank" rel="noopener" href="${waLink(o)}"><img src="${spr('phone')}" alt="">${o.price>0?'Adjuntar comprobante en WhatsApp':'Notificar por WhatsApp'} →</a>
+    <a class="btn pri order-primary" target="_blank" rel="noopener" href="${waLink(o)}"><img src="${spr('phone')}" alt="" aria-hidden="true">${o.price>0?'Adjuntar comprobante en WhatsApp':'Notificar por WhatsApp'} →</a>
     <button type="button" onclick="playPauseSound();mineM()">Ver mis compras</button>
     <button type="button" onclick="playPauseSound();closeM()">Cerrar</button>
   </div></div>`);
@@ -2304,7 +2304,7 @@ async function mineM(){
     const expired=hold.unavailable||Date.parse(hold.expires_at)<=Date.parse(hold.server_time);
     return `<div class="oc"><div class="bd"><b>${esc((hold.product||prod(hold.product_id)).n)}${hold.product?.planName?' · '+esc(hold.product.planName):''}</b><span>${money(hold.price)} · ${hold.unavailable?'Producto retirado':expired?'Reserva vencida':'Reserva vigente'}</span><button type="button" data-resume-checkout="${index}">${expired?'Ya pagué · Solicitar revisión':'Continuar pago'}</button></div></div>`;
   }).join('')}`:'';
-  modal(`<h2>🛍️ Mis Compras</h2>`+recovery+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt=""></div><div class="bd">
+  modal(`<h2>🛍️ Mis Compras</h2>`+recovery+(L.length?L.map(o=>{const p=prod(o.pid)||{};return `<div class="oc"><div class="im"><img src="${esc(p.img||'')}" alt="${esc(o.pn||p.n||'Producto comprado')}" decoding="async" loading="lazy"></div><div class="bd">
    <b>${esc(o.pn)}${o.plan_name?' · '+esc(o.plan_name):''}</b><span class="mu">${esc(o.cat)}${o.sub?' · '+esc(o.sub):''} · Orden ${esc(o.id)}</span>
    <span>${fdate(o.date)} · ${money(o.price)}</span>${o.extra?`<span class="mu">${esc(o.extra_label)}: ${esc(o.extra)}</span>`:''}
    <span class="st">${stLbl(o)}</span>${o.status=='rechazado'&&o.reason?`<span class="mu">Motivo: ${esc(o.reason)}</span>`:''}
@@ -2507,7 +2507,7 @@ async function loadPublishedCatalog(){
 const siteMenu=$('#site-menu'),siteMenuToggle=$('#site-menu-toggle');
 siteMenuToggle.addEventListener('click',()=>{
   playBlockSound();
-  const row=(href,icon,label,extra='',count=null,emoji='')=>`<a href="${href}" ${extra}><span class="site-menu-icon" aria-hidden="true">${chosenCategoryPixel(emoji)||`<img src="${spr(...icon)}" alt="">`}</span><span>${esc(label)}</span>${count==null?'':`<span class="site-menu-count">${count}</span>`}<span class="site-menu-arrow" aria-hidden="true">›</span></a>`;
+  const row=(href,icon,label,extra='',count=null,emoji='')=>`<a href="${href}" ${extra}><span class="site-menu-icon" aria-hidden="true">${chosenCategoryPixel(emoji)||`<img src="${spr(...icon)}" alt="" aria-hidden="true">`}</span><span>${esc(label)}</span>${count==null?'':`<span class="site-menu-count">${count}</span>`}<span class="site-menu-arrow" aria-hidden="true">›</span></a>`;
   const group=(label,rows)=>`<section class="site-menu-group"><h3>${label}</h3><div class="site-menu-list">${rows}</div></section>`;
   const categories=[...CATS.filter(([k])=>k!=='all'&&catalogHasProducts(k)),['all','Todo el catálogo']];
   $('#site-menu-links').innerHTML=group('General',row('#inicio',['bolt'],'Inicio'))+
