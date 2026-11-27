@@ -1,0 +1,14 @@
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(pixelify-14c3fa62e8b6ee42.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(pixelify-c67401df48ce6be0.ttf) format('truetype');
+}
