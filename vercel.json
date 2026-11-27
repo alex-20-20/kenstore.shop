@@ -29,6 +29,24 @@
           "value": "max-age=31536000"
         }
       ]
+    },
+    {
+      "source": "/store-assets/thumbs/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/store-assets/dragon-(.*).webp",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }
