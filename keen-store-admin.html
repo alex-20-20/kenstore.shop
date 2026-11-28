@@ -1066,7 +1066,6 @@ function admForm(id,duplicate=false){
   </div></div>
   <div class="g2"><div><label for="access-amount">Duración</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
   <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
-  <label for="ptg">Beneficios de la tarjeta</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
   <small class="mu">Descuento y stock se actualizan con el precio y las unidades.</small>
   </fieldset></section>
   <section class="editor-section"><h3>Precio, oferta y stock</h3><fieldset aria-label="Precio y disponibilidad">
@@ -1167,7 +1166,7 @@ async function admGuardar(){if(publishing)return;
   if(publishing)return;
   const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),warranty:v('desc-warranty').trim(),usage:v('desc-usage').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
-  const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
+  const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:old?.pills||[],p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:byPlayerId?{...playerIdOrderField}:askExtra?{l:xl,ph:v('pxp').trim()}:null};
   if(old?.promotion){
     if(Date.parse(old.promotion.end)>Date.now()&&old.promotion.price>=price)return toast('Ajusta o retira el descuento programado antes de reducir el precio habitual.');
