@@ -1237,7 +1237,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
     <h1 data-ed="k5">Tu mundo <span data-ed="k7">digital</span><br>al instante</h1>
     <p data-ed="k8">Streaming, juegos y más. Recibe tu acceso por WhatsApp.</p>
   </div>
-  <div class="dragon" aria-hidden="true"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp"></div>
+  <button class="dragon" id="hero-dragon" type="button" aria-label="Escuchar el rugido del dragón" title="Toca para escuchar mi rugido"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp" draggable="false"></button>
   <div class="cta"><a class="btn pri big" href="#catalogo" data-ed="k9">Ver catálogo <span class="catalog-cta-arrow" aria-hidden="true">→</span></a><a class="btn ok big gp" id="gp" target="_blank" rel="noopener" data-ed="k10">Grupo de WhatsApp</a></div>
 </section>
 
@@ -2091,6 +2091,72 @@ async function _play(fn){
 // Precalienta el contexto en el primer toque/clic para latencia cero
 document.addEventListener('pointerdown',()=>{_mctx()},{once:true,passive:true});
 
+
+/* Rugido de caricatura generado al pulsar: no descarga archivos de audio. */
+function synthesizeHeroDragonRoar(ctx){
+  const t=ctx.currentTime, duration=1.35;
+  const nodes=[], sources=[];
+  const keep=node=>(nodes.push(node),node);
+  const volume=keep(ctx.createGain());
+  volume.gain.setValueAtTime(0,t);
+  volume.gain.linearRampToValueAtTime(.32,t+.09);
+  volume.gain.linearRampToValueAtTime(.27,t+.4);
+  volume.gain.exponentialRampToValueAtTime(.001,t+duration);
+  volume.connect(ctx.destination);
+  const throat=keep(ctx.createBiquadFilter());
+  throat.type='lowpass';throat.Q.value=.8;
+  throat.frequency.setValueAtTime(650,t);
+  throat.frequency.linearRampToValueAtTime(1350,t+.2);
+  throat.frequency.exponentialRampToValueAtTime(280,t+duration);
+  throat.connect(volume);
+  for(const [type,ratio,level] of [['sawtooth',1,.3],['triangle',.51,.24]]){
+    const voice=keep(ctx.createOscillator()),gain=keep(ctx.createGain());
+    voice.type=type;gain.gain.value=level;
+    voice.frequency.setValueAtTime(105*ratio,t);
+    voice.frequency.exponentialRampToValueAtTime(155*ratio,t+.16);
+    voice.frequency.exponentialRampToValueAtTime(48*ratio,t+duration);
+    voice.connect(gain);gain.connect(throat);
+    voice.start(t);voice.stop(t+duration+.03);sources.push(voice);
+  }
+  const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*(duration+.05)),ctx.sampleRate);
+  const data=buffer.getChannelData(0);
+  let brown=0;
+  for(let i=0;i<data.length;i++){
+    const white=Math.random()*2-1;
+    brown=(brown+.04*white)/1.04;
+    data[i]=(brown*3+white*.45)*(.72+.28*Math.sin(2*Math.PI*27*i/ctx.sampleRate));
+  }
+  const breath=keep(ctx.createBufferSource()),breathFilter=keep(ctx.createBiquadFilter());
+  breath.buffer=buffer;breathFilter.type='bandpass';breathFilter.Q.value=.7;
+  breathFilter.frequency.setValueAtTime(950,t);
+  breathFilter.frequency.exponentialRampToValueAtTime(380,t+duration);
+  breath.connect(breathFilter);breathFilter.connect(volume);
+  breath.start(t);breath.stop(t+duration+.03);sources.push(breath);
+  // Libera el grafo una vez terminadas todas las fuentes.
+  let ended=0;
+  for(const source of sources)source.onended=()=>{
+    if(++ended===sources.length)nodes.forEach(node=>node.disconnect());
+  };
+}
+(function setupHeroDragon(){
+  const dragon=document.getElementById('hero-dragon');
+  if(!dragon)return;
+  let busy=false;
+  dragon.addEventListener('click',()=>{
+    if(busy)return;
+    busy=true;
+    // También se libera si el navegador no admite o no permite el audio.
+    let timer=setTimeout(()=>{busy=false;dragon.classList.remove('is-roaring')},1800);
+    _play(ctx=>{
+      if(!dragon.isConnected)return;
+      synthesizeHeroDragonRoar(ctx);
+      dragon.classList.add('is-roaring');
+      clearTimeout(timer);
+      timer=setTimeout(()=>{busy=false;dragon.classList.remove('is-roaring')},1450);
+    });
+  });
+})();
+
 function _note(ctx,type,freq,start,dur,vol){
   const o=ctx.createOscillator(),g=ctx.createGain();
   o.connect(g);g.connect(ctx.destination);
@@ -2754,67 +2820,6 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
   const assets=[$('#inicio .dragon .dr')];
   let finished=0,ready=false,shown=0,lastFrame;
 
-  // Rugido del dragón al iniciar la carga
-  function playDragonRoar(){_play(ctx=>{
-    const t=ctx.currentTime;
-    const o1=ctx.createOscillator(),g1=ctx.createGain();
-    o1.type='sawtooth';
-    o1.frequency.setValueAtTime(180,t);
-    o1.frequency.exponentialRampToValueAtTime(60,t+0.6);
-    g1.gain.setValueAtTime(0,t);
-    g1.gain.linearRampToValueAtTime(0.22,t+0.05);
-    g1.gain.exponentialRampToValueAtTime(0.001,t+0.65);
-    o1.connect(g1);g1.connect(ctx.destination);
-    o1.start(t);o1.stop(t+0.66);
-    const o2=ctx.createOscillator(),g2=ctx.createGain();
-    o2.type='square';
-    o2.frequency.setValueAtTime(320,t+0.1);
-    o2.frequency.exponentialRampToValueAtTime(160,t+0.5);
-    g2.gain.setValueAtTime(0.10,t+0.1);
-    g2.gain.exponentialRampToValueAtTime(0.001,t+0.55);
-    o2.connect(g2);g2.connect(ctx.destination);
-    o2.start(t+0.1);o2.stop(t+0.56);
-    const o3=ctx.createOscillator(),g3=ctx.createGain();
-    o3.type='sawtooth';
-    o3.frequency.setValueAtTime(90,t+0.5);
-    o3.frequency.exponentialRampToValueAtTime(300,t+0.75);
-    g3.gain.setValueAtTime(0.14,t+0.5);
-    g3.gain.exponentialRampToValueAtTime(0.001,t+0.78);
-    o3.connect(g3);g3.connect(ctx.destination);
-    o3.start(t+0.5);o3.stop(t+0.79);
-  })}
-
-  // Rugido de salida épico al terminar la carga
-  function playDragonFinish(){_play(ctx=>{
-    const t=ctx.currentTime;
-    const o1=ctx.createOscillator(),g1=ctx.createGain();
-    o1.type='sawtooth';
-    o1.frequency.setValueAtTime(220,t);
-    o1.frequency.exponentialRampToValueAtTime(50,t+0.9);
-    g1.gain.setValueAtTime(0.24,t);
-    g1.gain.exponentialRampToValueAtTime(0.001,t+0.95);
-    o1.connect(g1);g1.connect(ctx.destination);
-    o1.start(t);o1.stop(t+0.96);
-    const o2=ctx.createOscillator(),g2=ctx.createGain();
-    o2.type='square';
-    o2.frequency.setValueAtTime(600,t);
-    o2.frequency.exponentialRampToValueAtTime(200,t+0.3);
-    g2.gain.setValueAtTime(0.14,t);
-    g2.gain.exponentialRampToValueAtTime(0.001,t+0.32);
-    o2.connect(g2);g2.connect(ctx.destination);
-    o2.start(t);o2.stop(t+0.33);
-    [[523,1.0],[659,1.12],[784,1.24],[1047,1.36]].forEach(([f,d])=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.type='square';o.frequency.value=f;
-      g.gain.setValueAtTime(0.15,t+d);
-      g.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
-      o.connect(g);g.connect(ctx.destination);
-      o.start(t+d);o.stop(t+d+0.15);
-    });
-  })}
-
-  playDragonRoar();
-
   const deadline=setTimeout(()=>{ready=true},600);
   Promise.allSettled(assets.map(image=>{
     image.loading='eager';
@@ -2829,7 +2834,6 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
     const text=Math.floor(shown)+'%';
     if(percent.textContent!==text)percent.textContent=text;
     if(shown<100){requestAnimationFrame(tick);return}
-    playDragonFinish();
     if(returnToStoreStart)window.scrollTo({left:0,top:0,behavior:'instant'});
     // prefers-reduced-motion: se mantiene la animación de salida siempre
     setTimeout(()=>{
@@ -2901,4 +2905,13 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
  .catalog-stats+.seals{padding:12px 14px;gap:5px}
  .catalog-stats+.seals .seal{font-size:clamp(.59rem,2vw,.72rem)!important;gap:4px}
 }
+
+/* Dragón interactivo: mantiene el espacio de la portada al rugir. */
+#inicio button.dragon{width:100%;border:0!important;border-radius:16px;box-shadow:none!important;background:transparent;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transform:none;transition:none}
+#inicio button.dragon:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+#inicio button.dragon:hover,#inicio button.dragon:active{transform:none;box-shadow:none!important;background:transparent}
+#inicio button.dragon .dr{pointer-events:none;user-select:none;transform-origin:50% 85%}
+@keyframes ken-hero-roar{0%,100%{transform:translateY(0) scale(1) rotate(0)}14%{transform:translateY(-5px) scale(1.055) rotate(-1deg)}26%{transform:translateY(-5px) scale(1.055) rotate(1.3deg)}40%{transform:translateY(-4px) scale(1.05) rotate(-1.3deg)}56%{transform:translateY(-3px) scale(1.04) rotate(1deg)}72%{transform:translateY(-1px) scale(1.025) rotate(-.5deg)}}
+#inicio .dragon.is-roaring .dr{animation:ken-hero-roar 1.35s ease-in-out}
+@media(prefers-reduced-motion:reduce){#inicio .dragon.is-roaring .dr{animation:none}}
 </style>
