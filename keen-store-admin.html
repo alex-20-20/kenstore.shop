@@ -948,7 +948,6 @@ function admCatSel(selected=[]){
       <option value="">—</option>
       ${subs.map(name=>`<option value="${esc(name)}"${members[index]===name?' selected':''}>${esc(name)}</option>`).join('')}
     </select></label>`).join(''):'<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
-  $('#psn').value='';
   admSubLimit();
 }
 function admSubLimit(){
@@ -1080,7 +1079,6 @@ function admForm(id,duplicate=false){
     <div class="product-sub-heading"><strong id="product-subs-title">Subcategorías</strong>
     <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
     <div id="ps" onchange="admSubLimit()"></div>
-    <label for="psn">Nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
   </div>
   <details class="editor-optional product-extra-categories"><summary>Categorías adicionales (opcional)</summary><div class="extra-category-fields">
     ${[0,1,2].map(slot=>`<div>
@@ -1164,12 +1162,7 @@ async function admGuardar(){if(publishing)return;
   const outOfStock=v('pstock')==='out';
   const st=outOfStock?0:old?(old.st===0?(old.previousStock??null):old.st):null;
   const members=admCheckedSubs();
-  const sub=v('psn').trim();
-  if(sub){
-    const existing=admSubs(c).find(name=>name.toLowerCase()===sub.toLowerCase())||sub;
-    if(!members.includes(existing))members.push(existing);
-  }
-  if(members.length>4)return productEditorError('Selecciona hasta cuatro subcategorías.','#psn');
+  if(members.length>4)return productEditorError('Selecciona hasta cuatro subcategorías.','#ps');
   const extraCategories=readExtraCategories();
   if(new Set([c,...extraCategories.map(item=>item.category)]).size!==extraCategories.length+1)return toast('Elige categorías distintas.');
   if(extraCategories.some(item=>item.subs.length>4))return toast('Selecciona hasta cuatro subcategorías por categoría.');
