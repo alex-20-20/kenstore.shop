@@ -1805,9 +1805,6 @@ async function refreshAvailableStock(){
       const card=button.closest('.card');
       const quantity=product.st===0?0:availableStock[product.id]??product.st;
       const out=quantity===0, low=quantity>0&&quantity<=5;
-      const badge=card.querySelector('.stk');
-      badge.className='stk'+(out?' out':low?' low':'');
-      badge.textContent=catalogStockLabel(product,quantity);
       card.classList.toggle('sold',out);
       button.disabled=out;
       button.textContent=out?'Agotado':storePlans(product).length?'Ver planes':product.c==='Regalos'?'Reclamar':'Comprar';
@@ -1925,10 +1922,8 @@ function grid(animate=false){
     const out=quantity===0, low=quantity>0&&quantity<=5, sale=hasCatalogDiscount(p);
     const plans=storePlans(product);
     const labels=[['type',p.t],['duration',plans.length?plans.length+' '+(plans.length===1?'plan':'planes'):accessDurationLabel(p.accessDuration)],['benefit',cardBenefit(p)]].filter(([,label])=>label);
-    const stock=`<span class="stk${out?' out':low?' low':''}">${esc(catalogStockLabel(p,quantity))}</span>`;
-    const discount=sale?`-${Math.round((1-p.p/p.po)*100)}%`:'';
     const offerEnd=offer?Date.parse(product.promotion.end):0;
-    return `<article class="card${out?' sold':''}"><div class="im"><img width="400" height="300" class="catalog-image-pending"${cardImageSources(p.img)} src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<firstRow?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA ${discount}</span>`:sale?`<span class="off">${discount}</span>`:''}${stock}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
+    return `<article class="card${out?' sold':''}"><div class="im"><img width="400" height="300" class="catalog-image-pending"${cardImageSources(p.img)} src="${esc(p.img)}" alt="${esc(p.n)}" decoding="async" loading="${index<firstRow?'eager':'lazy'}">${offer?`<span class="offer-countdown" data-offer-end="${offerEnd}">${offerTimeLeft(offerEnd,now)}</span><span class="offer-label" data-offer-animation="${esc(product.id)}-${offerEnd}">OFERTA</span>`}<button class="inf" data-i="${p.id}" aria-label="Ver detalles de ${esc(p.n)}" title="Ver detalles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.5-1.3 1-1.3 2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></button></div><div class="bd">
       <span class="cat">${esc(displayProductPlacement(p))}</span>
       <h3>${esc(p.n)}</h3>
       ${labels.length?`<div class="pills">${labels.map(([kind,label])=>`<i class="product-tag product-tag--${kind}" title="${esc(label)}">${esc(label)}</i>`).join('')}</div>`:''}
