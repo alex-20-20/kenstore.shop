@@ -1292,8 +1292,7 @@ function admForm(id,duplicate=false){
   <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado con PIN">${esc(description.access)}</textarea>
   <small class="mu">Precio, stock, tipo y duración ya se muestran automáticamente. Escribe aquí solo lo que aporta información nueva.</small>
   </fieldset></section><section class="editor-section"><h3>Ficha técnica y condiciones</h3><fieldset aria-label="Ficha técnica y condiciones">
-  <div class="g2"><div><label for="desc-warranty">Garantía <span class="mu">(opcional)</span></label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo"></div>
-  <div><label for="desc-usage">Uso <span class="mu">(si aporta algo distinto al tipo)</span></label><input id="desc-usage" maxlength="70" value="${esc(description.usage&&description.usage.trim().toLocaleLowerCase('es')!==String(p.t||'').trim().toLocaleLowerCase('es')?description.usage:'')}" placeholder="Ej. 1 dispositivo privado"></div></div>
+  <label for="desc-warranty">Garantía <span class="mu">(opcional)</span></label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo">
   <details class="editor-optional"><summary>Más opciones</summary>
   <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
@@ -1379,7 +1378,7 @@ async function admGuardarDraft(){if(publishing)return;
     if(imageUrl){ADM.img=imageUrl;clearImagePreview();$('#pv').src=imageUrl}
   }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
   if(publishing)return;
-  const descriptionSpec={access:v('desc-access').trim(),warranty:v('desc-warranty').trim(),usage:v('desc-usage').trim(),rule:v('desc-rule').trim()};
+  const descriptionSpec={access:v('desc-access').trim(),warranty:v('desc-warranty').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:old?.pills||[],p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:byPlayerId?{...playerIdOrderField}:askExtra?{l:xl,ph:v('pxp').trim()}:null};
