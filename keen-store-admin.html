@@ -593,6 +593,10 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .plan-editor-row input,.plan-editor-row select{width:100%;min-width:0;padding:7px 6px;font-size:.82rem}
 .plan-editor-row>button{grid-column:1/-1;justify-self:start;padding:5px 10px;font-size:.76rem}
 @media(max-width:520px){.plan-editor-row{grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(0,.8fr));gap:4px;padding:6px}.plan-editor-row>label{font-size:.62rem;overflow-wrap:anywhere}.plan-editor-row input,.plan-editor-row select{padding:6px 3px;font-size:.72rem}}
+
+.product-editor .editor-actions{flex-wrap:wrap}
+.product-save-error{flex:0 0 100%;margin:0 0 6px;padding:8px 10px;border:1px solid #b3261e44;border-radius:8px;background:#b3261e09;color:var(--ac);font-size:.82rem;line-height:1.4}
+.product-save-error[hidden]{display:none}
 </style></head>
 <body>
 <header>
@@ -650,22 +654,33 @@ const pl=p=>[...(p.t?[p.t]:[]),...(p.pills||[])];   // el tipo aparece como prim
 let publishing=false;
 let publishedSite;
 let catalogVersion;
+function adminPublishError(message){
+  const box=$('#product-save-error');
+  if(box){box.textContent=message;box.hidden=false}
+  toast(message);
+}
 async function admSave(){
-  if(!ADM.ok||publishing)return false;
+  if(publishing)return false;
+  if(!ADM.ok){adminPublishError('Tu sesión no está lista. Vuelve a entrar al panel para publicar.');return false}
   publishing=true;
-  const draft=JSON.parse(JSON.stringify({products:P,categories:CATS,subcategories:SUBS,site:SITE}));
   try{
+    const draft=JSON.parse(JSON.stringify({products:P,categories:CATS,subcategories:SUBS,site:SITE}));
     const table=adminClient.from('store_catalog');
     const version=new Date().toISOString();
     const request=catalogVersion
       ? table.update({...draft,updated_at:version}).eq('id',1).eq('updated_at',catalogVersion)
       : table.insert({id:1,...draft,updated_at:version});
     const saved=await kenResult(request.select('updated_at').maybeSingle());
-    if(!saved)throw new Error('Otra sesión actualizó el catálogo.');
+    if(!saved){adminPublishError('Otra sesión actualizó el catálogo. Conserva tus cambios y recarga el panel antes de guardar.');return false}
     catalogVersion=saved.updated_at;
     publishedSite=draft.site;
-  }catch(e){
-    toast('No se pudo publicar. Recarga el panel si hay cambios de otra sesión.');
+  }catch(error){
+    console.error('Error al publicar el catálogo:',error);
+    const code=String(error?.code||'');
+    const message=code==='42501'||code==='PGRST301'||error?.status===401||error?.status===403
+      ? 'Tu sesión no permite publicar. Vuelve a entrar con la cuenta administradora.'
+      : 'No se pudo publicar. Tus cambios siguen en el formulario. Revisa la conexión e intenta de nuevo.';
+    adminPublishError(message);
     return false;
   }finally{publishing=false}
   if(S.cat!='all'&&!CATS.some(c=>c[0]==S.cat)){S.cat='all';S.sub=''}
@@ -1005,7 +1020,7 @@ function admSubs(c){
   return [...new Set([...(SUBS[c]||[]),...P.flatMap(productPlacements).filter(p=>p.category===c).flatMap(p=>p.subs)])];
 }
 function admCheckedSubs(){
-  return [...$('#product-subcategory-options [data-product-subcategory]:checked')].map(input=>input.value);
+  return [...document.querySelectorAll('#product-subcategory-options [data-product-subcategory]:checked')].map(input=>input.value);
 }
 function productCategoryPickerMarkup(categories,product){
   const validExtra=(Array.isArray(product.extraCategories)?product.extraCategories:[]).filter(item=>categories.includes(item.category));
@@ -1054,21 +1069,15 @@ function admCatSel(selected=[]){
 function admSubLimit(changed){
   const inputs=[...document.querySelectorAll('#product-subcategory-options [data-product-subcategory]')];
   let selected=inputs.filter(input=>input.checked);
-  if(selected.length>4){changed.checked=false;selected=inputs.filter(input=>input.checked);toast('Puedes elegir hasta cuatro subcategorías.');}
+  if(selected.length>4){
+    if(changed)changed.checked=false;
+    else selected.slice(4).forEach(input=>input.checked=false);
+    selected=inputs.filter(input=>input.checked);
+    toast('Puedes elegir hasta cuatro subcategorías.');
+  }
   for(const input of inputs)input.disabled=selected.length>=4&&!input.checked;
   const summary=$('#product-subcategory-summary');
   if(summary)summary.textContent=selected.length?selected.map(input=>input.value).join(' · '):'Elige subcategorías';
-}
-function admExtraSubs(slot,selected=[]){
-  const options=$('#extra-subs-'+slot);
-  const category=v('extra-cat-'+slot);
-  options.innerHTML=category?admSubs(category).map(sub=>`<label><input type="checkbox" value="${esc(sub)}"${selected.includes(sub)?' checked':''}> ${esc(sub)}</label>`).join(''):'';
-  admExtraLimit(slot);
-}
-function admExtraLimit(slot){
-  const inputs=[...$('#extra-subs-'+slot).querySelectorAll('input')];
-  const total=inputs.filter(input=>input.checked).length;
-  for(const input of inputs)input.disabled=total>=4&&!input.checked;
 }
 function readExtraCategories(){
   const primary=v('pc');
@@ -1140,22 +1149,28 @@ function addProductPlan(){
 }
 function readProductPlans(){
   const rows=[...document.querySelectorAll('.plan-editor-row')];
-  const plans=rows.map(row=>{
-    const field=key=>row.querySelector(`[data-plan="${key}"]`);
+  const names=new Set();
+  return rows.map((row,index)=>{
+    const field=key=>row.querySelector('[data-plan="'+key+'"]');
+    const invalid=(message,key)=>{const error=new Error('Plan '+(index+1)+': '+message);error.field=field(key);throw error};
     const name=field('name').value.trim(),price=field('price').valueAsNumber;
     const previous=field('previous').value===''?null:field('previous').valueAsNumber;
     const amount=field('amount').valueAsNumber,unit=field('unit').value;
-    if(!name||!(price>0)||!field('price').checkValidity()||solesToUsdt(price)===null||
-       (previous!==null&&(!(previous>price)||!field('previous').checkValidity()))||
-       !Number.isInteger(amount)||!field('amount').checkValidity())throw new Error('Completa el nombre, precio y duración de cada plan. El precio anterior debe ser mayor.');
+    if(!name)invalid('escribe el nombre.','name');
+    const nameKey=name.toLocaleLowerCase('es');
+    if(names.has(nameKey))invalid('usa un nombre distinto para cada plan.','name');
+    names.add(nameKey);
+    if(!(price>0)||!field('price').checkValidity()||solesToUsdt(price)===null)invalid('ingresa un precio mayor que cero con hasta dos decimales.','price');
+    if(previous!==null&&(!(previous>price)||!field('previous').checkValidity()))invalid('el precio anterior debe ser mayor al precio del plan.','previous');
+    if(!Number.isSafeInteger(amount)||!field('amount').checkValidity()||amount<1||amount>9999)invalid('indica una duración entre 1 y 9999.','amount');
+    if(!Object.hasOwn(ACCESS_UNITS,unit))invalid('elige días, meses o años.','unit');
     return {id:row.dataset.planId,name,price,previous,duration:{amount,unit}};
   });
-  if(new Set(plans.map(p=>p.name.toLocaleLowerCase('es'))).size!==plans.length)throw new Error('Usa un nombre distinto para cada plan.');
-  return plans;
 }
 function admForm(id,duplicate=false){
   ADM.tab='prod';
   const source=id?prod(id):{};
+  if(!source)return toast('Este producto ya no está en el catálogo. Vuelve a la lista.');
   const p=duplicate?{...source,n:source.n+' (copia)',paused:true}:source,cs=CATS.filter(c=>c[0]!='all').map(c=>c[0]);ADM.img=p.img||'';ADM.id=duplicate?0:id||0;ADM.paused=Boolean(p.paused);
   const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2></div>
@@ -1195,7 +1210,6 @@ function admForm(id,duplicate=false){
     <label for="pu"><span>USDT</span><input id="pu" type="text" readonly aria-describedby="product-price-help" value="${solesToUsdt(p.p)?.toFixed(2)??''}"></label>
     <small id="product-price-help" class="mu">S/ 0 = gratis · USDT automático</small>
   </div>
-</div>
   </fieldset><fieldset><legend>Planes</legend>
     <p class="mu">Stock compartido. Las ofertas se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
@@ -1213,27 +1227,52 @@ function admForm(id,duplicate=false){
   <details class="editor-optional"><summary>Más opciones</summary>
   <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
-  </fieldset></section></div><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
+  </fieldset></section></div></details></div><div class="bar2 editor-actions"><p id="product-save-error" class="product-save-error" role="alert" hidden></p><button type="button" class="ok" onclick="admGuardar()">Guardar producto</button><button type="button" onclick="admList()">Cancelar</button></div></div>`,'big adm');
   if(ADM.img)$('#pv').src=ADM.img;
-  if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
   admCatSel(productSubcategories(p));
-  for(const slot of [0,1,2])admExtraSubs(slot,p.extraCategories?.[slot]?.subs||[]);
   admTypeFields();
   updatePlanEditor();
 }
 function productEditorError(message,field){
-  const input=$(field);
-  input?.focus();
+  const errorBox=$('#product-save-error');
+  if(errorBox){errorBox.textContent=message;errorBox.hidden=false}
+  const input=typeof field==='string'?$(field):field;
+  if(input){
+    for(let details=input.closest('details');details;details=details.parentElement?.closest('details'))details.open=true;
+    input.focus();
+  }
   toast(message);
 }
-async function admGuardar(){if(publishing)return;
+let productSaving=false;
+async function admGuardar(){
+  if(publishing||productSaving)return;
+  const editor=$('.product-editor');
+  if(!editor)return;
+  productSaving=true;
+  const buttons=[...editor.querySelectorAll('.editor-actions button')];
+  const previousDisabled=buttons.map(button=>button.disabled);
+  const errorBox=$('#product-save-error');
+  if(errorBox){errorBox.textContent='';errorBox.hidden=true}
+  editor.setAttribute('aria-busy','true');
+  buttons.forEach(button=>button.disabled=true);
+  try{return await admGuardarDraft()}
+  catch(error){
+    console.error('Error al guardar el producto:',error);
+    productEditorError('No se pudo guardar. Tus datos siguen en el formulario; intenta de nuevo.');
+  }finally{
+    productSaving=false;
+    editor.removeAttribute('aria-busy');
+    buttons.forEach((button,index)=>button.disabled=previousDisabled[index]);
+  }
+}
+async function admGuardarDraft(){if(publishing)return;
   const imageInput=$('#pfile');
   if(imageInput.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
   const n=v('pn').trim(),c=v('pc');
   if(!n)return productEditorError('Escribe el nombre del producto.','#pn');
   if(!CATS.some(entry=>entry[0]===c))return productEditorError('Elige una categoría existente.','#pc');
   let plans;
-  try{plans=readProductPlans()}catch(error){return productEditorError(error.message,'.plan-editor-row input')}
+  try{plans=readProductPlans()}catch(error){return productEditorError(error.message,error.field||'.plan-editor-row input')}
   const priceField=$('#pp'),u=solesToUsdt(plans[0]?.price??priceField.value);
   if(!plans.length&&(u===null||!priceField.checkValidity()))return productEditorError('Ingresa un precio válido con hasta dos decimales (0 = gratis).','#pp');
   const price=plans[0]?.price??Number(priceField.value);
