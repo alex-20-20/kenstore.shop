@@ -2552,7 +2552,12 @@ function compactDetailWarranty(text){
 function normalizeDetailValue(value){
   return String(value||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('es').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 }
-function compactProductDetail(product){
+function productDescriptionBenefits(product){
+  if(Array.isArray(product.descriptionSpec?.benefits)){
+    return product.descriptionSpec.benefits.map(item=>compactDetailText(item,70)).filter(Boolean)
+      .filter((item,index,items)=>items.findIndex(other=>normalizeDetailValue(other)===normalizeDetailValue(item))===index).slice(0,2);
+  }
+
   const spec=product.descriptionSpec||{},raw=String(product.i||product.d||'').replace(/\r\n?/g,'\n');
   const sections=productDetailSections(raw),lines=raw.split('\n').map(line=>line.trim()).filter(Boolean);
   const summaryLines=sections.intro.split('\n').map(line=>line.trim())
@@ -2573,6 +2578,20 @@ function compactProductDetail(product){
       (warranty&&key.includes(normalizeDetailValue(warranty)))||/^(?:duracion|entrega|garantia|condiciones)(?:\s|$)/u.test(key);
     return Boolean(key)&&!repeatsSummary&&!repeatsFact&&array.findIndex(other=>normalizeDetailValue(compactDetailText(other,70))===key)===index;
   }).slice(0,2);
+  return benefits;
+}
+
+function compactProductDetail(product){
+  const spec=product.descriptionSpec||{},raw=String(product.i||product.d||'').replace(/\r\n?/g,'\n');
+  const sections=productDetailSections(raw),lines=raw.split('\n').map(line=>line.trim()).filter(Boolean);
+  const summaryLines=sections.intro.split('\n').map(line=>line.trim())
+    .filter(line=>line&&!/^\*\*[^*]+\*\*$/u.test(line)&&!/^\*\*?(?:descripci[oó]n|detalle)\b/iu.test(line));
+  const summary=compactDetailText(spec.access||summaryLines[0]||product.d||'',155);
+  const duration=accessDurationLabel(product.accessDuration)
+    ||raw.match(/\bduraci[oó]n\s*:\s*(\d+\s*(?:d[ií]as?|mes(?:es)?|a[nñ]os?))/iu)?.[1]||'';
+  const tags=(Array.isArray(product.pills)?product.pills:[]).map(tag=>String(tag||'').trim()).filter(Boolean);
+  const warranty=compactDetailText(spec.warranty||compactDetailWarranty([raw,spec.rule,tags.join(' ')].join('\n')),70);
+  const benefits=productDescriptionBenefits(product);
   const ruleRaw=spec.rule||lines.find(line=>/^⚠️/u.test(line))?.replace(/^⚠️\s*/u,'')||sections.conditions.split(/[\n•▪●]+/u).map(item=>item.trim()).find(Boolean)||'';
   const warrantyKey=normalizeDetailValue(warranty);
   const noteText=ruleRaw.split(/(?<=[.!?])\s*/u).filter(part=>{
