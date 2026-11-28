@@ -1219,7 +1219,7 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
 
 <div id="ld"><div class="bw"><div id="ldd" class="ldd" aria-hidden="true"><div class="dbob"><img class="dt" alt="" aria-hidden="true" src="store-assets/dragon-a18dd1b86448e3da.webp"><img class="db" alt="" aria-hidden="true" src="store-assets/dragon-c6ef0dde4a557043.webp"><img class="dw" alt="" aria-hidden="true" src="store-assets/dragon-cbb9af8b9a1541ab.webp"><i class="deye"></i><i class="df f1"></i><i class="df f2"></i><i class="df f3"></i></div></div><div class="bar"><i id="bi"></i></div></div><div id="pc">0%</div></div>
 
-<header>
+<header class="store-shell-header">
   <div class="brand"><button class="site-menu-toggle" id="site-menu-toggle" type="button" aria-label="Menú de navegación" aria-controls="site-menu" aria-expanded="false"><span></span><span></span><span></span></button><span class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span></div>
   <dialog id="site-menu" aria-labelledby="site-menu-title">
     <div class="site-menu-head"><span id="site-menu-title" class="brand-wordmark" data-ed="k1">Ken <span class="brand-accent">Store</span></span><button class="site-menu-close" type="button" aria-label="Cerrar menú" autofocus>×</button></div>
@@ -1231,26 +1231,28 @@ a[href="#catalogo"][data-ed]:active .catalog-cta-arrow{transform:translateX(4px)
   <div id="um" role="menu"></div>
 </header>
 
+<div class="store-front-stage">
 <section class="hero" id="inicio">
   <div class="hero-copy">
     <span class="hero-eyebrow">KEN STORE · CATÁLOGO DIGITAL</span>
-    <h1 data-ed="k5">Tu mundo <span data-ed="k7">digital</span><br>al mejor precio</h1>
-    <p data-ed="k8">Streaming, juegos y más. Recibe tu acceso por WhatsApp.</p>
+    <h1 data-ed="k5"><span class="hero-headline">Tu mundo <span data-ed="k7">digital</span></span><span class="hero-price-banner"><span class="hero-price-line">al mejor precio</span></span></h1>
+    <p data-ed="k8">Streaming, juegos, IA y más. Recibe tu acceso por WhatsApp de forma rápida y segura.</p>
   </div>
-  <button class="dragon" id="hero-dragon" type="button" aria-label="Escuchar el rugido del dragón" title="Toca para escuchar mi rugido"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp" draggable="false"></button>
+  <button class="dragon" id="hero-dragon" type="button" aria-label="Escuchar el rugido del dragón" title="Toca para escuchar mi rugido"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp" draggable="false"><span class="dragon-orbit" aria-hidden="true"></span><span class="dragon-pedestal" aria-hidden="true"></span></button>
   <div class="cta"><a class="btn pri big" href="#catalogo" data-ed="k9">Ver catálogo <span class="catalog-cta-arrow" aria-hidden="true">→</span></a><a class="btn ok big gp" id="gp" target="_blank" rel="noopener" data-ed="k10">Grupo de WhatsApp</a></div>
 </section>
 
 <dl class="catalog-stats" aria-label="Datos de la tienda">
-  <div><dt>Clientes</dt><dd>800+</dd></div>
-  <div><dt>Servicios</dt><dd>30+</dd></div>
-  <div><dt>Satisfacción</dt><dd>99%</dd></div>
-  <div><dt>Soporte</dt><dd>24/7</dd></div>
+  <div><svg class="stat-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><dt>Clientes</dt><dd>800+</dd></div>
+  <div><svg class="stat-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8l10-5ZM2 12l10 5 10-5M2 16l10 5 10-5"/></svg><dt>Servicios</dt><dd>30+</dd></div>
+  <div><svg class="stat-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3L5.8 21 7 14.2 2 9.3l6.9-1L12 2Z"/></svg><dt>Satisfacción</dt><dd>99%</dd></div>
+  <div><svg class="stat-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3M21 15v3a3 3 0 0 1-3 3h-4"/><rect x="2" y="11" width="4" height="7" rx="2"/><rect x="18" y="11" width="4" height="7" rx="2"/></svg><dt>Soporte</dt><dd>24/7</dd></div>
 </dl>
 <div class="seals">
-  <div class="seal"><img id="s-shield" alt="" aria-hidden="true"><span data-ed="k2">Compra Segura</span></div>
-  <div class="seal"><img id="s-bolt" alt="" aria-hidden="true"><span data-ed="k3">Entrega rápida</span></div>
-  <div class="seal"><img id="s-check" alt="" aria-hidden="true"><span data-ed="k4">Garantía Total</span></div>
+  <div class="seal"><svg class="trust-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4v6c0 5-5 8-9 10-4-2-9-5-9-10V6l9-4Z"/><path d="m8 12 3 3 5-6"/></svg><span data-ed="k2">Compra<br>segura</span></div>
+  <div class="seal"><svg class="trust-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></svg><span data-ed="k3">Entrega<br>rápida</span></div>
+  <div class="seal"><svg class="trust-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3 2 3.5.5.5 3.5 2 4-2 3-.5 3.5-3.5.5-3 2-3-2-3.5-.5L5 15l-2-3 2-4 .5-3.5L9 4l3-2Z"/><path d="m8 12 3 3 5-6"/></svg><span data-ed="k4">Garantía<br>total</span></div>
+</div>
 </div>
 <section class="service-flight" aria-label="Íconos de servicios">
   <div class="service-runway">
@@ -2932,4 +2934,87 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
 .det.compact-detail .detail-spec-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:none}
 .det.compact-detail .detail-spec-grid>.detail-spec{grid-area:auto}
 .det.compact-detail .detail-spec-grid>.detail-spec:only-child{grid-column:1/-1}
+
+/* Ken Store: portada angular roja y negra, inspirada en la referencia. */
+body>.store-shell-header{isolation:isolate;position:sticky;top:0;min-height:56px;flex-wrap:nowrap;gap:10px;padding:8px clamp(14px,3vw,32px);background:#faf9f8;border-top:4px solid #151313;border-bottom:0;box-shadow:0 2px 7px #1c1c1c12}
+.store-shell-header::before,.store-shell-header::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+.store-shell-header::before{background:#df0719;clip-path:polygon(0 0,77% 0,71% 32%,61% 32%,54% 100%,0 100%)}
+.store-shell-header::after{background:linear-gradient(115deg,#111 15%,#211717);clip-path:polygon(0 0,75.8% 0,70% 26%,60% 26%,53% 94%,0 94%)}
+.store-shell-header .brand{color:#fff;gap:10px;flex:1;min-width:0}
+.store-shell-header .brand>.brand-wordmark{position:relative;color:#fff;font-size:clamp(1.25rem,3vw,1.8rem);letter-spacing:0;line-height:1;-webkit-text-stroke:.3px currentColor;text-shadow:0 2px 0 #000}
+.store-shell-header .brand-wordmark .brand-accent{color:#e5091c}
+.store-shell-header .brand>.brand-wordmark::before{content:"";position:absolute;left:12%;top:-10px;width:15px;height:11px;background:#efb73e;clip-path:polygon(0 15%,28% 45%,50% 0,72% 45%,100% 15%,83% 100%,17% 100%)}
+.store-shell-header .brand .site-menu-toggle{flex:none;width:32px;height:32px;border:1px solid #ffffff55!important;border-radius:8px;background:linear-gradient(#393737,#181818);box-shadow:0 2px 3px #0006!important;color:#fff}
+.store-shell-header .brand .site-menu-toggle span{width:15px}
+.store-shell-header #nav{flex:0 0 auto;padding:2px;overflow:visible}
+.store-shell-header #nav .av{width:33px;height:33px;min-height:33px;border:1px solid #fff!important;border-radius:50%;background:linear-gradient(#ec1524,#b0000b);box-shadow:0 2px 5px #80000035!important;color:#fff;font-size:1rem}
+.store-shell-header #nav .header-login{min-height:33px;padding:6px 10px;border:1px solid #d40918!important;background:#fff;color:#b70c16;font-size:.74rem;box-shadow:none!important;border-radius:8px}
+.store-front-stage{position:relative;isolation:isolate;max-width:1180px;margin:0 auto;padding:0 18px 16px;overflow:hidden;background:repeating-linear-gradient(135deg,transparent 0 72px,#c9132110 72px 96px,transparent 96px 164px),linear-gradient(125deg,#faf8f8,#fff 50%,#f6f1f1)}
+.store-front-stage::before,.store-front-stage::after{content:"";position:absolute;z-index:-1;pointer-events:none;width:95px;height:360px;background:linear-gradient(90deg,transparent 0 15%,#e0001630 15% 28%,#faf8f8 28% 35%,#d3091a 35% 54%,#ff8891 54% 61%,transparent 61%);transform:rotate(46deg)}
+.store-front-stage::before{left:-72px;top:-100px}
+.store-front-stage::after{right:-58px;top:120px;transform:rotate(46deg) scaleX(-1)}
+.store-front-stage #inicio.hero{position:relative;isolation:isolate;margin:0;padding:30px 20px 14px;max-width:none;border:0;border-radius:0;background:transparent;overflow:visible;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);grid-template-areas:"copy dragon" "actions dragon";column-gap:24px;row-gap:0}
+#inicio .hero-eyebrow{display:none}
+#inicio h1{font-size:clamp(1.7rem,3.5vw,3.1rem);line-height:1.1;letter-spacing:-.025em;-webkit-text-stroke:.5px currentColor;text-shadow:0 2px 0 #1c1c1c14;text-align:left}
+#inicio h1 .hero-headline{display:block;color:#191919;white-space:nowrap}
+#inicio h1 .hero-headline>[data-ed="k7"]{color:#c9101c}
+#inicio h1 .hero-price-banner{display:flex;align-items:center;justify-content:center;gap:7px;width:fit-content;margin:7px 0 0;color:#fff;font-family:"Trebuchet MS",system-ui,sans-serif;font-size:.64em;line-height:1.1;letter-spacing:-.03em;-webkit-text-stroke:0;text-shadow:none}
+#inicio .hero-price-banner::before,#inicio .hero-price-banner::after{content:"";display:block;flex:0 0 18px;height:20px;transform:skew(-32deg);background:repeating-linear-gradient(90deg,#ce0a18 0 5px,transparent 5px 8px)}
+#inicio h1 .hero-price-line{display:block;padding:3px 20px 4px;color:#fff;background:linear-gradient(180deg,#e91526,#b6000b);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);font-weight:900}
+#inicio .hero-copy{align-self:end}
+#inicio p{max-width:43ch;margin:12px 0 0;color:#292323;font:400 .96rem/1.45 "Trebuchet MS",system-ui,sans-serif;text-wrap:pretty}
+#inicio button.dragon,#inicio .dragon{position:relative;isolation:isolate;grid-area:dragon;display:grid;place-items:center;min-width:0;width:100%;padding:10px 0 27px;border:0!important;border-radius:0;background:transparent;box-shadow:none!important;overflow:visible}
+#inicio .dragon .dr{position:relative;z-index:2;height:clamp(215px,27vw,310px);max-width:100%;width:auto;object-fit:contain;filter:drop-shadow(0 7px 5px #50000d24);transform-origin:50% 85%}
+#inicio .dragon-orbit{position:absolute;z-index:0;bottom:24px;left:50%;width:clamp(220px,28vw,330px);aspect-ratio:1;border:1px solid #ed152e66;border-radius:50%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 72%,#ff001515,transparent 65%)}
+#inicio .dragon-orbit::before{content:"";position:absolute;top:16%;left:11%;width:6px;height:6px;background:#df0018;box-shadow:-54px 28px #cc0a16,17px 142px #e6091d,199px 34px #c20a18,173px 122px #d40819}
+#inicio .dragon-pedestal{position:absolute;z-index:1;bottom:5px;left:50%;width:clamp(190px,27vw,285px);height:43px;transform:translateX(-50%);clip-path:polygon(0 28%,50% 0,100% 28%,100% 70%,50% 100%,0 70%);background:linear-gradient(180deg,#ff6876 0,#fff4f4 10%,#ff0b2b 19%,#7e0010 28%,#1e1013 30%,#140c0d 65%,#ec0926 72%,#77000c 81%,#120a0c 83%);filter:drop-shadow(0 5px 4px #9f001d66)}
+#inicio .dragon-pedestal::before{content:"";position:absolute;inset:5px 8px 17px;clip-path:polygon(0 45%,50% 0,100% 45%,50% 100%);background:linear-gradient(#4f0812,#14080b)}
+#inicio .cta{display:flex;flex-wrap:nowrap;gap:12px;padding:0;margin:22px 0 0;align-self:start}
+#inicio .cta .btn{display:flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;min-height:44px;padding:10px 13px;gap:7px;font-family:"Trebuchet MS",system-ui,sans-serif!important;font-size:.85rem;line-height:1.15;text-align:center;border-radius:12px;animation:none}
+#inicio .cta .pri{border:1px solid #f7777e!important;color:#fff;background:linear-gradient(180deg,#ff2639,#d30010 55%,#b5000b);box-shadow:inset 0 1px 0 #fff9,inset 0 -3px 0 #8e000b,0 3px 0 #87000c,0 0 12px #df001938!important}
+#inicio .cta .pri::before{display:block;flex:0 0 15px;width:15px;height:15px}
+#inicio .cta .gp{border:1px solid #d50918!important;color:#151515;background:linear-gradient(#fff,#f8f5f5);box-shadow:inset 0 1px 0 #fff,0 3px 0 #c8b8b9,0 2px 8px #a2000022!important}
+#inicio .cta .gp::before{flex:0 0 17px}
+.store-front-stage .catalog-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));max-width:none;padding:0;margin:14px 4px 0;gap:9px;border:0}
+.store-front-stage .catalog-stats>div{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"icon" "value" "label";justify-items:center;align-content:center;gap:0;min-width:0;min-height:73px;padding:7px 3px!important;border:1px solid #e0d3d4!important;border-radius:13px;background:linear-gradient(#fff,#f5f2f2);box-shadow:0 3px 5px #29080821!important}
+.store-front-stage .catalog-stats .stat-symbol{grid-area:icon;width:20px;height:20px;color:#d10016;margin-bottom:2px}
+.store-front-stage .catalog-stats dd{grid-area:value;margin:0;color:#c90012;font:800 1.28rem/1.05 "Trebuchet MS",system-ui,sans-serif;letter-spacing:-.04em}
+.store-front-stage .catalog-stats dt{grid-area:label;font:400 .75rem/1.1 "Trebuchet MS",system-ui,sans-serif;color:#161313}
+.store-front-stage .catalog-stats+.seals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;max-width:none;padding:6px 0;margin:14px 6px 0;min-height:48px;border:1px solid #e1192d;border-radius:11px;background:linear-gradient(#261014,#0d0a0a 55%,#17080a);box-shadow:0 3px 7px #90000b33,inset 0 1px 0 #ff77822b}
+.store-front-stage .seals .seal{display:flex;flex-direction:row;justify-content:center;align-items:center;gap:8px;min-width:0;padding:0 6px!important;border:0!important;border-radius:0;background:transparent;box-shadow:none!important;transform:none;animation:none;font:500 .72rem/1.12 "Trebuchet MS",system-ui,sans-serif!important;color:#fff;text-align:left}
+.store-front-stage .seals .seal+.seal{border-left:1px solid #a7192855!important}
+.store-front-stage .seals .trust-symbol{flex:0 0 25px;width:25px;height:25px;color:#fff;filter:drop-shadow(0 0 4px #ff142f)}
+.store-front-stage .seals .seal:nth-child(2) .trust-symbol{color:#ff344d}
+@media(min-width:821px){.store-front-stage .catalog-stats{margin-inline:20px}.store-front-stage .catalog-stats+.seals{margin-inline:20px}#inicio h1 .hero-price-banner{font-size:.64em}}
+@media(max-width:820px){
+ body>.store-shell-header{min-height:52px;padding:8px 17px;gap:8px}
+ .store-shell-header .brand{gap:10px}
+ .store-shell-header .brand>.brand-wordmark{font-size:clamp(1.1rem,5.3vw,1.55rem)}
+ .store-front-stage{padding:0 13px 14px}
+ .store-front-stage::before{left:-83px;top:-125px}
+ .store-front-stage::after{right:-77px;top:95px}
+ .store-front-stage #inicio.hero{padding:14px 5px 0;grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "dragon" "actions";gap:6px;border:0;background:transparent;margin:0}
+ #inicio .hero-copy{text-align:center}
+ #inicio h1{text-align:center;font-size:clamp(1.35rem,6.35vw,2.05rem);line-height:1.08;letter-spacing:-.035em}
+ #inicio h1 .hero-price-banner{margin:5px auto 0;font-size:.68em;gap:6px}
+ #inicio .hero-price-banner::before,#inicio .hero-price-banner::after{flex-basis:16px;height:17px}
+ #inicio h1 .hero-price-line{padding:2px 17px 3px}
+ #inicio p{max-width:36ch;margin:8px auto 0;font-size:clamp(.7rem,2.75vw,.86rem);line-height:1.3}
+ #inicio button.dragon,#inicio .dragon{padding:4px 0 23px}
+ #inicio .dragon .dr{height:clamp(158px,42.5vw,225px);max-width:90%}
+ #inicio .dragon-orbit{bottom:18px;width:clamp(185px,49vw,250px)}
+ #inicio .dragon-orbit::before{width:5px;height:5px;box-shadow:-43px 28px #cc0a16,17px 112px #e6091d,165px 34px #c20a18,145px 102px #d40819}
+ #inicio .dragon-pedestal{bottom:2px;width:clamp(168px,46vw,235px);height:34px}
+ #inicio .cta{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);gap:10px;margin:0 0 0}
+ #inicio .cta .btn{min-height:42px;padding:9px 6px;font-size:clamp(.69rem,2.65vw,.86rem);gap:6px}
+ .store-front-stage .catalog-stats{gap:7px;margin:13px 3px 0}
+ .store-front-stage .catalog-stats>div{min-height:61px;padding:5px 2px!important;border-radius:12px}
+ .store-front-stage .catalog-stats .stat-symbol{width:17px;height:17px;margin-bottom:1px}
+ .store-front-stage .catalog-stats dd{font-size:clamp(.98rem,4.15vw,1.25rem)}
+ .store-front-stage .catalog-stats dt{font-size:clamp(.6rem,2.4vw,.75rem)}
+ .store-front-stage .catalog-stats+.seals{margin:12px 4px 0;padding:5px 0;min-height:44px}
+ .store-front-stage .seals .seal{gap:6px;font-size:clamp(.6rem,2.4vw,.74rem)!important;padding-inline:5px!important}
+ .store-front-stage .seals .trust-symbol{width:23px;height:23px;flex-basis:23px}
+}
+@media(prefers-reduced-motion:reduce){#inicio .cta .btn{transition:none}}
 </style>
