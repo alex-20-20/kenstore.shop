@@ -1591,7 +1591,8 @@ const MENU=[
   ['Contenido de la tienda',[['txt','✏️','Textos','admTextos()'],['sec','🧩','Secciones y avisos','admSec()'],['look','🎨','Apariencia',"admCfg('look')"]]],
   ['Administración',[['emp','🏢','Empresa',"admCfg('emp')"],['leg','📜','Textos legales','admLegal()'],['seg','🔐','Seguridad','admSeg()'],['bak','💾','Respaldo','admIO()'],['out','🚪','Salir','admExit()']]]
 ];
-const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}"><span class="admin-nav-icon" aria-hidden="true">${ic}</span> <span>${l}</span></button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join(function MOBILE_DOCK(){
+const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de administración">${MENU.map(([g,it])=>`<h4>${g}</h4>`+it.map(([id,ic,l,f])=>`<button class="${ADM.tab===id?'on':''}"${ADM.tab===id?' aria-current="page"':''} onclick="ADM.tab='${id}';${f}"><span class="admin-nav-icon" aria-hidden="true">${ic}</span> <span>${l}</span></button>`).join('')+(g==='General'?`<button type="button" id="maint-toggle" aria-pressed="${Boolean(SITE.maint)}" class="${SITE.maint?'on':''}" onclick="admMaintenance()">Mantenimiento · ${SITE.maint?'ON':'OFF'}</button>`:'')).join('')}</nav>`;
+function MOBILE_DOCK(){
   const tab=ADM.tab||'';
   const productActive=['prod','form'].includes(tab);
   const categoryActive=['cat','taxonomy-order'].includes(tab);
@@ -1599,7 +1600,7 @@ const NAV=()=>`<nav id="admin-navigation" class="nv" aria-label="Secciones de ad
   return `<nav class="admin-mobile-dock" aria-label="Navegación rápida">
     <button type="button"${productActive?' aria-current="page"':''} onclick="admList()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="7" rx="1"/><rect x="14" y="4" width="6" height="7" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>Productos</span></button>
     <button type="button"${categoryActive?' aria-current="page"':''} onclick="admCats()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h10M4 20h10"/><circle cx="18" cy="16" r="3"/></svg><span>Categorías</span></button>
-    <button type="button"${settingsActive?' aria-current="page"':''} onclick="admSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.8 3.1-1.4-.5a8 8 0 0 1-1.5.9l-.3 1.5h-3.6l-.3-1.5a8 8 0 0 1-1.5-.9l-1.4.5-1.8-3.1 1.1-.9a7 7 0 0 1 0-1.8l-1.1-.9 1.8-3.1 1.4.5a8 8 0 0 1 1.5-.9l.3-1.5h3.6l.3 1.5a8 8 0 0 1 1.5.9l1.4-.5 1.8 3.1-1.1.9a7 7 0 0 1 0 1.8Z" transform="translate(-1 -1)"/></svg><span>Configuración</span></button>
+    <button type="button"${settingsActive?' aria-current="page"':''} onclick="admSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 3.1-.2-.1a1.7 1.7 0 0 0-1.9.2l-.2.1h-3.6l-.1-.2a1.7 1.7 0 0 0-1.5-1.1H9.8l-3.1-1.8.1-.2a1.7 1.7 0 0 0-.2-1.9l-.1-.2v-3.6l.2-.1a1.7 1.7 0 0 0 1.1-1.5v-.7l1.8-3.1.2.1a1.7 1.7 0 0 0 1.9-.2l.2-.1h3.6l.1.2a1.7 1.7 0 0 0 1.5 1.1h.7l3.1 1.8-.1.2a1.7 1.7 0 0 0 .2 1.9l.1.2v3.6z" transform="translate(-1 -1)"/></svg><span>Configuración</span></button>
   </nav>`;
 }
 function admSettings(){
@@ -1616,7 +1617,6 @@ function admSettings(){
     <button type="button" onclick="ADM.tab='bak';admIO()">Respaldo</button>
   </div>`);
 }
-'')}</nav>`;
 async function admMaintenance(){if(publishing)return;
   const previous=SITE,active=!SITE.maint;
   const message=SITE.maint||SITE.maintMessage||'Volvemos pronto.';
