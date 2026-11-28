@@ -536,6 +536,14 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .category-picker-options input{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:var(--ac)}
 .product-editor #pc[hidden]{display:none!important}
 
+
+/* Selector múltiple de subcategorías */
+.product-editor fieldset[aria-label="Categoría y subcategoría"] .product-sub-options{min-width:0}
+.product-editor #product-subcategory-picker{min-width:0;margin:0}
+.product-editor #product-subcategory-picker>summary{cursor:pointer;display:flex;align-items:center;min-height:42px;padding:8px 11px;border:1px solid var(--stroke);border-radius:9px;background:#fff;font-weight:600;overflow-wrap:anywhere}
+.product-editor #product-subcategory-picker[open]>summary{border-color:var(--ac);border-radius:9px 9px 0 0}
+.product-editor #product-subcategory-options{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))}
+
 </style></head>
 <body>
 <header>
@@ -948,7 +956,7 @@ function admSubs(c){
   return [...new Set([...(SUBS[c]||[]),...P.flatMap(productPlacements).filter(p=>p.category===c).flatMap(p=>p.subs)])];
 }
 function admCheckedSubs(){
-  return [...$('#ps').querySelectorAll('select')].map(select=>select.value).filter(Boolean);
+  return [...$('#product-subcategory-options [data-product-subcategory]:checked')].map(input=>input.value);
 }
 function productCategoryPickerMarkup(categories,product){
   const validExtra=(Array.isArray(product.extraCategories)?product.extraCategories:[]).filter(item=>categories.includes(item.category));
@@ -986,29 +994,23 @@ function syncProductCategories(changed){
 function admCatSel(selected=[]){
   const subs=admSubs(v('pc'));
   const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
-  $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,Math.max(1,members.length+1))},(_,index)=>`
-    <label for="product-sub-${index}"><select id="product-sub-${index}" aria-label="Subcategoría ${index+1}">
-      <option value="">—</option>
-      ${subs.map(name=>`<option value="${esc(name)}"${members[index]===name?' selected':''}>${esc(name)}</option>`).join('')}
-    </select></label>`).join(''):'<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
+  $('#ps').innerHTML=subs.length?`<details id="product-subcategory-picker" class="subcategory-multi-picker">
+    <summary id="product-subcategory-summary">${members.length?esc(members.join(' · ')):'Elige subcategorías'}</summary>
+    <div id="product-subcategory-options" class="category-picker-options" role="group" aria-label="Elige varias subcategorías">
+      ${subs.map((name,index)=>`<label><input type="checkbox" id="subcategory-option-${index}" data-product-subcategory value="${esc(name)}"${members.includes(name)?' checked':''} onchange="admSubLimit(this)"><span>${esc(name)}</span></label>`).join('')}
+    </div>
+  </details>`:'<p class="mu">Esta categoría todavía no tiene subcategorías.</p>';
   admSubLimit();
 }
-function admSubLimit(){
-  const selected=admCheckedSubs();
-  const container=$('#ps'),subs=admSubs(v('pc')),max=Math.min(4,subs.length);
-  let rows=[...container.querySelectorAll('label')];
-  const desired=Math.min(max,Math.max(1,selected.length+1));
-  while(rows.length>desired){rows.at(-1).remove();rows.pop()}
-  while(rows.length<desired){
-    const index=rows.length,label=document.createElement('label');
-    label.htmlFor=`product-sub-${index}`;
-    label.innerHTML=`<select id="product-sub-${index}" aria-label="Subcategoría ${index+1}"><option value="">—</option>${subs.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join('')}</select>`;
-    container.append(label);rows.push(label);
-  }
-  for(const select of container.querySelectorAll('select')){
-    for(const option of select.options)option.disabled=Boolean(option.value&&option.value!==select.value&&selected.includes(option.value));
-  }
-  $('#sub-selection-count').textContent=`${selected.length} de 4 seleccionadas`;
+function admSubLimit(changed){
+  const inputs=[...document.querySelectorAll('#product-subcategory-options [data-product-subcategory]')];
+  let selected=inputs.filter(input=>input.checked);
+  if(selected.length>4){changed.checked=false;selected=inputs.filter(input=>input.checked);toast('Puedes elegir hasta cuatro subcategorías.');}
+  for(const input of inputs)input.disabled=selected.length>=4&&!input.checked;
+  const summary=$('#product-subcategory-summary');
+  if(summary)summary.textContent=selected.length?selected.map(input=>input.value).join(' · '):'Elige subcategorías';
+  const count=$('#sub-selection-count');
+  if(count)count.textContent=`${selected.length} de 4 seleccionadas`;
 }
 function admExtraSubs(slot,selected=[]){
   const options=$('#extra-subs-'+slot);
