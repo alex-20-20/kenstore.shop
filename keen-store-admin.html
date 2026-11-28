@@ -491,6 +491,20 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 @media(max-width:759px){
  .product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"] :is(input,textarea){font-size:14px}
 }
+
+/* Categoría compacta junto a categorías adicionales */
+.product-editor fieldset[aria-label="Categoría y subcategoría"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px;align-items:start}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>label[for="pc"]{grid-column:1;grid-row:1}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#pc{grid-column:1;grid-row:2}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories{grid-column:2;grid-row:1/span 2;align-self:stretch;margin-top:0}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories>summary{min-height:38px;padding:8px 6px}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories[open]{grid-column:1/-1;grid-row:auto}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#pcnw,
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-sub-options{grid-column:1/-1}
+@media(max-width:360px){
+ .product-editor fieldset[aria-label="Categoría y subcategoría"]{column-gap:5px}
+ .product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories>summary{font-size:.84rem}
+}
 </style></head>
 <body>
 <header>
