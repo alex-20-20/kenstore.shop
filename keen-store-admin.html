@@ -1152,6 +1152,75 @@ function updateUsdtPrice(){
   $('#pu').value=usdt===null?'':usdt.toFixed(2);
 }
 const ACCESS_UNITS={days:'Días',months:'Meses',years:'Años'};
+const durationLabels={days:['día','días'],months:['mes','meses'],years:['año','años']};
+function accessDurationLabel(duration){
+  const amount=duration?.amount;
+  if(!Number.isSafeInteger(amount)||amount<0||!Object.hasOwn(durationLabels,duration.unit))return '';
+  return amount+' '+durationLabels[duration.unit][amount===1?0:1];
+}
+function productDetailSections(description){
+  const text=String(description||'').replace(/\r\n?/g,'\n').trim();
+  const heading=/(?:✅\s*)?(?:¿\s*)?qu[eé]\s+incluye\s*[?:]|(?:📌\s*)?condiciones(?:\s+y\s+entrega)?\s*:/giu;
+  const sections={intro:text,includes:'',conditions:''};
+  const markers=[...text.matchAll(heading)];
+  if(markers.length)sections.intro=text.slice(0,markers[0].index).trim();
+  markers.forEach((marker,index)=>{
+    const key=/incluye/i.test(marker[0])?'includes':'conditions';
+    const content=text.slice(marker.index+marker[0].length,markers[index+1]?.index??text.length).trim();
+    if(content)sections[key]+=(sections[key]?'\n':'')+content;
+  });
+  return sections;
+}
+function shortProductIntro(text){
+  const input=text.trim();
+  if(input.length<=90)return input;
+  const sentence=input.match(/^.{20,89}?[.!?](?=\s|$)/u)?.[0];
+  if(sentence)return sentence;
+  const clipped=input.slice(0,89);
+  return (clipped.replace(/\s+\S*$/u,'').trimEnd()||clipped)+'…';
+}
+function compactDetailText(value,max=160){
+  const text=String(value||'').replace(/\*\*|[*_`]/gu,'').replace(/^\s*(?:[-•▪●]\s*)+/u,'').replace(/\s+/gu,' ').trim();
+  if(text.length<=max)return text;
+  const clipped=text.slice(0,max-1),whole=clipped.replace(/\s+\S*$/u,'').trimEnd();
+  return (whole||clipped.trimEnd())+'…';
+}
+function compactDetailWarranty(text){
+  const match=String(text||'').match(/(?:garant[ií]a[^.!?\n]{0,70}|[^.!?\n]{0,35}garant[ií]a[^.!?\n]{0,35})/iu);
+  return match?compactDetailText(match[0],70):'';
+}
+function normalizeDetailValue(value){
+  return String(value||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('es').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+}
+function productDescriptionBenefits(product){
+  if(Array.isArray(product.descriptionSpec?.benefits)){
+    return product.descriptionSpec.benefits.map(item=>compactDetailText(item,70)).filter(Boolean)
+      .filter((item,index,items)=>items.findIndex(other=>normalizeDetailValue(other)===normalizeDetailValue(item))===index).slice(0,2);
+  }
+
+  const spec=product.descriptionSpec||{},raw=String(product.i||product.d||'').replace(/\r\n?/g,'\n');
+  const sections=productDetailSections(raw),lines=raw.split('\n').map(line=>line.trim()).filter(Boolean);
+  const summaryLines=sections.intro.split('\n').map(line=>line.trim())
+    .filter(line=>line&&!/^\*\*[^*]+\*\*$/u.test(line)&&!/^\*\*?(?:descripci[oó]n|detalle)\b/iu.test(line));
+  const summary=compactDetailText(spec.access||summaryLines[0]||product.d||'',155);
+  const bulletBenefits=[...sections.includes.split(/[\n•▪●]+/u),...lines.filter(line=>/^[-•▪●]\s*/u.test(line))];
+  const duration=accessDurationLabel(product.accessDuration)
+    ||raw.match(/\bduraci[oó]n\s*:\s*(\d+\s*(?:d[ií]as?|mes(?:es)?|a[nñ]os?))/iu)?.[1]||'';
+  const type=compactDetailText(product.t||'',70);
+  const tags=(Array.isArray(product.pills)?product.pills:[]).map(tag=>String(tag||'').trim()).filter(Boolean);
+  const warranty=compactDetailText(spec.warranty||compactDetailWarranty([raw,spec.rule,tags.join(' ')].join('\n')),70);
+  const summaryKey=normalizeDetailValue(summary),typeKey=normalizeDetailValue(type);
+  const durationKey=normalizeDetailValue(duration).replace(/\s+(?:de\s+)?acceso$/u,'');
+  const benefits=[...bulletBenefits,...tags].map(item=>compactDetailText(item,70)).filter((item,index,array)=>{
+    const key=normalizeDetailValue(item),withoutAccess=key.replace(/\s+(?:de\s+)?acceso$/u,'');
+    const repeatsSummary=summaryKey&&(key===summaryKey||summaryKey.includes(key));
+    const repeatsFact=(typeKey&&key===typeKey)||(durationKey&&withoutAccess===durationKey)||
+      (warranty&&key.includes(normalizeDetailValue(warranty)))||/^(?:duracion|entrega|garantia|condiciones)(?:\s|$)/u.test(key);
+    return Boolean(key)&&!repeatsSummary&&!repeatsFact&&array.findIndex(other=>normalizeDetailValue(compactDetailText(other,70))===key)===index;
+  }).slice(0,2);
+  return benefits;
+}
+
 function productDescriptionFields(product){
   if(product.descriptionSpec)return product.descriptionSpec;
   const legacy=String(product.i||'');
@@ -1296,6 +1365,8 @@ function admForm(id,duplicate=false){
   </div></section>
   <section class="editor-section product-customer-details"><h3>Detalle para el cliente</h3><fieldset aria-label="Detalle para el cliente">
   <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado con PIN">${esc(description.access)}</textarea>
+  <label for="desc-benefits">Beneficios de la descripción <span class="mu">(opcional)</span></label><textarea id="desc-benefits" rows="2" maxlength="160" aria-describedby="desc-benefits-help" placeholder="4K Ultra HD&#10;Sin anuncios">${esc(productDescriptionBenefits(p).join('\n'))}</textarea>
+  <small id="desc-benefits-help" class="mu">Hasta 2, uno por línea. Vacío = no se muestran.</small>
   <label for="desc-warranty">Garantía <span class="mu">(opcional)</span></label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo">
   <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="3" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
   <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…">
@@ -1375,13 +1446,16 @@ async function admGuardarDraft(){if(publishing)return;
     }catch{}
     if(!downloadUrl)return productEditorError('Ingresa un enlace HTTPS válido.','#desc-download');
   }
+  const descriptionBenefits=[...new Set(v('desc-benefits').split(/\r?\n/u).map(line=>line.replace(/^\s*(?:[✓✔✅•▪●-]\s*)+/u,'').trim()).filter(Boolean))];
+  if(descriptionBenefits.length>2)return productEditorError('Escribe hasta dos beneficios, uno por línea.','#desc-benefits');
+  if(descriptionBenefits.some(item=>item.length>70))return productEditorError('Cada beneficio puede tener hasta 70 caracteres.','#desc-benefits');
   try{
     const imageUrl=await uploadStoreImage(imageInput,'product');
     if(!imageInput.isConnected)return;
     if(imageUrl){ADM.img=imageUrl;clearImagePreview();$('#pv').src=imageUrl}
   }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
   if(publishing)return;
-  const descriptionSpec={access:v('desc-access').trim(),warranty:v('desc-warranty').trim(),rule:v('desc-rule').trim()};
+  const descriptionSpec={access:v('desc-access').trim(),benefits:descriptionBenefits,warranty:v('desc-warranty').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:old?.pills||[],p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:byPlayerId?{...playerIdOrderField}:askExtra?{l:xl,ph:v('pxp').trim()}:null};
@@ -1698,6 +1772,7 @@ function catalogBackupError(d){
     if(product.x!=null&&(!object(product.x)||Object.values(product.x).some(value=>!text(value,300))))return `Revisa los datos de pedido de «${product.n}».`;
     if(product.accessDuration!=null&&(!object(product.accessDuration)||!Number.isSafeInteger(product.accessDuration.amount)||product.accessDuration.amount<0||!['days','months','years'].includes(product.accessDuration.unit)))return `Revisa la duración de «${product.n}».`;
     if(product.descriptionSpec!=null&&(!object(product.descriptionSpec)||['access','delivery','warranty','usage','rule'].some(key=>product.descriptionSpec[key]!=null&&!text(product.descriptionSpec[key],3000))))return `Revisa los detalles de «${product.n}».`;
+    if(product.descriptionSpec?.benefits!=null&&(!Array.isArray(product.descriptionSpec.benefits)||product.descriptionSpec.benefits.length>2||!product.descriptionSpec.benefits.every(item=>text(item,70))))return `Revisa los beneficios de «${product.n}».`;
     if(product.downloadUrl!=null&&!safeUrl(product.downloadUrl))return `El enlace de descarga de «${product.n}» debe usar HTTPS.`;
     if(product.downloadLabel!=null&&!text(product.downloadLabel,60))return `Revisa el texto del enlace de «${product.n}».`;
     if(product.subcategories!=null&&(!Array.isArray(product.subcategories)||product.subcategories.length>4||!product.subcategories.every(item=>text(item,60))))return `Revisa las subcategorías de «${product.n}».`;
