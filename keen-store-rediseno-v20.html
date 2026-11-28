@@ -1128,6 +1128,8 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .det .detail-product-stock{color:#22613e;font-weight:800}
 /* Ficha de producto: presentación más baja y compacta, conservando todos los datos */
 .md:has(.compact-detail){padding:12px;max-height:min(88vh,680px)}
+.md:has(.compact-detail)>.x{top:8px;right:8px;z-index:5;display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--stroke);border-radius:50%;background:var(--surface);color:var(--ln);font-size:1.15rem;line-height:1;box-shadow:0 2px 6px #1c1c1c22!important}
+.md:has(.compact-detail)>.x:hover,.md:has(.compact-detail)>.x:focus{color:var(--ac);background:var(--surface);box-shadow:0 2px 6px #1c1c1c22!important}
 .det.compact-detail .detail-product-head{grid-template-columns:52px minmax(0,1fr);gap:7px;margin-bottom:6px;padding-bottom:6px}
 .det.compact-detail .detail-product-head img{width:52px;height:39px;aspect-ratio:4/3;object-fit:contain;border-radius:7px}
 .det.compact-detail .detail-product-price{gap:2px 6px;margin-top:2px;font-size:.7rem}
