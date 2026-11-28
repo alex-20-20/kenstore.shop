@@ -544,6 +544,17 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor #product-subcategory-picker[open]>summary{border-color:var(--ac);border-radius:9px 9px 0 0}
 .product-editor #product-subcategory-options{grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))}
 
+
+/* Desplegables flotantes independientes de categorías y subcategorías */
+.product-editor #category-picker,
+.product-editor #product-subcategory-picker{position:relative}
+.product-editor #category-picker[open],
+.product-editor #product-subcategory-picker[open]{z-index:30}
+.product-editor #category-picker-options,
+.product-editor #product-subcategory-options{position:absolute;top:calc(100% - 1px);left:0;right:0;z-index:31;grid-template-columns:1fr;max-height:220px;overflow-y:auto;border:1px solid var(--stroke);border-radius:0 0 10px 10px;box-shadow:0 8px 18px #1c1c1c22}
+.product-editor #category-picker-options label,
+.product-editor #product-subcategory-options label{min-height:36px}
+
 </style></head>
 <body>
 <header>
