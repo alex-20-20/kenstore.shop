@@ -1306,6 +1306,14 @@ body>.store-shell-header{isolation:isolate;position:sticky;top:0;min-height:56px
  .store-front-stage .seals .trust-symbol{width:23px;height:23px;flex-basis:23px}
 }
 @media(prefers-reduced-motion:reduce){#inicio .cta .btn{transition:none}}
+
+/* El movimiento acompaña al rugido de 2,47 segundos, sin alterar el tamaño del bloque. */
+#inicio button.dragon{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#inicio button.dragon:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+#inicio button.dragon .dr{pointer-events:none;user-select:none;transform-origin:50% 85%}
+@keyframes ken-real-dragon-roar{0%,100%{transform:translateY(0) scale(1) rotate(0)}12%{transform:translateY(-4px) scale(1.05) rotate(-.7deg)}24%{transform:translateY(-4px) scale(1.05) rotate(.8deg)}38%{transform:translateY(-3px) scale(1.045) rotate(-.8deg)}54%{transform:translateY(-2px) scale(1.035) rotate(.6deg)}72%{transform:translateY(-1px) scale(1.02) rotate(-.3deg)}}
+#inicio .dragon.is-roaring .dr{animation:ken-real-dragon-roar 2.5s ease-out}
+@media(prefers-reduced-motion:reduce){#inicio .dragon.is-roaring .dr{animation:none}}
 </style>
 </head>
 <body>
@@ -1337,7 +1345,7 @@ body>.store-shell-header{isolation:isolate;position:sticky;top:0;min-height:56px
     <h1 data-ed="k5"><span class="hero-headline">Tu mundo <span data-ed="k7">digital</span></span><span class="hero-price-banner"><span class="hero-price-line">al mejor precio</span></span></h1>
     <p data-ed="k8">Streaming, juegos, IA y más. Recibe tu acceso por WhatsApp de forma rápida y segura.</p>
   </div>
-  <div class="dragon" aria-hidden="true"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp"><span class="dragon-orbit" aria-hidden="true"></span><span class="dragon-pedestal" aria-hidden="true"></span></div>
+  <button class="dragon" id="hero-dragon" type="button" aria-label="Escuchar el rugido del dragón" title="Toca para escuchar mi rugido"><img class="dr" width="640" height="614" alt="" aria-hidden="true" src="store-assets/dragon-98bafdd8bcbbdcc8.webp"><span class="dragon-orbit" aria-hidden="true"></span><span class="dragon-pedestal" aria-hidden="true"></span></button>
   <div class="cta"><a class="btn pri big" href="#catalogo" data-ed="k9">Ver catálogo <span class="catalog-cta-arrow" aria-hidden="true">→</span></a><a class="btn ok big gp" id="gp" target="_blank" rel="noopener" data-ed="k10">Grupo de WhatsApp</a></div>
 </section>
 
@@ -2188,6 +2196,47 @@ async function _play(fn){
 // Precalienta el contexto en el primer toque/clic para latencia cero
 document.addEventListener('pointerdown',()=>{_mctx()},{once:true,passive:true});
 
+
+/* Efecto de dragón CC0; se descarga únicamente al tocar el personaje. */
+(function setupHeroDragon(){
+  const dragon=document.getElementById('hero-dragon');
+  if(!dragon)return;
+  let audio,busy=false,timer;
+  const reset=()=>{
+    clearTimeout(timer);
+    busy=false;
+    dragon.classList.remove('is-roaring');
+    dragon.removeAttribute('aria-busy');
+  };
+  const failed=()=>{
+    if(audio)audio.pause();
+    reset();
+    toast('No se pudo reproducir el rugido. Vuelve a tocar el dragón.');
+  };
+  dragon.addEventListener('click',()=>{
+    if(busy)return;
+    busy=true;
+    dragon.setAttribute('aria-busy','true');
+    try{
+      if(!audio){
+        audio=new Audio('store-assets/dragon-roar-joelaudio-65bddcc3.mp3');
+        audio.preload='none';
+        audio.volume=.65;
+        audio.addEventListener('playing',()=>dragon.classList.add('is-roaring'));
+        audio.addEventListener('ended',reset);
+        audio.addEventListener('error',failed);
+      }
+      audio.currentTime=0;
+      timer=setTimeout(()=>{audio.pause();reset()},8000);
+      const playback=audio.play();
+      if(playback&&typeof playback.catch==='function')playback.catch(failed);
+    }catch(error){failed()}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden&&audio){audio.pause();reset()}
+  });
+})();
+
 function _note(ctx,type,freq,start,dur,vol){
   const o=ctx.createOscillator(),g=ctx.createGain();
   o.connect(g);g.connect(ctx.destination);
@@ -2835,67 +2884,6 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
   const assets=[$('#inicio .dragon .dr')];
   let finished=0,ready=false,shown=0,lastFrame;
 
-  // Rugido del dragón al iniciar la carga
-  function playDragonRoar(){_play(ctx=>{
-    const t=ctx.currentTime;
-    const o1=ctx.createOscillator(),g1=ctx.createGain();
-    o1.type='sawtooth';
-    o1.frequency.setValueAtTime(180,t);
-    o1.frequency.exponentialRampToValueAtTime(60,t+0.6);
-    g1.gain.setValueAtTime(0,t);
-    g1.gain.linearRampToValueAtTime(0.22,t+0.05);
-    g1.gain.exponentialRampToValueAtTime(0.001,t+0.65);
-    o1.connect(g1);g1.connect(ctx.destination);
-    o1.start(t);o1.stop(t+0.66);
-    const o2=ctx.createOscillator(),g2=ctx.createGain();
-    o2.type='square';
-    o2.frequency.setValueAtTime(320,t+0.1);
-    o2.frequency.exponentialRampToValueAtTime(160,t+0.5);
-    g2.gain.setValueAtTime(0.10,t+0.1);
-    g2.gain.exponentialRampToValueAtTime(0.001,t+0.55);
-    o2.connect(g2);g2.connect(ctx.destination);
-    o2.start(t+0.1);o2.stop(t+0.56);
-    const o3=ctx.createOscillator(),g3=ctx.createGain();
-    o3.type='sawtooth';
-    o3.frequency.setValueAtTime(90,t+0.5);
-    o3.frequency.exponentialRampToValueAtTime(300,t+0.75);
-    g3.gain.setValueAtTime(0.14,t+0.5);
-    g3.gain.exponentialRampToValueAtTime(0.001,t+0.78);
-    o3.connect(g3);g3.connect(ctx.destination);
-    o3.start(t+0.5);o3.stop(t+0.79);
-  })}
-
-  // Rugido de salida épico al terminar la carga
-  function playDragonFinish(){_play(ctx=>{
-    const t=ctx.currentTime;
-    const o1=ctx.createOscillator(),g1=ctx.createGain();
-    o1.type='sawtooth';
-    o1.frequency.setValueAtTime(220,t);
-    o1.frequency.exponentialRampToValueAtTime(50,t+0.9);
-    g1.gain.setValueAtTime(0.24,t);
-    g1.gain.exponentialRampToValueAtTime(0.001,t+0.95);
-    o1.connect(g1);g1.connect(ctx.destination);
-    o1.start(t);o1.stop(t+0.96);
-    const o2=ctx.createOscillator(),g2=ctx.createGain();
-    o2.type='square';
-    o2.frequency.setValueAtTime(600,t);
-    o2.frequency.exponentialRampToValueAtTime(200,t+0.3);
-    g2.gain.setValueAtTime(0.14,t);
-    g2.gain.exponentialRampToValueAtTime(0.001,t+0.32);
-    o2.connect(g2);g2.connect(ctx.destination);
-    o2.start(t);o2.stop(t+0.33);
-    [[523,1.0],[659,1.12],[784,1.24],[1047,1.36]].forEach(([f,d])=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.type='square';o.frequency.value=f;
-      g.gain.setValueAtTime(0.15,t+d);
-      g.gain.exponentialRampToValueAtTime(0.001,t+d+0.14);
-      o.connect(g);g.connect(ctx.destination);
-      o.start(t+d);o.stop(t+d+0.15);
-    });
-  })}
-
-  playDragonRoar();
-
   const deadline=setTimeout(()=>{ready=true},600);
   Promise.allSettled(assets.map(image=>{
     image.loading='eager';
@@ -2910,7 +2898,6 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
     const text=Math.floor(shown)+'%';
     if(percent.textContent!==text)percent.textContent=text;
     if(shown<100){requestAnimationFrame(tick);return}
-    playDragonFinish();
     if(returnToStoreStart)window.scrollTo({left:0,top:0,behavior:'instant'});
     // prefers-reduced-motion: se mantiene la animación de salida siempre
     setTimeout(()=>{

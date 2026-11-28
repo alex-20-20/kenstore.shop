@@ -2092,68 +2092,44 @@ async function _play(fn){
 document.addEventListener('pointerdown',()=>{_mctx()},{once:true,passive:true});
 
 
-/* Rugido de caricatura generado al pulsar: no descarga archivos de audio. */
-function synthesizeHeroDragonRoar(ctx){
-  const t=ctx.currentTime, duration=1.35;
-  const nodes=[], sources=[];
-  const keep=node=>(nodes.push(node),node);
-  const volume=keep(ctx.createGain());
-  volume.gain.setValueAtTime(0,t);
-  volume.gain.linearRampToValueAtTime(.32,t+.09);
-  volume.gain.linearRampToValueAtTime(.27,t+.4);
-  volume.gain.exponentialRampToValueAtTime(.001,t+duration);
-  volume.connect(ctx.destination);
-  const throat=keep(ctx.createBiquadFilter());
-  throat.type='lowpass';throat.Q.value=.8;
-  throat.frequency.setValueAtTime(650,t);
-  throat.frequency.linearRampToValueAtTime(1350,t+.2);
-  throat.frequency.exponentialRampToValueAtTime(280,t+duration);
-  throat.connect(volume);
-  for(const [type,ratio,level] of [['sawtooth',1,.3],['triangle',.51,.24]]){
-    const voice=keep(ctx.createOscillator()),gain=keep(ctx.createGain());
-    voice.type=type;gain.gain.value=level;
-    voice.frequency.setValueAtTime(105*ratio,t);
-    voice.frequency.exponentialRampToValueAtTime(155*ratio,t+.16);
-    voice.frequency.exponentialRampToValueAtTime(48*ratio,t+duration);
-    voice.connect(gain);gain.connect(throat);
-    voice.start(t);voice.stop(t+duration+.03);sources.push(voice);
-  }
-  const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*(duration+.05)),ctx.sampleRate);
-  const data=buffer.getChannelData(0);
-  let brown=0;
-  for(let i=0;i<data.length;i++){
-    const white=Math.random()*2-1;
-    brown=(brown+.04*white)/1.04;
-    data[i]=(brown*3+white*.45)*(.72+.28*Math.sin(2*Math.PI*27*i/ctx.sampleRate));
-  }
-  const breath=keep(ctx.createBufferSource()),breathFilter=keep(ctx.createBiquadFilter());
-  breath.buffer=buffer;breathFilter.type='bandpass';breathFilter.Q.value=.7;
-  breathFilter.frequency.setValueAtTime(950,t);
-  breathFilter.frequency.exponentialRampToValueAtTime(380,t+duration);
-  breath.connect(breathFilter);breathFilter.connect(volume);
-  breath.start(t);breath.stop(t+duration+.03);sources.push(breath);
-  // Libera el grafo una vez terminadas todas las fuentes.
-  let ended=0;
-  for(const source of sources)source.onended=()=>{
-    if(++ended===sources.length)nodes.forEach(node=>node.disconnect());
-  };
-}
+
+/* Efecto de dragón CC0; se descarga únicamente al tocar el personaje. */
 (function setupHeroDragon(){
   const dragon=document.getElementById('hero-dragon');
   if(!dragon)return;
-  let busy=false;
+  let audio,busy=false,timer;
+  const reset=()=>{
+    clearTimeout(timer);
+    busy=false;
+    dragon.classList.remove('is-roaring');
+    dragon.removeAttribute('aria-busy');
+  };
+  const failed=()=>{
+    if(audio)audio.pause();
+    reset();
+    toast('No se pudo reproducir el rugido. Vuelve a tocar el dragón.');
+  };
   dragon.addEventListener('click',()=>{
     if(busy)return;
     busy=true;
-    // También se libera si el navegador no admite o no permite el audio.
-    let timer=setTimeout(()=>{busy=false;dragon.classList.remove('is-roaring')},1800);
-    _play(ctx=>{
-      if(!dragon.isConnected)return;
-      synthesizeHeroDragonRoar(ctx);
-      dragon.classList.add('is-roaring');
-      clearTimeout(timer);
-      timer=setTimeout(()=>{busy=false;dragon.classList.remove('is-roaring')},1450);
-    });
+    dragon.setAttribute('aria-busy','true');
+    try{
+      if(!audio){
+        audio=new Audio('store-assets/dragon-roar-joelaudio-65bddcc3.mp3');
+        audio.preload='none';
+        audio.volume=.65;
+        audio.addEventListener('playing',()=>dragon.classList.add('is-roaring'));
+        audio.addEventListener('ended',reset);
+        audio.addEventListener('error',failed);
+      }
+      audio.currentTime=0;
+      timer=setTimeout(()=>{audio.pause();reset()},8000);
+      const playback=audio.play();
+      if(playback&&typeof playback.catch==='function')playback.catch(failed);
+    }catch(error){failed()}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden&&audio){audio.pause();reset()}
   });
 })();
 
@@ -3017,4 +2993,12 @@ body>.store-shell-header{isolation:isolate;position:sticky;top:0;min-height:56px
  .store-front-stage .seals .trust-symbol{width:23px;height:23px;flex-basis:23px}
 }
 @media(prefers-reduced-motion:reduce){#inicio .cta .btn{transition:none}}
+
+/* El movimiento acompaña al rugido de 2,47 segundos, sin alterar el tamaño del bloque. */
+#inicio button.dragon{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#inicio button.dragon:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+#inicio button.dragon .dr{pointer-events:none;user-select:none;transform-origin:50% 85%}
+@keyframes ken-real-dragon-roar{0%,100%{transform:translateY(0) scale(1) rotate(0)}12%{transform:translateY(-4px) scale(1.05) rotate(-.7deg)}24%{transform:translateY(-4px) scale(1.05) rotate(.8deg)}38%{transform:translateY(-3px) scale(1.045) rotate(-.8deg)}54%{transform:translateY(-2px) scale(1.035) rotate(.6deg)}72%{transform:translateY(-1px) scale(1.02) rotate(-.3deg)}}
+#inicio .dragon.is-roaring .dr{animation:ken-real-dragon-roar 2.5s ease-out}
+@media(prefers-reduced-motion:reduce){#inicio .dragon.is-roaring .dr{animation:none}}
 </style>
