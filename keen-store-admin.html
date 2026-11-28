@@ -1009,8 +1009,6 @@ function admSubLimit(changed){
   for(const input of inputs)input.disabled=selected.length>=4&&!input.checked;
   const summary=$('#product-subcategory-summary');
   if(summary)summary.textContent=selected.length?selected.map(input=>input.value).join(' · '):'Elige subcategorías';
-  const count=$('#sub-selection-count');
-  if(count)count.textContent=`${selected.length} de 4 seleccionadas`;
 }
 function admExtraSubs(slot,selected=[]){
   const options=$('#extra-subs-'+slot);
@@ -1121,7 +1119,7 @@ function admForm(id,duplicate=false){
   ${productCategoryPickerMarkup(cs,p)}
   <div class="product-sub-options" aria-labelledby="product-subs-title">
     <div class="product-sub-heading"><strong id="product-subs-title">Subcategorías</strong>
-    <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
+  </div>
     <div id="ps" onchange="admSubLimit()"></div>
   </div>
   </fieldset></section>
