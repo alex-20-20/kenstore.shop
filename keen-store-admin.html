@@ -264,6 +264,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .editor-section>fieldset{padding:6px 11px 10px;border:0}
 .product-editor .editor-section>fieldset+fieldset{border-top:1px solid var(--stroke);border-radius:0}
 .product-editor .editor-section label{margin-top:4px}
+.product-editor-group{border:1px solid var(--stroke);border-radius:12px;background:var(--surface);overflow:hidden}
+.product-editor-group>summary{padding:9px 12px;color:var(--ac);font-weight:800;cursor:pointer}
+.product-editor-group[open]>summary{border-bottom:1px solid var(--stroke)}
+.product-editor-group-body{display:grid;gap:8px;padding:8px}
+.product-editor-group-body>.editor-section{margin:0}
+.product-editor .editor-optional{margin-top:7px;padding:7px 9px;border:1px solid var(--stroke);border-radius:9px}
+.product-editor .editor-optional summary{cursor:pointer;color:var(--ac);font-weight:700}
 .product-editor .editor-section input:not([type=checkbox]),.product-editor .editor-section select{margin-bottom:3px}
 .product-editor .product-card-preview{max-width:195px;margin:2px auto 4px}
 .product-editor #pv{width:clamp(76px,17vw,110px);max-height:80px;object-fit:contain}
@@ -465,6 +472,16 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .catalog-admin-card>summary p{margin:2px 0 0}
 .catalog-admin-card>summary::after{content:'▸';color:var(--ac);margin-inline:3px}
 .catalog-admin-card[open]>summary::after{content:'▾'}
+@media(max-width:520px){
+  .product-editor-group-body{gap:6px;padding:6px}
+  .product-editor-group>summary{padding:7px 9px;font-size:.86rem}
+  .product-editor .editor-section fieldset[aria-label="Descripción del producto"]{padding:4px 8px 7px}
+  .product-editor .editor-section fieldset[aria-label="Descripción del producto"]>label{margin-top:3px}
+  .product-editor #desc-access{min-height:38px;height:38px;resize:vertical}
+  .product-editor #desc-rule{min-height:52px}
+  .product-editor .editor-optional{margin-top:5px;padding:5px 7px}
+  .product-editor .editor-optional summary{font-size:.78rem}
+}
 </style></head>
 <body>
 <header>
@@ -886,7 +903,7 @@ function admCatSel(selected=[]){
   $('#pcnw').hidden=!isNew;
   const subs=isNew?[]:admSubs(v('pc'));
   const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
-  $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,subs.length)},(_,index)=>`
+  $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,Math.max(1,members.length+1))},(_,index)=>`
     <label for="product-sub-${index}"><select id="product-sub-${index}" aria-label="Subcategoría ${index+1}">
       <option value="">—</option>
       ${subs.map(name=>`<option value="${esc(name)}"${members[index]===name?' selected':''}>${esc(name)}</option>`).join('')}
@@ -896,7 +913,17 @@ function admCatSel(selected=[]){
 }
 function admSubLimit(){
   const selected=admCheckedSubs();
-  for(const select of $('#ps').querySelectorAll('select')){
+  const container=$('#ps'),subs=admSubs(v('pc')),max=Math.min(4,subs.length);
+  let rows=[...container.querySelectorAll('label')];
+  const desired=Math.min(max,Math.max(1,selected.length+1));
+  while(rows.length>desired){rows.at(-1).remove();rows.pop()}
+  while(rows.length<desired){
+    const index=rows.length,label=document.createElement('label');
+    label.htmlFor=`product-sub-${index}`;
+    label.innerHTML=`<select id="product-sub-${index}" aria-label="Subcategoría ${index+1}"><option value="">—</option>${subs.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join('')}</select>`;
+    container.append(label);rows.push(label);
+  }
+  for(const select of container.querySelectorAll('select')){
     for(const option of select.options)option.disabled=Boolean(option.value&&option.value!==select.value&&selected.includes(option.value));
   }
   $('#sub-selection-count').textContent=`${selected.length} de 4 seleccionadas`;
@@ -952,7 +979,8 @@ function productDescriptionFields(product){
   const access=legacy.match(/^\s*-\s*👤\s*(.+)$/mu)?.[1]||'';
   const delivery=legacy.match(/^\s*\*\*📦\s*(.+)$/mu)?.[1]?.replaceAll('**','')||'';
   const rule=legacy.match(/^\s*⚠️\s*(.+)$/mu)?.[1]||'';
-  return {access,delivery,rule};
+  const warranty=legacy.match(/[^.!?\n]{0,40}garant[ií]a[^.!?\n]{0,60}/iu)?.[0]?.trim()||'';
+  return {access,delivery,rule,warranty,usage:''};
 }
 function updateProductCardPreview(){
   const photo=$('#pv').getAttribute('src');
@@ -965,7 +993,7 @@ function updateProductCardPreview(){
   const n=Number(v('access-amount')),u=v('access-unit');
   const units={days:['día','días'],months:['mes','meses'],years:['año','años']};
   const duration=v('access-amount')!==''&&units[u]?`${n} ${units[u][n===1?0:1]}`:'';
-  const benefit=cardBenefit({n:v('pn'),t:v('pt'),cardBenefit:v('card-benefit'),pills:v('ptg').split(',')});
+  const benefit=cardBenefit({n:v('pn'),t:v('pt'),pills:v('ptg').split(',')});
   const planRows=[...document.querySelectorAll('.plan-editor-row')];
   const durationTag=planRows.length?planRows.length+(planRows.length===1?' plan':' planes'):duration;
   $('#card-preview-tags').replaceChildren(...[v('pt'),durationTag,benefit].filter(Boolean).map(text=>{
@@ -1034,17 +1062,8 @@ function admForm(id,duplicate=false){
 <div class="product-editor"><div class="editor-column">  <div class="editor-name">
   <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
   </div>
-  <section class="editor-section"><h3>Descripción en la tienda</h3><fieldset aria-label="Descripción en la tienda">
-  <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="2" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
-  <div class="g2"><div><label for="access-amount">Duración</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
-  <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
-  <label for="ptg">Beneficios (separados por comas)</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
-  <label for="card-benefit">Beneficio destacado</label><input id="card-benefit" maxlength="18" value="${esc(p.cardBenefit||'')}" placeholder="Ej. 4K UHD">
-  <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
-  <label for="desc-rule">Condición de uso (opcional)</label><textarea id="desc-rule" rows="3" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
-  <label for="desc-download">Link de descarga (opcional y público)</label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…">
-  <label for="desc-download-label">Texto del botón (opcional)</label><input id="desc-download-label" maxlength="60" value="${esc(p.downloadLabel||'')}" placeholder="Descargar">
-  </fieldset></section><section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
+  <details class="product-editor-group" open><summary>Tarjeta del catálogo</summary><div class="product-editor-group-body">
+  <section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
   <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
   <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
   <div class="product-sub-options" aria-labelledby="product-subs-title">
@@ -1053,18 +1072,32 @@ function admForm(id,duplicate=false){
     <div id="ps" onchange="admSubLimit()"></div>
     <label for="psn">Nueva subcategoría</label><input id="psn" maxlength="40" placeholder="Ej. Spotify">
   </div>
-  <div class="product-extra-categories"><strong>Categorías adicionales (hasta 3)</strong><div class="extra-category-fields">
+  <details class="editor-optional product-extra-categories"><summary>Categorías adicionales (opcional)</summary><div class="extra-category-fields">
     ${[0,1,2].map(slot=>`<div>
       <select id="extra-cat-${slot}" aria-label="Categoría adicional ${slot+1}" onchange="admExtraSubs(${slot})"><option value="">—</option>
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
       <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div></div>`).join('')}
+  </div></details>
+  </fieldset></section>
+  <section class="editor-section"><h3>Tipo, duración y beneficios</h3><fieldset aria-label="Tipo, duración y beneficios">
+  <label for="pt">Tipo de producto (etiqueta y pedido)</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option><option value="playerId"${!p.t&&p.x?.l===playerIdOrderField.l&&p.x?.ph===playerIdOrderField.ph?' selected':''}>Recarga por ID de jugador</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
+  <p id="type-order-help" class="mu" hidden></p>
+  <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional</label>
+  <div id="pxfields"${p.x?.l?'':' hidden'}>
+    <label for="pxl">Dato solicitado</label><input id="pxl" value="${esc(p.x?.l||'')}" placeholder="Ej: Correo, dominio o ID de jugador">
+    <label for="pxp">Ejemplo (opcional)</label><input id="pxp" value="${esc(p.x?.ph||'')}" placeholder="Ejemplo que verá el cliente">
   </div></div>
-  </fieldset></section><section class="editor-section"><h3>Precios, planes y stock</h3><fieldset aria-label="Precio y disponibilidad">
+  <div class="g2"><div><label for="access-amount">Duración</label><input id="access-amount" type="number" inputmode="numeric" min="0" step="1" value="${esc(p.accessDuration?.amount??'')}" placeholder="Ej. 30"></div>
+  <div><label for="access-unit">Unidad</label><select id="access-unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}"${p.accessDuration?.unit===unit?' selected':''}>${label}</option>`).join('')}</select></div></div>
+  <label for="ptg">Beneficios de la tarjeta</label><input id="ptg" value="${esc((p.pills||[]).join(', '))}" placeholder="Ej. 4K UHD, Sin anuncios">
+  <small class="mu">Descuento y stock se actualizan con el precio y las unidades.</small>
+  </fieldset></section>
+  <section class="editor-section"><h3>Precio, oferta y stock</h3><fieldset aria-label="Precio y disponibilidad">
   <div id="base-product-price" class="product-price-row">
     <label for="pp"><span>Precio</span><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" aria-describedby="product-price-help" value="${p.p??''}"></label>
     <label for="ppo"><span>P. anterior</span><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="product-price-help" value="${esc(p.po??'')}"></label>
     <label for="pu"><span>USDT</span><input id="pu" type="text" readonly aria-describedby="product-price-help" value="${solesToUsdt(p.p)?.toFixed(2)??''}"></label>
-    <small id="product-price-help" class="mu">Precios en soles · S/ 0 = gratis · USDT automático</small>
+    <small id="product-price-help" class="mu">S/ 0 = gratis · USDT automático</small>
   </div>
   <div class="product-stock-row">
     <label for="pstock"><span>Disponibilidad</span><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
@@ -1076,24 +1109,28 @@ function admForm(id,duplicate=false){
     <p class="mu">Stock compartido. Las ofertas se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
     <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
-  </fieldset></section></div><div class="editor-column"><details class="editor-section"><summary>Vista previa de la tarjeta</summary><fieldset aria-label="Vista previa de la tarjeta">
+  </fieldset></section>
+  <section class="editor-section"><h3>Imagen de la tarjeta</h3><fieldset aria-label="Imagen">
+  <img id="pv" class="pv" alt="Vista previa" src="${esc(ADM.img||tile('gift','#e6dcff'))}">
+  <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
+  </fieldset></section></div></details>
+  <details class="product-editor-group" open><summary>Descripción y ficha técnica</summary><div class="product-editor-group-body">
+  <section class="editor-section"><h3>Descripción del producto</h3><fieldset aria-label="Descripción del producto">
+  <label for="desc-access">Resumen para el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
+  </fieldset></section><section class="editor-section"><h3>Ficha técnica y entrega</h3><fieldset aria-label="Ficha técnica y entrega">
+  <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
+  <div class="g2"><div><label for="desc-warranty">Garantía (opcional)</label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo"></div>
+  <div><label for="desc-usage">Uso (opcional)</label><input id="desc-usage" maxlength="70" value="${esc(description.usage||p.t||'')}" placeholder="Ej. 1 dispositivo privado"></div></div>
+  <details class="editor-optional"><summary>Opciones: condiciones y descarga</summary>
+  <label for="desc-rule">Condición de uso</label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-download">Enlace de descarga público</label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
+  </fieldset></section></div></details></div><div class="editor-column"><details class="editor-section"><summary>Vista previa de la tarjeta</summary><fieldset aria-label="Vista previa de la tarjeta">
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
       <p id="card-preview-category" class="preview-category"></p><p id="card-preview-name" class="preview-name"></p>
       <div id="card-preview-tags" class="preview-tags"></div>
       <div class="preview-prices"><strong id="card-preview-price"></strong><s id="card-preview-previous"></s><small id="card-preview-usdt"></small></div></div></article>
-  </fieldset></details><section class="editor-section"><h3>Imagen</h3><fieldset aria-label="Imagen">
-  <img id="pv" class="pv" alt="Vista previa">
-  <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
-  </fieldset></section><section class="editor-section"><h3>Datos del pedido</h3><fieldset aria-label="Tipo de producto y datos del pedido">
-  <label for="pt">Tipo de producto</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option><option value="playerId"${!p.t&&p.x?.l===playerIdOrderField.l&&p.x?.ph===playerIdOrderField.ph?' selected':''}>Recarga por ID de jugador</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
-  <p id="type-order-help" class="mu" hidden></p>
-  <div id="custom-order-field"><label for="pxon"><input type="checkbox" id="pxon"${p.x?.l?' checked':''} aria-controls="pxfields" onchange="$('#pxfields').hidden=!this.checked"> Pedir un dato adicional al cliente</label>
-  <div id="pxfields"${p.x?.l?'':' hidden'}>
-    <label for="pxl">Dato solicitado</label><input id="pxl" value="${esc(p.x?.l||'')}" placeholder="Ej: Correo de invitación, dominio o ID de jugador">
-    <label for="pxp">Ejemplo (opcional)</label><input id="pxp" value="${esc(p.x?.ph||'')}" placeholder="Ejemplo que verá el cliente">
-  </div></div>
-  </fieldset></section></div><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
+  </fieldset></details></div><div class="bar2 editor-actions"><button class="ok" onclick="admGuardar()">Guardar producto</button><button onclick="admList()">Cancelar</button></div></div>`,'big adm');
   if(ADM.img)$('#pv').src=ADM.img;
   if(p.c&&!cs.includes(p.c)){const o=document.createElement('option');o.textContent=p.c;o.selected=true;$('#pc').insertBefore(o,$('#pc').lastChild)}
   admCatSel(productSubcategories(p));
@@ -1160,7 +1197,7 @@ async function admGuardar(){if(publishing)return;
     if(imageUrl){ADM.img=imageUrl;clearImagePreview();$('#pv').src=imageUrl}
   }catch(error){return toast('No se pudo subir la imagen. Intenta guardar otra vez.')}
   if(publishing)return;
-  const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),rule:v('desc-rule').trim()};
+  const descriptionSpec={access:v('desc-access').trim(),delivery:v('desc-delivery').trim(),warranty:v('desc-warranty').trim(),usage:v('desc-usage').trim(),rule:v('desc-rule').trim()};
   const d=old?.d||descriptionSpec.access||n;
   const o={id:ADM.id||Math.max(Date.now(),Math.max(0,...P.map(x=>x.id))+1),n,c,s,subcategories:members,extraCategories,d,st,pills:v('ptg').split(',').map(x=>x.trim()).filter(Boolean),p:price,po,u,
     img:ADM.img||tile('gift','#e6dcff'),x:byPlayerId?{...playerIdOrderField}:askExtra?{l:xl,ph:v('pxp').trim()}:null};
@@ -1175,13 +1212,11 @@ async function admGuardar(){if(publishing)return;
   if(!old||old.descriptionSpec||Object.values(descriptionSpec).some(Boolean))o.descriptionSpec=descriptionSpec;
   if(downloadUrl)o.downloadUrl=downloadUrl;
   else delete o.downloadUrl;
-  const downloadLabel=v('desc-download-label').trim().slice(0,60);
-  if(downloadLabel)o.downloadLabel=downloadLabel;
+  if(downloadUrl)o.downloadLabel='Descargar';
   else delete o.downloadLabel;
   if(t)o.t=t;
   if(hasDuration)o.accessDuration={amount,unit};
-  const benefit=v('card-benefit').trim();
-  if(benefit)o.cardBenefit=benefit;
+  delete o.cardBenefit;
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
   if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
   if(members.length)SUBS[c]=[...new Set([...(SUBS[c]||[]),...members])];
@@ -1446,19 +1481,64 @@ function admIO(){
 }
 function admDown(source=v('aio')){const b=new Blob([source],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='catalogo-keen-store.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 function admApply(pr,cs,sb){P.length=0;pr.forEach(x=>P.push(x));CATS.length=0;cs.forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,sb)}
+function catalogBackupError(d){
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  const text=(value,max)=>typeof value==='string'&&value.length<=max;
+  const price=value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=10000000&&Math.abs(value*100-Math.round(value*100))<1e-7;
+  const safeUrl=(value,image=false)=>{
+    if(!text(value, image?3_000_000:2048))return false;
+    if(!value)return true;
+    if(image&&/^data:image\/(?:png|jpe?g|webp|gif|svg\+xml);/i.test(value))return true;
+    try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password}
+    catch{return false}
+  };
+  if(!object(d)||!Array.isArray(d.products)||d.products.length>2000)return 'El respaldo no tiene una lista de productos válida.';
+  if(!Array.isArray(d.cats)&&!d.products.every(product=>object(product)&&typeof product.c==='string'))return 'El respaldo no tiene productos válidos.';
+  const categories=d.cats??[['all','🔥 Todo'],...[...new Set(d.products.map(p=>p?.c).filter(x=>typeof x==='string'))].map(c=>[c,c])];
+  const subcategories=d.subs??{};
+  const site=d.site??SITE;
+  if(!Array.isArray(categories)||!categories.length||categories.length>100||!categories.every(c=>Array.isArray(c)&&text(c[0],40)&&text(c[1],80)&&c.slice(2).every(x=>text(x,80))))return 'Revisa las categorías del respaldo.';
+  const categoryKeys=new Set(categories.map(c=>c[0]));
+  if(categoryKeys.size!==categories.length||!categoryKeys.has('all'))return 'El respaldo repite categorías o no incluye «Todo».';
+  if(!object(subcategories)||Object.keys(subcategories).length>100||!Object.entries(subcategories).every(([key,list])=>categoryKeys.has(key)&&Array.isArray(list)&&list.length<=100&&list.every(name=>text(name,60))))return 'Revisa las subcategorías del respaldo.';
+  if(!object(site)||JSON.stringify(site).length>1_000_000)return 'Los ajustes incluidos en el respaldo no son válidos.';
+  const ids=new Set();
+  for(const product of d.products){
+    if(!object(product)||!Number.isSafeInteger(product.id)||product.id<1||ids.has(product.id)||!text(product.n,120)||!product.n.trim()||!categoryKeys.has(product.c)||!price(product.p))return 'Hay un producto con identificador, nombre, categoría o precio inválido.';
+    ids.add(product.id);
+    if(product.po!=null&&!price(product.po))return `Revisa el precio anterior de «${product.n}».`;
+    if(product.st!=null&&(!Number.isSafeInteger(product.st)||product.st<0))return `Revisa el stock de «${product.n}».`;
+    for(const key of ['s','d','t','i'])if(product[key]!=null&&!text(product[key],key==='i'?12000:2000))return `Revisa la descripción de «${product.n}».`;
+    if(product.pills!=null&&(!Array.isArray(product.pills)||product.pills.length>30||!product.pills.every(item=>text(item,80))))return `Revisa los beneficios de «${product.n}».`;
+    if(!safeUrl(product.img||'',true))return `La imagen de «${product.n}» no es una URL segura.`;
+    if(product.u!=null&&(!Number.isFinite(product.u)||product.u<0))return `Revisa el precio USDT de «${product.n}».`;
+    if(product.x!=null&&(!object(product.x)||Object.values(product.x).some(value=>!text(value,300))))return `Revisa los datos de pedido de «${product.n}».`;
+    if(product.accessDuration!=null&&(!object(product.accessDuration)||!Number.isSafeInteger(product.accessDuration.amount)||product.accessDuration.amount<0||!['days','months','years'].includes(product.accessDuration.unit)))return `Revisa la duración de «${product.n}».`;
+    if(product.descriptionSpec!=null&&(!object(product.descriptionSpec)||['access','delivery','warranty','usage','rule'].some(key=>product.descriptionSpec[key]!=null&&!text(product.descriptionSpec[key],3000))))return `Revisa los detalles de «${product.n}».`;
+    if(product.downloadUrl!=null&&!safeUrl(product.downloadUrl))return `El enlace de descarga de «${product.n}» debe usar HTTPS.`;
+    if(product.downloadLabel!=null&&!text(product.downloadLabel,60))return `Revisa el texto del enlace de «${product.n}».`;
+    if(product.subcategories!=null&&(!Array.isArray(product.subcategories)||product.subcategories.length>4||!product.subcategories.every(item=>text(item,60))))return `Revisa las subcategorías de «${product.n}».`;
+    if(product.extraCategories!=null&&(!Array.isArray(product.extraCategories)||product.extraCategories.length>3||!product.extraCategories.every(item=>object(item)&&categoryKeys.has(item.category)&&Array.isArray(item.subs)&&item.subs.length<=4&&item.subs.every(name=>text(name,60)))))return `Revisa las categorías adicionales de «${product.n}».`;
+    if(product.plans!=null&&(!Array.isArray(product.plans)||product.plans.length>12||!product.plans.every(plan=>object(plan)&&text(plan.id,100)&&text(plan.name,60)&&plan.name.trim()&&price(plan.price)&&plan.price>0&&(plan.previous==null||price(plan.previous)&&plan.previous>plan.price)&&object(plan.duration)&&Number.isSafeInteger(plan.duration.amount)&&plan.duration.amount>=1&&plan.duration.amount<=9999&&['days','months','years'].includes(plan.duration.unit))))return `Revisa los planes de «${product.n}».`;
+  }
+  for(const product of d.products){
+    const placements=[product.c,...(product.extraCategories||[]).map(item=>item.category)];
+    if(new Set(placements).size!==placements.length)return `«${product.n}» tiene una categoría duplicada.`;
+  }
+  return '';
+}
 async function admImport(){
   if(publishing)return;
   let d;
-  try{d=JSON.parse(v('aio'))}catch(e){return toast('El respaldo no es un JSON válido.')}
-  if(!Array.isArray(d?.products)||!d.products.every(p=>p&&Number.isSafeInteger(p.id)&&typeof p.n==='string'&&typeof p.c==='string'&&Number.isFinite(p.p)&&p.p>=0))return toast('El respaldo no tiene el formato correcto.');
+  const source=v('aio');
+  if(source.length>15_000_000)return toast('El respaldo supera el límite de 15 MB.');
+  try{d=JSON.parse(source)}catch(e){return toast('El respaldo no es un JSON válido.')}
+  if(!d||!Array.isArray(d.products))return toast('El respaldo no tiene una lista de productos válida.');
   const categories=d.cats??[['all','🔥 Todo'],...[...new Set(d.products.map(p=>p.c))].map(c=>[c,c])];
   const subcategories=d.subs??{};
   const site=d.site??SITE;
-  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
-  if(!Array.isArray(categories)||!categories.length||!categories.every(c=>Array.isArray(c)&&c.slice(0,2).length===2&&c.every(x=>typeof x==='string'))
-     ||!object(subcategories)||!Object.values(subcategories).every(a=>Array.isArray(a)&&a.every(x=>typeof x==='string'))||!object(site))return toast('Revisa las categorías y los ajustes del respaldo.');
-  if(new Set(d.products.map(p=>p.id)).size!==d.products.length)return toast('El respaldo contiene productos con el mismo identificador.');
-  const source=v('aio');
+  const problem=catalogBackupError({...d,cats:categories,subs:subcategories,site});
+  if(problem)return toast(problem);
   const count=categories.filter(([key])=>key!=='all').length;
   modal(`<h2>Confirmar restauración</h2><p>El respaldo contiene <strong>${d.products.length} productos</strong> y <strong>${count} categorías</strong>. Al confirmar, reemplazará el catálogo publicado.</p>
     <div class="bar2"><button type="button" class="pri" id="confirm-catalog-import">Restaurar catálogo</button><button type="button" id="cancel-catalog-import">Cancelar</button></div>`);
@@ -1998,7 +2078,7 @@ const CF={pay:['💳 Pagos y contacto',[['WA','WhatsApp de pedidos (con código 
 function admUp(n,el){prepareStoreImage(el,$('#pv_'+n),'contain',n)}
 function admCfg(g){const [t,fl,up,ul,col]=CF[g],c=SITE.cfg,k=SITE.col;ADM.up={};
   modal(`<h2>${t}</h2><p class="mu" style="font-size:.78rem">Vacío = usa el valor original del catálogo.</p>${fl.map(([x,l])=>`<label for="c_${x}">${l}</label><input id="c_${x}" value="${esc(x=='@title'?SITE.title:c[x])||''}">`).join('')}
-  ${up?`<label for="site-image"> ${ul}</label><input id="site-image" type="file" accept="image/*" onchange="admUp('${up}',this)"><img id="pv_${up}" class="pv" style="max-width:110px"${c[up]?` src="${esc(c[up])}"`:''}>`:''}
+  ${up?`<label for="site-image"> ${ul}</label><input id="site-image" type="file" accept="image/*" onchange="admUp('${up}',this)"><img id="pv_${up}" class="pv" alt="Vista previa de ${esc(ul)}" style="max-width:110px"${c[up]?` src="${esc(c[up])}"`:''}>`:''}
   ${col?`<div class="g2"><div><label for="k_ac">Color principal</label><input id="k_ac" type="color" value="${k.ac||'#b3261e'}"></div><div><label for="k_ac2">Color secundario (hover)</label><input id="k_ac2" type="color" value="${k.ac2||'#8f1e18'}"></div></div>`:''}
   <div class="bar2"><button class="ok" style="flex:1" onclick="admCfgSave('${g}')">Guardar</button><button style="flex:1" onclick="admCfgReset('${g}')">Restablecer</button></div>`)}
 async function admCfgSave(g){

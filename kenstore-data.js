@@ -13,6 +13,9 @@ async function kenResult(request) {
 function kenReadCatalog(client) {
   return kenResult(client.from('store_catalog').select('products,categories,subcategories,site,updated_at').eq('id', 1).maybeSingle());
 }
+function kenReadPublicMaintenance(client) {
+  return kenResult(client.rpc('ken_public_maintenance_status'));
+}
 
 if (typeof module !== 'undefined') module.exports = { SUPA_URL, SUPA_KEY };
 
