@@ -1112,6 +1112,8 @@ header,header .av,.hero h1,.hero p,.hero .cta,.hero .dragon,.seals .seal,#grid .
 .det .detail-benefits li{display:flex;gap:7px;align-items:flex-start;font-size:.8rem}
 .det .detail-benefits li::before{content:"✓";flex:0 0 auto;color:var(--ok);font-weight:900}
 .det .detail-spec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.det .detail-spec-grid{grid-template-areas:"duration usage" "warranty delivery"}
+.det .detail-spec--duration{grid-area:duration}.det .detail-spec--usage{grid-area:usage}.det .detail-spec--warranty{grid-area:warranty}.det .detail-spec--delivery{grid-area:delivery}
 .det .detail-spec{min-width:0;padding:7px 8px;border:1px solid var(--stroke,#e2ddd5);border-radius:9px;background:var(--surface,#fffdf9)}
 .det .detail-spec span{display:block;margin-bottom:3px;color:var(--mu);font-size:.62rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .det .detail-spec strong{display:block;font-size:.78rem;line-height:1.3;overflow-wrap:anywhere}
@@ -2525,7 +2527,7 @@ function compactProductDetail(product){
   const image=product.img||tile('gift','#e6dcff');
   return `<div class="det compact-detail"><header class="detail-product-head"><img src="${esc(image)}" alt="${esc(product.n)}"><div class="detail-product-heading"><h2>${esc(product.n)}</h2>${priceHeader}</div></header><span class="dcat">${esc(displayProductPlacement(product))}</span>
     ${description?`<section class="detail-panel"><h3>Descripción del producto</h3>${summary?`<p class="detail-summary">${esc(summary)}</p>`:''}${benefits.length?`<ul class="detail-benefits" aria-label="Beneficios">${benefits.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}</section>`:''}
-    ${facts.length||note?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica y condiciones</h3>${facts.length?`<div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`:''}${note?`<p class="detail-note">${esc(note)}</p>`:''}</section>`:''}</div>`;
+    ${facts.length||note?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica y condiciones</h3>${facts.length?`<div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec detail-spec--${({Duración:'duration',Uso:'usage',Garantía:'warranty',Entrega:'delivery'})[label]||'usage'}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`:''}${note?`<p class="detail-note">${esc(note)}</p>`:''}</section>`:''}</div>`;
 }
 function productDownloadButton(product){
   if(!product.downloadUrl)return '';
