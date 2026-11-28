@@ -573,6 +573,15 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
  .product-editor .access-duration-stock-row label{font-size:.72rem}
  .product-editor .access-duration-stock-row :is(input,select){padding-inline:5px}
 }
+
+/* Identidad del producto: nombre e imagen visibles al inicio del formulario. */
+.product-identity-row{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(150px,.8fr);gap:10px;align-items:stretch;margin-bottom:10px}
+.product-identity-row>.editor-name,.product-identity-row>.editor-section{min-width:0;margin:0}
+.product-identity-row>.editor-section h3{padding:8px 10px;font-size:.9rem}
+.product-identity-row>.editor-section fieldset{padding:8px 10px;display:grid;gap:5px}
+.product-identity-row #pv{width:min(100%,96px);height:64px;object-fit:contain}
+.product-identity-row #pfile{width:100%;min-width:0;padding:5px;font-size:.76rem}
+@media(max-width:520px){.product-identity-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px}.product-identity-row>.editor-name{padding:10px}.product-identity-row>.editor-name label{font-size:.82rem}.product-identity-row>.editor-name input{min-width:0;padding:9px;font-size:.9rem}.product-identity-row>.editor-section h3{padding:7px 8px;font-size:.8rem}.product-identity-row>.editor-section fieldset{padding:7px}.product-identity-row #pv{height:52px;width:72px}.product-identity-row #pfile{font-size:.67rem;padding:3px}}
 </style></head>
 <body>
 <header>
@@ -1140,8 +1149,12 @@ function admForm(id,duplicate=false){
   const description=productDescriptionFields(p);
   modal(`<div class="admin-heading"><h2>${duplicate?'Duplicar producto':id?'Editar producto':'Nuevo producto'}</h2></div>
   ${duplicate?'<p class="mu">La copia se guardará pausada. Puedes reactivarla desde Productos.</p>':''}
-<div class="product-editor"><div class="editor-column">  <div class="editor-name">
-  <label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes">
+<div class="product-editor"><div class="editor-column"><div class="product-identity-row">
+  <div class="editor-name"><label for="pn">Nombre</label><input id="pn" maxlength="80" value="${esc(p.n||'')}" placeholder="Ej: Netflix Premium 1 mes"></div>
+  <section class="editor-section"><h3>Imagen de la tarjeta</h3><fieldset aria-label="Imagen">
+  <img id="pv" class="pv" alt="Vista previa" src="${esc(ADM.img||tile('gift','#e6dcff'))}">
+  <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
+  </fieldset></section>
   </div>
   <details class="product-editor-group" open><summary>Tarjeta del catálogo</summary><div class="product-editor-group-body">
   <section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
@@ -1177,10 +1190,7 @@ function admForm(id,duplicate=false){
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
     <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
   </fieldset></section>
-  <section class="editor-section"><h3>Imagen de la tarjeta</h3><fieldset aria-label="Imagen">
-  <img id="pv" class="pv" alt="Vista previa" src="${esc(ADM.img||tile('gift','#e6dcff'))}">
-  <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
-  </fieldset></section></div></details>
+  </div></details>
   <details class="product-editor-group"><summary>Detalle para el cliente</summary><div class="product-editor-group-body">
   <section class="editor-section"><h3>Información para el cliente</h3><fieldset aria-label="Información para el cliente">
   <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado con PIN">${esc(description.access)}</textarea>
