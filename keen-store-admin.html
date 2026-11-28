@@ -586,6 +586,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-identity-row>.editor-name label{margin:0 0 4px;font-size:.8rem}
 .product-identity-row>.editor-name input{min-width:0;margin:0;padding:9px 10px;font-size:.92rem}
 @media(max-width:520px){.product-identity-row{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:8px;padding:9px}.product-identity-row>.editor-section{grid-template-columns:48px minmax(0,1fr);gap:2px 6px}.product-identity-row #pv{width:48px;height:44px}.product-identity-row>.editor-section h3{font-size:.7rem}.product-identity-row>.editor-section label{font-size:.7rem}.product-identity-row #pfile{font-size:.58rem;padding:1px}.product-identity-row>.editor-name input{padding:8px 7px;font-size:.82rem}}
+
+/* Mantiene los cinco datos del plan alineados en una sola fila. */
+.plan-editor-row{grid-template-columns:minmax(0,1.35fr) repeat(4,minmax(0,.85fr));gap:6px;padding:8px;align-items:end}
+.plan-editor-row>label{min-width:0;font-size:.74rem;line-height:1.15}
+.plan-editor-row input,.plan-editor-row select{width:100%;min-width:0;padding:7px 6px;font-size:.82rem}
+.plan-editor-row>button{grid-column:1/-1;justify-self:start;padding:5px 10px;font-size:.76rem}
+@media(max-width:520px){.plan-editor-row{grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(0,.8fr));gap:4px;padding:6px}.plan-editor-row>label{font-size:.62rem;overflow-wrap:anywhere}.plan-editor-row input,.plan-editor-row select{padding:6px 3px;font-size:.72rem}}
 </style></head>
 <body>
 <header>
