@@ -2563,8 +2563,6 @@ function compactProductDetail(product){
     ||raw.match(/\bduraci[oó]n\s*:\s*(\d+\s*(?:d[ií]as?|mes(?:es)?|a[nñ]os?))/iu)?.[1]||'';
   const type=compactDetailText(product.t||'',70);
   const tags=(Array.isArray(product.pills)?product.pills:[]).map(tag=>String(tag||'').trim()).filter(Boolean);
-  const deliveryRaw=spec.delivery||lines.find(line=>/^\*\*?📦/u.test(line))?.replace(/^\*\*?📦\s*/u,'').replace(/\*\*$/u,'')||'';
-  const delivery=compactDetailText(deliveryRaw||(Number(product.p)===0?'Producto gratuito':'WhatsApp tras confirmar el pago'),85);
   const warranty=compactDetailText(spec.warranty||compactDetailWarranty([raw,spec.rule,tags.join(' ')].join('\n')),70);
   const summaryKey=normalizeDetailValue(summary),typeKey=normalizeDetailValue(type);
   const durationKey=normalizeDetailValue(duration).replace(/\s+(?:de\s+)?acceso$/u,'');
@@ -2575,16 +2573,7 @@ function compactProductDetail(product){
       (warranty&&key.includes(normalizeDetailValue(warranty)))||/^(?:duracion|entrega|garantia|condiciones)(?:\s|$)/u.test(key);
     return Boolean(key)&&!repeatsSummary&&!repeatsFact&&array.findIndex(other=>normalizeDetailValue(compactDetailText(other,70))===key)===index;
   }).slice(0,2);
-  const usageValue=compactDetailText(spec.usage||type,70);
-  const usage=normalizeDetailValue(usageValue)===typeKey?'':usageValue;
-  const ruleRaw=spec.rule||lines.find(line=>/^⚠️/u.test(line))?.replace(/^⚠️\s*/u,'')||sections.conditions.split(/[\n•▪●]+/u).map(item=>item.trim()).find(Boolean)||'';
-  const warrantyKey=normalizeDetailValue(warranty);
-  const noteText=ruleRaw.split(/(?<=[.!?])\s*/u).filter(part=>{
-    const partKey=normalizeDetailValue(part);
-    return !(warrantyKey.split(' ').length>1&&partKey.includes(warrantyKey));
-  }).join(' ').trim();
-  const note=compactDetailText(noteText,130);
-  const facts=[['Duración',duration],['Uso',usage],['Garantía',warranty],['Entrega',delivery]].filter(([,value])=>value);
+  const facts=[['Duración',duration],['Garantía',warranty]].filter(([,value])=>value);
   const description=summary||benefits.length;
   const display=pricedProduct(product),quantity=display.st===0?0:availableStock[display.id]??display.st;
   const stockLabel=catalogStockLabel(display,quantity),previous=Number(display.po)>Number(display.p)?display.po:null;
@@ -2592,7 +2581,7 @@ function compactProductDetail(product){
   const image=product.img||tile('gift','#e6dcff');
   return `<div class="det compact-detail"><header class="detail-product-head"><img src="${esc(image)}" alt="${esc(product.n)}"><div class="detail-product-heading"><h2>${esc(product.n)}</h2>${priceHeader}</div></header><span class="dcat">${esc(displayProductPlacement(product))}</span>
     ${description?`<section class="detail-panel"><h3>Descripción del producto</h3>${summary?`<p class="detail-summary">${esc(summary)}</p>`:''}${benefits.length?`<ul class="detail-benefits" aria-label="Beneficios">${benefits.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}</section>`:''}
-    ${facts.length||note?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica y condiciones</h3>${facts.length?`<div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec detail-spec--${({Duración:'duration',Uso:'usage',Garantía:'warranty',Entrega:'delivery'})[label]||'usage'}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`:''}${note?`<p class="detail-note">${esc(note)}</p>`:''}</section>`:''}</div>`;
+    ${facts.length?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica</h3><div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec detail-spec--${label==='Duración'?'duration':'warranty'}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div></section>`:''}</div>`;
 }
 function productDownloadButton(product){
   if(!product.downloadUrl)return '';
@@ -2914,4 +2903,9 @@ const publishedCatalog=loadPublishedCatalog().then(loaded=>{
 @keyframes ken-hero-roar{0%,100%{transform:translateY(0) scale(1) rotate(0)}14%{transform:translateY(-5px) scale(1.055) rotate(-1deg)}26%{transform:translateY(-5px) scale(1.055) rotate(1.3deg)}40%{transform:translateY(-4px) scale(1.05) rotate(-1.3deg)}56%{transform:translateY(-3px) scale(1.04) rotate(1deg)}72%{transform:translateY(-1px) scale(1.025) rotate(-.5deg)}}
 #inicio .dragon.is-roaring .dr{animation:ken-hero-roar 1.35s ease-in-out}
 @media(prefers-reduced-motion:reduce){#inicio .dragon.is-roaring .dr{animation:none}}
+
+/* Ficha del catálogo: únicamente duración y garantía, sin celdas vacías. */
+.det.compact-detail .detail-spec-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:none}
+.det.compact-detail .detail-spec-grid>.detail-spec{grid-area:auto}
+.det.compact-detail .detail-spec-grid>.detail-spec:only-child{grid-column:1/-1}
 </style>
