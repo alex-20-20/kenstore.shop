@@ -619,6 +619,16 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .plan-menu-actions button.plan-menu-remove{color:var(--ac)}
 .product-editor .plan-row-menu>summary:focus-visible,.product-editor .plan-menu-actions button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 @media(max-width:520px){.product-editor .plan-editor-row{padding:7px;gap:7px}.product-editor .plan-row-fields{gap:4px}.product-editor .plan-editor-row label{font-size:.67rem}.product-editor .plan-editor-row input,.product-editor .plan-editor-row select{font-size:.76rem;padding:6px 4px}.product-editor .plan-row-header label{font-size:.75rem}.product-editor .plan-row-header input{font-size:.84rem}}
+
+/* Los datos de cada plan se despliegan de forma independiente. */
+.product-editor .plan-row-details{min-width:0;margin:0;padding:0;border:0;background:transparent}
+.product-editor .plan-row-details>summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer;padding:4px 0;color:var(--mu);font-size:.72rem;font-weight:600;line-height:1.3}
+.product-editor .plan-row-details>summary::-webkit-details-marker{display:none}
+.product-editor .plan-row-details>summary::marker{content:""}
+.product-editor .plan-row-details>summary::before{content:"";width:6px;height:6px;flex:0 0 6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin-right:2px}
+.product-editor .plan-row-details[open]>summary::before{transform:rotate(45deg)}
+.product-editor .plan-row-details[open]>.plan-row-fields{padding-top:5px}
+.product-editor .plan-row-details>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
 </style></head>
 <body>
 <header>
@@ -1156,18 +1166,22 @@ function planEditorRow(plan={}){
         </div>
       </details>
     </div>
-    <div class="plan-row-fields">
+    <details class="plan-row-details"${!plan.name||!plan.price||!plan.duration?.amount?' open':''}>
+      <summary>Precio y duración</summary>
+      <div class="plan-row-fields">
       <label>Precio S/<input data-plan="price" type="number" min=".01" step=".01" value="${esc(plan.price??'')}"><small class="mu" data-plan-usdt></small></label>
       <label>Antes S/<input data-plan="previous" type="number" min=".01" step=".01" value="${esc(plan.previous??'')}"></label>
       <label>Duración<input data-plan="amount" type="number" min="1" max="9999" step="1" value="${esc(plan.duration?.amount??'')}"></label>
       <label>Unidad<select data-plan="unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}" ${unit===plan.duration?.unit?'selected':''}>${label}</option>`).join('')}</select></label>
-    </div>
+      </div>
+    </details>
   </div>`;
 }
 function editProductPlan(button){
   const row=button.closest('.plan-editor-row');
   if(!row)return;
   row.querySelector('.plan-row-menu').open=false;
+  row.querySelector('.plan-row-details').open=true;
   const input=row.querySelector('[data-plan="name"]');
   input.focus();input.select();
 }
