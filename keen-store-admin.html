@@ -518,6 +518,12 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
  .admin-mobile-dock button[aria-current=page]{background:#b3261e12;color:var(--ac);font-weight:700}
  .admin-mobile-dock button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 }
+
+/* Categoría principal y subcategorías en la misma fila */
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-sub-options{grid-column:2;grid-row:1/span 2;margin-top:0}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories{grid-column:1/-1;grid-row:auto;margin-top:6px}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories[open]{grid-column:1/-1;grid-row:auto}
+
 </style></head>
 <body>
 <header>
