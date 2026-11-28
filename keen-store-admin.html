@@ -1077,7 +1077,7 @@ function admForm(id,duplicate=false){
     <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
     <div id="ps" onchange="admSubLimit()"></div>
   </div>
-  <details class="editor-optional product-extra-categories"><summary>Categorías adicionales (opcional)</summary><div class="extra-category-fields">
+  <details open class="editor-optional product-extra-categories"><summary>Categorías adicionales (hasta 3 más)</summary><div class="extra-category-fields">
     ${[0,1,2].map(slot=>`<div>
       <select id="extra-cat-${slot}" aria-label="Categoría adicional ${slot+1}" onchange="admExtraSubs(${slot})"><option value="">—</option>
       ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
