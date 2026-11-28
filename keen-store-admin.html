@@ -524,6 +524,18 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories{grid-column:1/-1;grid-row:auto;margin-top:6px}
 .product-editor fieldset[aria-label="Categoría y subcategoría"]>.product-extra-categories[open]{grid-column:1/-1;grid-row:auto}
 
+
+/* Selector múltiple de categorías en el editor */
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#category-picker-label{grid-column:1;grid-row:1}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#category-picker{grid-column:1;grid-row:2;min-width:0;margin:0}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#category-picker>summary{cursor:pointer;display:flex;align-items:center;min-height:42px;padding:8px 11px;border:1px solid var(--stroke);border-radius:9px;background:#fff;font-weight:600;overflow-wrap:anywhere}
+.product-editor fieldset[aria-label="Categoría y subcategoría"]>#category-picker[open]>summary{border-color:var(--ac);border-radius:9px 9px 0 0}
+.product-editor .category-picker-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:3px;max-height:190px;overflow:auto;padding:6px;border:1px solid var(--stroke);border-top:0;border-radius:0 0 9px 9px;background:#fff}
+.product-editor .category-picker-options label{display:flex;align-items:center;gap:7px;min-width:0;min-height:36px;margin:0;padding:5px 7px;border-radius:7px;font-size:.88rem;font-weight:500;cursor:pointer}
+.product-editor .category-picker-options label:has(input:checked){background:#b3261e12;color:var(--ac);font-weight:700}
+.product-editor .category-picker-options input{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:var(--ac)}
+.product-editor #pc[hidden]{display:none!important}
+
 </style></head>
 <body>
 <header>
@@ -938,6 +950,39 @@ function admSubs(c){
 function admCheckedSubs(){
   return [...$('#ps').querySelectorAll('select')].map(select=>select.value).filter(Boolean);
 }
+function productCategoryPickerMarkup(categories,product){
+  const validExtra=(Array.isArray(product.extraCategories)?product.extraCategories:[]).filter(item=>categories.includes(item.category));
+  const selected=new Set([product.c,...validExtra.map(item=>item.category)].filter(category=>categories.includes(category)));
+  if(!selected.size&&categories.length)selected.add(categories[0]);
+  const primary=categories.includes(product.c)?product.c:(categories[0]||'');
+  const summary=[...selected].join(' · ')||'Elige categorías';
+  return `<label id="category-picker-label">Categorías del producto</label>
+    <details id="category-picker" class="category-multi-picker">
+      <summary id="category-picker-summary">${esc(summary)}</summary>
+      <div id="category-picker-options" class="category-picker-options" role="group" aria-label="Elige varias categorías">
+        ${categories.map((category,index)=>{
+          const extra=validExtra.find(item=>item.category===category);
+          const subcategories=category===primary?productSubcategories(product):(extra?.subs||[]);
+          return `<label><input type="checkbox" id="category-option-${index}" data-product-category value="${esc(category)}" data-subs="${esc(JSON.stringify(subcategories))}"${selected.has(category)?' checked':''} onchange="syncProductCategories(this)"><span>${esc(category)}</span></label>`;
+        }).join('')}
+      </div>
+    </details>
+    <select id="pc" hidden tabindex="-1" aria-hidden="true">${categories.map(category=>`<option value="${esc(category)}"${category===primary?' selected':''}>${esc(category)}</option>`).join('')}</select>`;
+}
+function syncProductCategories(changed){
+  const boxes=[...document.querySelectorAll('#category-picker-options [data-product-category]')];
+  let selected=boxes.filter(input=>input.checked);
+  if(selected.length>4){changed.checked=false;return toast('Puedes elegir hasta cuatro categorías.');}
+  if(!selected.length){changed.checked=true;return toast('Elige al menos una categoría.');}
+  const previousPrimary=v('pc');
+  const previousBox=boxes.find(input=>input.value===previousPrimary);
+  if(previousBox)previousBox.dataset.subs=JSON.stringify(admCheckedSubs());
+  const primary=selected.find(input=>input.value===previousPrimary)||selected[0];
+  const preserved=primary.value===previousPrimary?admCheckedSubs():JSON.parse(primary.dataset.subs||'[]');
+  $('#pc').value=primary.value;
+  $('#category-picker-summary').textContent=selected.map(input=>input.value).join(' · ');
+  admCatSel(preserved);
+}
 function admCatSel(selected=[]){
   const subs=admSubs(v('pc'));
   const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
@@ -977,10 +1022,10 @@ function admExtraLimit(slot){
   for(const input of inputs)input.disabled=total>=4&&!input.checked;
 }
 function readExtraCategories(){
-  return [0,1,2].map(slot=>({
-    category:v('extra-cat-'+slot),
-    subs:[...$('#extra-subs-'+slot).querySelectorAll('input:checked')].map(input=>input.value)
-  })).filter(item=>item.category);
+  const primary=v('pc');
+  return [...document.querySelectorAll('#category-picker-options [data-product-category]:checked')]
+    .filter(input=>input.value!==primary)
+    .map(input=>({category:input.value,subs:JSON.parse(input.dataset.subs||'[]')}));
 }
 const playerIdOrderField={l:'ID de jugador',ph:'Ej: 123456789'};
 const typeOrderHelp={
@@ -1071,18 +1116,12 @@ function admForm(id,duplicate=false){
   </div>
   <details class="product-editor-group" open><summary>Tarjeta del catálogo</summary><div class="product-editor-group-body">
   <section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
-  <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}</select>
+  ${productCategoryPickerMarkup(cs,p)}
   <div class="product-sub-options" aria-labelledby="product-subs-title">
     <div class="product-sub-heading"><strong id="product-subs-title">Subcategorías</strong>
     <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
     <div id="ps" onchange="admSubLimit()"></div>
   </div>
-  <details open class="editor-optional product-extra-categories"><summary>Categorías adicionales (hasta 3 más)</summary><div class="extra-category-fields">
-    ${[0,1,2].map(slot=>`<div>
-      <select id="extra-cat-${slot}" aria-label="Categoría adicional ${slot+1}" onchange="admExtraSubs(${slot})"><option value="">—</option>
-      ${cs.map(category=>`<option value="${esc(category)}"${p.extraCategories?.[slot]?.category===category?' selected':''}>${esc(category)}</option>`).join('')}</select>
-      <div class="extra-sub-options" id="extra-subs-${slot}" onchange="admExtraLimit(${slot})"></div></div>`).join('')}
-  </div></details>
   </fieldset></section>
   <section class="editor-section"><h3>Tipo, duración y beneficios</h3><fieldset aria-label="Tipo, duración y beneficios">
   <label for="pt">Tipo de producto (etiqueta y pedido)</label><select id="pt" onchange="admTypeFields()"><option value="">— Sin tipo —</option><option value="playerId"${!p.t&&p.x?.l===playerIdOrderField.l&&p.x?.ph===playerIdOrderField.ph?' selected':''}>Recarga por ID de jugador</option>${TIPOS.map(t=>`<option${p.t==t?' selected':''}>${esc(t)}</option>`).join('')}</select>
