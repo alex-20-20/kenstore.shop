@@ -2501,6 +2501,9 @@ function compactDetailWarranty(text){
   const match=String(text||'').match(/(?:garant[ií]a[^.!?\n]{0,70}|[^.!?\n]{0,35}garant[ií]a[^.!?\n]{0,35})/iu);
   return match?compactDetailText(match[0],70):'';
 }
+function normalizeDetailValue(value){
+  return String(value||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('es').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+}
 function compactProductDetail(product){
   const spec=product.descriptionSpec||{},raw=String(product.i||product.d||'').replace(/\r\n?/g,'\n');
   const sections=productDetailSections(raw),lines=raw.split('\n').map(line=>line.trim()).filter(Boolean);
@@ -2512,15 +2515,27 @@ function compactProductDetail(product){
     ||raw.match(/\bduraci[oó]n\s*:\s*(\d+\s*(?:d[ií]as?|mes(?:es)?|a[nñ]os?))/iu)?.[1]||'';
   const type=compactDetailText(product.t||'',70);
   const tags=(Array.isArray(product.pills)?product.pills:[]).map(tag=>String(tag||'').trim()).filter(Boolean);
-  const benefits=[...bulletBenefits,...tags].map(item=>compactDetailText(item,70)).filter((item,index,array)=>item&&
-    !/^(?:duraci[oó]n|entrega|garant[ií]a|condiciones)\s*:/iu.test(item)&&item.toLocaleLowerCase('es')!==type.toLocaleLowerCase('es')&&
-    (!duration||item.toLocaleLowerCase('es')!==duration.toLocaleLowerCase('es'))&&array.findIndex(other=>compactDetailText(other,70).toLocaleLowerCase('es')===item.toLocaleLowerCase('es'))===index).slice(0,2);
   const deliveryRaw=spec.delivery||lines.find(line=>/^\*\*?📦/u.test(line))?.replace(/^\*\*?📦\s*/u,'').replace(/\*\*$/u,'')||'';
   const delivery=compactDetailText(deliveryRaw||(Number(product.p)===0?'Producto gratuito':'WhatsApp tras confirmar el pago'),85);
-  const warranty=compactDetailText(spec.warranty||compactDetailWarranty([raw,spec.rule,tags.join(' ')].join('\n')),70);
-  const usage=compactDetailText(spec.usage||type,70);
+  const warranty=compactDetailText(spec.warranty||compactDetailWarranty([raw,spec.rule,tags.join('\n')].join('\n')),70);
+  const summaryKey=normalizeDetailValue(summary),typeKey=normalizeDetailValue(type);
+  const durationKey=normalizeDetailValue(duration).replace(/\s+(?:de\s+)?acceso$/u,'');
+  const benefits=[...bulletBenefits,...tags].map(item=>compactDetailText(item,70)).filter((item,index,array)=>{
+    const key=normalizeDetailValue(item),withoutAccess=key.replace(/\s+(?:de\s+)?acceso$/u,'');
+    const repeatsSummary=summaryKey&&(key===summaryKey||summaryKey.includes(key));
+    const repeatsFact=(typeKey&&key===typeKey)||(durationKey&&withoutAccess===durationKey)||
+      (warranty&&key.includes(normalizeDetailValue(warranty)))||/^(?:duracion|entrega|garantia|condiciones)(?:\s|$)/u.test(key);
+    return Boolean(key)&&!repeatsSummary&&!repeatsFact&&array.findIndex(other=>normalizeDetailValue(compactDetailText(other,70))===key)===index;
+  }).slice(0,2);
+  const usageValue=compactDetailText(spec.usage||type,70);
+  const usage=normalizeDetailValue(usageValue)===typeKey?'':usageValue;
   const ruleRaw=spec.rule||lines.find(line=>/^⚠️/u.test(line))?.replace(/^⚠️\s*/u,'')||sections.conditions.split(/[\n•▪●]+/u).map(item=>item.trim()).find(Boolean)||'';
-  const note=compactDetailText(warranty?ruleRaw.replace(warranty,'').trim():ruleRaw,130);
+  const warrantyKey=normalizeDetailValue(warranty);
+  const noteText=ruleRaw.split(/(?<=[.!?])\s*/u).filter(part=>{
+    const partKey=normalizeDetailValue(part);
+    return !(warrantyKey.split(' ').length>1&&partKey.includes(warrantyKey));
+  }).join(' ').trim();
+  const note=compactDetailText(noteText,130);
   const facts=[['Duración',duration],['Uso',usage],['Garantía',warranty],['Entrega',delivery]].filter(([,value])=>value);
   const description=summary||benefits.length;
   const display=pricedProduct(product),quantity=display.st===0?0:availableStock[display.id]??display.st;

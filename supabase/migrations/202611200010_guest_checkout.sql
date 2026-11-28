@@ -30,7 +30,7 @@ begin
 end;
 $$;
 
-create function public.ken_reserve_product_plan(product bigint, selected_plan text, guest_token uuid)
+create or replace function public.ken_reserve_product_plan(product bigint, selected_plan text, guest_token uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare
   customer uuid := auth.uid();
@@ -82,9 +82,9 @@ begin
     snapshot:=public.ken_checkout_snapshot(item);
   end if;
   stock := (item->>'st')::integer;
-  select * into hold from public.ken_checkout_holds
-    where product_id=product and customer_id is not distinct from customer and guest_token is not distinct from request_token
-      and plan_key is not distinct from selected_plan and expires_at>instant and order_id is null and not released
+  select h.* into hold from public.ken_checkout_holds as h
+    where h.product_id=product and h.customer_id is not distinct from customer and h.guest_token is not distinct from request_token
+      and h.plan_key is not distinct from selected_plan and h.expires_at>instant and h.order_id is null and not h.released
     limit 1;
   if stock is not null and stock<=public.ken_checkout_available(product,hold.id) then raise exception 'KEN_OUT_OF_STOCK'; end if;
   if hold.id is null then

@@ -1114,16 +1114,17 @@ function admForm(id,duplicate=false){
   <img id="pv" class="pv" alt="Vista previa" src="${esc(ADM.img||tile('gift','#e6dcff'))}">
   <label for="pfile">Subir imagen</label><input id="pfile" type="file" accept="image/*" onchange="admPick()">
   </fieldset></section></div></details>
-  <details class="product-editor-group" open><summary>Descripción y ficha técnica</summary><div class="product-editor-group-body">
-  <section class="editor-section"><h3>Descripción del producto</h3><fieldset aria-label="Descripción del producto">
-  <label for="desc-access">Resumen para el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado">${esc(description.access)}</textarea>
+  <details class="product-editor-group"><summary>Detalle para el cliente</summary><div class="product-editor-group-body">
+  <section class="editor-section"><h3>Información para el cliente</h3><fieldset aria-label="Información para el cliente">
+  <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado con PIN">${esc(description.access)}</textarea>
+  <small class="mu">Precio, stock, tipo y duración ya se muestran automáticamente. Escribe aquí solo lo que aporta información nueva.</small>
   </fieldset></section><section class="editor-section"><h3>Ficha técnica y entrega</h3><fieldset aria-label="Ficha técnica y entrega">
   <label for="desc-delivery">Entrega</label><input id="desc-delivery" maxlength="110" value="${esc(description.delivery)}" placeholder="Ej. Por WhatsApp al confirmar el pago">
-  <div class="g2"><div><label for="desc-warranty">Garantía (opcional)</label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo"></div>
-  <div><label for="desc-usage">Uso (opcional)</label><input id="desc-usage" maxlength="70" value="${esc(description.usage||p.t||'')}" placeholder="Ej. 1 dispositivo privado"></div></div>
-  <details class="editor-optional"><summary>Opciones: condiciones y descarga</summary>
-  <label for="desc-rule">Condición de uso</label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
-  <label for="desc-download">Enlace de descarga público</label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
+  <div class="g2"><div><label for="desc-warranty">Garantía <span class="mu">(opcional)</span></label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo"></div>
+  <div><label for="desc-usage">Uso <span class="mu">(si aporta algo distinto al tipo)</span></label><input id="desc-usage" maxlength="70" value="${esc(description.usage&&description.usage.trim().toLocaleLowerCase('es')!==String(p.t||'').trim().toLocaleLowerCase('es')?description.usage:'')}" placeholder="Ej. 1 dispositivo privado"></div></div>
+  <details class="editor-optional"><summary>Más opciones</summary>
+  <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
   </fieldset></section></div></details></div><div class="editor-column"><details class="editor-section"><summary>Vista previa de la tarjeta</summary><fieldset aria-label="Vista previa de la tarjeta">
     <article class="product-card-preview"><img id="card-preview-image" alt="">
       <div class="preview-body"><div class="preview-top"><span id="card-preview-discount"></span><span id="card-preview-stock"></span></div>
