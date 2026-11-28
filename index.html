@@ -2573,6 +2573,13 @@ function compactProductDetail(product){
       (warranty&&key.includes(normalizeDetailValue(warranty)))||/^(?:duracion|entrega|garantia|condiciones)(?:\s|$)/u.test(key);
     return Boolean(key)&&!repeatsSummary&&!repeatsFact&&array.findIndex(other=>normalizeDetailValue(compactDetailText(other,70))===key)===index;
   }).slice(0,2);
+  const ruleRaw=spec.rule||lines.find(line=>/^⚠️/u.test(line))?.replace(/^⚠️\s*/u,'')||sections.conditions.split(/[\n•▪●]+/u).map(item=>item.trim()).find(Boolean)||'';
+  const warrantyKey=normalizeDetailValue(warranty);
+  const noteText=ruleRaw.split(/(?<=[.!?])\s*/u).filter(part=>{
+    const partKey=normalizeDetailValue(part);
+    return !(warrantyKey.split(' ').length>1&&partKey.includes(warrantyKey));
+  }).join(' ').trim();
+  const note=compactDetailText(noteText,130);
   const facts=[['Duración',duration],['Garantía',warranty]].filter(([,value])=>value);
   const description=summary||benefits.length;
   const display=pricedProduct(product),quantity=display.st===0?0:availableStock[display.id]??display.st;
@@ -2581,7 +2588,7 @@ function compactProductDetail(product){
   const image=product.img||tile('gift','#e6dcff');
   return `<div class="det compact-detail"><header class="detail-product-head"><img src="${esc(image)}" alt="${esc(product.n)}"><div class="detail-product-heading"><h2>${esc(product.n)}</h2>${priceHeader}</div></header><span class="dcat">${esc(displayProductPlacement(product))}</span>
     ${description?`<section class="detail-panel"><h3>Descripción del producto</h3>${summary?`<p class="detail-summary">${esc(summary)}</p>`:''}${benefits.length?`<ul class="detail-benefits" aria-label="Beneficios">${benefits.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}</section>`:''}
-    ${facts.length?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica</h3><div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec detail-spec--${label==='Duración'?'duration':'warranty'}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div></section>`:''}</div>`;
+    ${facts.length||note?`<section class="detail-panel detail-panel--facts"><h3>Ficha técnica y condiciones</h3>${facts.length?`<div class="detail-spec-grid">${facts.map(([label,value])=>`<div class="detail-spec detail-spec--${label==='Duración'?'duration':'warranty'}"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('')}</div>`:''}${note?`<p class="detail-note">${esc(note)}</p>`:''}</section>`:''}</div>`;
 }
 function productDownloadButton(product){
   if(!product.downloadUrl)return '';
