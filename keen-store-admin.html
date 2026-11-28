@@ -472,6 +472,19 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
   .product-editor .editor-optional{margin-top:5px;padding:5px 7px}
   .product-editor .editor-optional summary{font-size:.78rem}
 }
+
+/* Ficha técnica compacta */
+.product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"]{padding:4px 9px 7px}
+.product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"]>label{margin-top:4px;font-size:.78rem;line-height:1.2}
+.product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"]>input,
+.product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"] .g2 input{margin-top:2px;padding:7px 9px;min-height:38px}
+.product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"] .g2{gap:7px}
+@media(max-width:759px){
+ .product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"]{padding:3px 8px 6px}
+ .product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"]>label{margin-top:3px}
+ .product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"] .g2{gap:6px}
+ .product-editor .editor-section fieldset[aria-label="Ficha técnica y entrega"] :is(input,textarea){padding-block:6px}
+}
 </style></head>
 <body>
 <header>
