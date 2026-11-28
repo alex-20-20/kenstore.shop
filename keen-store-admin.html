@@ -939,9 +939,7 @@ function admCheckedSubs(){
   return [...$('#ps').querySelectorAll('select')].map(select=>select.value).filter(Boolean);
 }
 function admCatSel(selected=[]){
-  const isNew=v('pc')==='__new__';
-  $('#pcnw').hidden=!isNew;
-  const subs=isNew?[]:admSubs(v('pc'));
+  const subs=admSubs(v('pc'));
   const members=Array.isArray(selected)?selected.filter(name=>subs.includes(name)):[];
   $('#ps').innerHTML=subs.length?Array.from({length:Math.min(4,Math.max(1,members.length+1))},(_,index)=>`
     <label for="product-sub-${index}"><select id="product-sub-${index}" aria-label="Subcategoría ${index+1}">
@@ -1073,8 +1071,7 @@ function admForm(id,duplicate=false){
   </div>
   <details class="product-editor-group" open><summary>Tarjeta del catálogo</summary><div class="product-editor-group-body">
   <section class="editor-section"><h3>Categorías y subcategorías</h3><fieldset aria-label="Categoría y subcategoría">
-  <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}<option value="__new__">➕ Nueva categoría…</option></select>
-  <div id="pcnw" hidden><label for="pcn">Nombre de la nueva categoría</label><input id="pcn" maxlength="30" placeholder="Ej: Música">${admEmojiSelect('pcemoji')}</div>
+  <label for="pc">Categoría principal</label><select id="pc" onchange="admCatSel()">${cs.map(c=>`<option${(p.c||cs[0])==c?' selected':''}>${esc(c)}</option>`).join('')}</select>
   <div class="product-sub-options" aria-labelledby="product-subs-title">
     <div class="product-sub-heading"><strong id="product-subs-title">Subcategorías</strong>
     <p id="sub-selection-count" class="mu" aria-live="polite"></p></div>
@@ -1147,11 +1144,9 @@ function productEditorError(message,field){
 async function admGuardar(){if(publishing)return;
   const imageInput=$('#pfile');
   if(imageInput.hasAttribute('aria-busy'))return toast('Espera a que termine el procesamiento de la imagen.');
-  const n=v('pn').trim();let c=v('pc');
+  const n=v('pn').trim(),c=v('pc');
   if(!n)return productEditorError('Escribe el nombre del producto.','#pn');
-  if(c=='__new__'){c=v('pcn').trim();if(!c)return productEditorError('Escribe el nombre de la nueva categoría.','#pcn');
-    if(['todo','all','__new__'].includes(c.toLowerCase()))return toast('Ese nombre de categoría no está disponible.');
-    const ex=CATS.find(x=>x[0].toLowerCase()==c.toLowerCase());if(ex)c=ex[0]}
+  if(!CATS.some(entry=>entry[0]===c))return productEditorError('Elige una categoría existente.','#pc');
   let plans;
   try{plans=readProductPlans()}catch(error){return productEditorError(error.message,'.plan-editor-row input')}
   const priceField=$('#pp'),u=solesToUsdt(plans[0]?.price??priceField.value);
@@ -1210,7 +1205,6 @@ async function admGuardar(){if(publishing)return;
   if(hasDuration)o.accessDuration={amount,unit};
   delete o.cardBenefit;
   const snap=[JSON.stringify(P),JSON.stringify(CATS),JSON.stringify(SUBS)];
-  if(!CATS.some(x=>x[0]==c))CATS.push([c,c,v('pcemoji')]);
   if(members.length)SUBS[c]=[...new Set([...(SUBS[c]||[]),...members])];
   if(old)P[P.indexOf(old)]=o;else P.push(o);
   if(!await admSave()){P.length=0;JSON.parse(snap[0]).forEach(x=>P.push(x));CATS.length=0;JSON.parse(snap[1]).forEach(x=>CATS.push(x));Object.keys(SUBS).forEach(k=>delete SUBS[k]);Object.assign(SUBS,JSON.parse(snap[2]));return}
