@@ -597,6 +597,28 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor .editor-actions{flex-wrap:wrap}
 .product-save-error{flex:0 0 100%;margin:0 0 6px;padding:8px 10px;border:1px solid #b3261e44;border-radius:8px;background:#b3261e09;color:var(--ac);font-size:.82rem;line-height:1.4}
 .product-save-error[hidden]{display:none}
+
+/* Planes: nombre arriba, cuatro datos abajo y acciones en tres puntos. */
+.product-editor .plan-editor-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:9px;margin:8px 0;min-width:0}
+.product-editor .plan-row-header{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:7px;align-items:end;min-width:0}
+.product-editor .plan-row-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:start;min-width:0}
+.product-editor .plan-editor-row label{display:grid;gap:3px;min-width:0;margin:0;font-size:.74rem;line-height:1.25}
+.product-editor .plan-editor-row input,.product-editor .plan-editor-row select{width:100%;min-width:0;min-height:36px;margin:0;padding:7px 6px;font-size:.82rem}
+.product-editor .plan-editor-row [data-plan-usdt]{font-size:.65rem;line-height:1.2}
+.product-editor .plan-editor-row [data-plan-usdt]:empty{display:none}
+.product-editor .plan-row-menu{position:relative;align-self:end;margin:0;padding:0;min-width:0;border:0;background:transparent}
+.product-editor .plan-row-menu[open]{z-index:35}
+.product-editor-group:has(.plan-row-menu[open]){overflow:visible}
+.product-editor .plan-row-menu>summary{display:grid;place-items:center;list-style:none;cursor:pointer;width:30px;height:36px;padding:4px;border:1px solid var(--stroke);border-radius:8px;background:var(--surface);color:var(--tx)}
+.product-editor .plan-row-menu>summary::-webkit-details-marker{display:none}
+.product-editor .plan-row-menu>summary::marker{content:""}
+.product-editor .plan-row-menu>summary svg{width:18px;height:18px}
+.product-editor .plan-menu-actions{position:absolute;right:0;top:calc(100% + 4px);display:grid;min-width:112px;padding:4px;gap:2px;border:1px solid var(--stroke);border-radius:9px;background:var(--surface);box-shadow:0 5px 16px #1c1c1c20}
+.product-editor .plan-menu-actions button{display:block;width:100%;min-height:36px;margin:0;padding:7px 10px;text-align:left;border:0!important;border-radius:6px;background:transparent;box-shadow:none!important;color:var(--tx);font-family:inherit;font-size:.8rem;transform:none}
+.product-editor .plan-menu-actions button:hover{background:var(--soft)}
+.product-editor .plan-menu-actions button.plan-menu-remove{color:var(--ac)}
+.product-editor .plan-row-menu>summary:focus-visible,.product-editor .plan-menu-actions button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media(max-width:520px){.product-editor .plan-editor-row{padding:7px;gap:7px}.product-editor .plan-row-fields{gap:4px}.product-editor .plan-editor-row label{font-size:.67rem}.product-editor .plan-editor-row input,.product-editor .plan-editor-row select{font-size:.76rem;padding:6px 4px}.product-editor .plan-row-header label{font-size:.75rem}.product-editor .plan-row-header input{font-size:.84rem}}
 </style></head>
 <body>
 <header>
@@ -1124,14 +1146,49 @@ function productDescriptionFields(product){
 }
 function planEditorRow(plan={}){
   return `<div class="plan-editor-row" data-plan-id="${esc(plan.id||crypto.randomUUID())}">
-    <label>Nombre del plan<input data-plan="name" maxlength="60" value="${esc(plan.name||'')}" placeholder="Ej. 1 mes"></label>
-    <label>Precio S/<input data-plan="price" type="number" min=".01" step=".01" value="${esc(plan.price??'')}"><small class="mu" data-plan-usdt></small></label>
-    <label>Antes S/<input data-plan="previous" type="number" min=".01" step=".01" value="${esc(plan.previous??'')}"></label>
-    <label>Duración<input data-plan="amount" type="number" min="1" max="9999" step="1" value="${esc(plan.duration?.amount??'')}"></label>
-    <label>Unidad<select data-plan="unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}" ${unit===plan.duration?.unit?'selected':''}>${label}</option>`).join('')}</select></label>
-    <button type="button" onclick="this.closest('.plan-editor-row').remove();updatePlanEditor()">Quitar plan</button>
+    <div class="plan-row-header">
+      <label>Nombre del plan<input data-plan="name" maxlength="60" value="${esc(plan.name||'')}" placeholder="Ej. 1 mes"></label>
+      <details class="plan-row-menu">
+        <summary aria-label="Opciones del plan" title="Opciones del plan"><svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></summary>
+        <div class="plan-menu-actions">
+          <button type="button" onclick="editProductPlan(this)">Editar</button>
+          <button type="button" class="plan-menu-remove" onclick="removeProductPlan(this)">Quitar</button>
+        </div>
+      </details>
+    </div>
+    <div class="plan-row-fields">
+      <label>Precio S/<input data-plan="price" type="number" min=".01" step=".01" value="${esc(plan.price??'')}"><small class="mu" data-plan-usdt></small></label>
+      <label>Antes S/<input data-plan="previous" type="number" min=".01" step=".01" value="${esc(plan.previous??'')}"></label>
+      <label>Duración<input data-plan="amount" type="number" min="1" max="9999" step="1" value="${esc(plan.duration?.amount??'')}"></label>
+      <label>Unidad<select data-plan="unit">${Object.entries(ACCESS_UNITS).map(([unit,label])=>`<option value="${unit}" ${unit===plan.duration?.unit?'selected':''}>${label}</option>`).join('')}</select></label>
+    </div>
   </div>`;
 }
+function editProductPlan(button){
+  const row=button.closest('.plan-editor-row');
+  if(!row)return;
+  row.querySelector('.plan-row-menu').open=false;
+  const input=row.querySelector('[data-plan="name"]');
+  input.focus();input.select();
+}
+function removeProductPlan(button){
+  const row=button.closest('.plan-editor-row');
+  if(!row)return;
+  const next=row.nextElementSibling||row.previousElementSibling;
+  row.remove();
+  updatePlanEditor();
+  const focus=next?.querySelector('[data-plan="name"]')||document.querySelector('[onclick="addProductPlan()"]');
+  focus?.focus();
+}
+document.addEventListener('click',event=>{
+  const current=event.target.closest?.('.plan-row-menu');
+  for(const menu of document.querySelectorAll('.plan-row-menu[open]'))if(menu!==current)menu.open=false;
+});
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const menu=event.target.closest?.('.plan-row-menu[open]');
+  if(menu){menu.open=false;menu.querySelector('summary').focus()}
+});
 function updatePlanEditor(){
   const rows=[...document.querySelectorAll('.plan-editor-row')];
   $('#base-product-price').hidden=rows.length>0;
