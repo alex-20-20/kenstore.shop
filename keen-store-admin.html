@@ -555,6 +555,13 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-editor #category-picker-options label,
 .product-editor #product-subcategory-options label{min-height:36px}
 
+
+/* Disponibilidad junto a los precios */
+.product-price-stock-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,190px);gap:8px;align-items:end}
+.product-price-stock-row #base-product-price{min-width:0}
+.product-price-stock-row .product-stock-row{grid-template-columns:minmax(0,1fr);margin:0}
+@media(max-width:420px){.product-price-stock-row{grid-template-columns:minmax(0,1fr)}}
+
 </style></head>
 <body>
 <header>
@@ -1147,7 +1154,7 @@ function admForm(id,duplicate=false){
   <small class="mu">Descuento y stock se actualizan con el precio y las unidades.</small>
   </fieldset></section>
   <section class="editor-section"><h3>Precio, oferta y stock</h3><fieldset aria-label="Precio y disponibilidad">
-  <div id="base-product-price" class="product-price-row">
+  <div class="product-price-stock-row"><div id="base-product-price" class="product-price-row">
     <label for="pp"><span>Precio</span><input id="pp" type="number" inputmode="decimal" min="0" step="0.01" oninput="updateUsdtPrice()" aria-describedby="product-price-help" value="${p.p??''}"></label>
     <label for="ppo"><span>P. anterior</span><input id="ppo" type="number" inputmode="decimal" min="0" step="0.01" aria-describedby="product-price-help" value="${esc(p.po??'')}"></label>
     <label for="pu"><span>USDT</span><input id="pu" type="text" readonly aria-describedby="product-price-help" value="${solesToUsdt(p.p)?.toFixed(2)??''}"></label>
@@ -1157,7 +1164,7 @@ function admForm(id,duplicate=false){
     <label for="pstock"><span>Disponibilidad</span><select id="pstock">
       <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
     </select></label>
-  </div>
+  </div></div>
   </fieldset><fieldset><legend>Planes</legend>
     <p class="mu">Stock compartido. Las ofertas se aplican al primer plan.</p>
     <div id="product-plans" oninput="updatePlanEditor()">${(Array.isArray(p.plans)?p.plans:[]).map(planEditorRow).join('')}</div>
