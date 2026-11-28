@@ -242,7 +242,7 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #b3261e22}
 .product-price-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 7px;align-items:end}
 .product-editor .product-price-row label,.product-editor .product-stock-row label{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;min-width:0;margin:0;white-space:nowrap}
 .product-price-row input,.product-stock-row :is(input,select){min-width:0;width:100%;padding-inline:8px}
-.product-stock-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:6px;align-items:end}
+.product-stock-row{display:grid;grid-template-columns:minmax(0,260px);gap:7px;margin-top:6px;align-items:end}
 .product-price-row small{grid-column:1/-1;font-size:.73rem}
 #base-product-price[hidden]{display:none}
  .product-editor{gap:10px;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:start}
@@ -1076,10 +1076,9 @@ function admForm(id,duplicate=false){
     <small id="product-price-help" class="mu">S/ 0 = gratis · USDT automático</small>
   </div>
   <div class="product-stock-row">
-    <label for="pstock"><span>Disponibilidad</span><select id="pstock" onchange="$('#pst').disabled=this.value==='out'">
+    <label for="pstock"><span>Disponibilidad</span><select id="pstock">
       <option value="in"${p.st===0?'':' selected'}>Con stock</option><option value="out"${p.st===0?' selected':''}>Agotado</option>
     </select></label>
-    <label for="pst"><span>Unidades (opcional)</span><input id="pst" type="number" inputmode="numeric" min="1" step="1" value="${esc(p.st===0?p.previousStock??'':p.st??'')}"${p.st===0?' disabled':''}></label>
   </div>
   </fieldset><fieldset><legend>Planes</legend>
     <p class="mu">Stock compartido. Las ofertas se aplican al primer plan.</p>
@@ -1129,8 +1128,8 @@ async function admGuardar(){if(publishing)return;
   const price=plans[0]?.price??Number(priceField.value);
   const num=(i)=>{const t=v(i).trim();if(t==='')return null;const x=parseFloat(t);return isNaN(x)||x<0?NaN:x};
   const po=plans.length?plans[0].previous:num('ppo');if(Number.isNaN(po))return productEditorError('Revisa el precio anterior.','#ppo');
-  const outOfStock=v('pstock')==='out',stt=v('pst').trim(),st=outOfStock?0:stt===''?null:Number(stt);
-  if(!outOfStock&&st!==null&&(!Number.isSafeInteger(st)||st<1))return productEditorError('Ingresa una cantidad entera mayor a cero.','#pst');
+  const outOfStock=v('pstock')==='out';
+  const st=outOfStock?0:old?(old.st===0?(old.previousStock??null):old.st):null;
   const members=admCheckedSubs();
   const sub=v('psn').trim();
   if(sub){
