@@ -1287,16 +1287,12 @@ function admForm(id,duplicate=false){
     <button type="button" onclick="addProductPlan()">＋ Agregar plan</button>
   </fieldset></section>
   </div></details>
-  <details class="product-editor-group"><summary>Detalle para el cliente</summary><div class="product-editor-group-body">
-  <section class="editor-section"><h3>Información para el cliente</h3><fieldset aria-label="Información para el cliente">
+  <section class="editor-section product-customer-details"><h3>Detalle para el cliente</h3><fieldset aria-label="Detalle para el cliente">
   <label for="desc-access">Qué recibe el cliente</label><textarea id="desc-access" rows="1" maxlength="240" placeholder="Ej. 1 perfil privado con PIN">${esc(description.access)}</textarea>
-  <small class="mu">Precio, stock, tipo y duración ya se muestran automáticamente. Escribe aquí solo lo que aporta información nueva.</small>
-  </fieldset></section><section class="editor-section"><h3>Ficha técnica y condiciones</h3><fieldset aria-label="Ficha técnica y condiciones">
   <label for="desc-warranty">Garantía <span class="mu">(opcional)</span></label><input id="desc-warranty" maxlength="70" value="${esc(description.warranty||'')}" placeholder="Ej. 30 días de reemplazo">
-  <details class="editor-optional"><summary>Más opciones</summary>
-  <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="2" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
-  <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…"></details>
-  </fieldset></section></div></details></div><div class="bar2 editor-actions"><p id="product-save-error" class="product-save-error" role="alert" hidden></p><button type="button" class="ok" onclick="admGuardar()">Guardar producto</button><button type="button" onclick="admList()">Cancelar</button></div></div>`,'big adm');
+  <label for="desc-rule">Condiciones <span class="mu">(opcional)</span></label><textarea id="desc-rule" rows="3" maxlength="300" placeholder="Ej. Una pantalla a la vez">${esc(description.rule)}</textarea>
+  <label for="desc-download">Enlace de descarga <span class="mu">(opcional)</span></label><input id="desc-download" type="url" maxlength="2048" value="${esc(p.downloadUrl||'')}" placeholder="https://…">
+  </fieldset></section></div><div class="bar2 editor-actions"><p id="product-save-error" class="product-save-error" role="alert" hidden></p><button type="button" class="ok" onclick="admGuardar()">Guardar producto</button><button type="button" onclick="admList()">Cancelar</button></div></div>`,'big adm');
   if(ADM.img)$('#pv').src=ADM.img;
   admCatSel(productSubcategories(p));
   admTypeFields();
